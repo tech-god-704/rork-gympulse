@@ -18,6 +18,11 @@ export function getDayOfWeek(): number {
   return new Date().getDay();
 }
 
+export function getTodayWeekDay(): string {
+  const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  return days[new Date().getDay()];
+}
+
 export function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";

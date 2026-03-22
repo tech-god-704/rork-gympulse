@@ -11,7 +11,7 @@ const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords } = useGym();
   const [refreshing, setRefreshing] = useState(false);
 
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
@@ -219,6 +219,32 @@ export default function ProgressScreen() {
             <Text style={styles.lifetimeLabel}>TOTAL TIME</Text>
           </View>
         </View>
+
+        {/* Personal Records */}
+        {Object.keys(personalRecords).length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>Personal Records 🏆</Text>
+            </View>
+            <View style={styles.prList}>
+              {Object.entries(personalRecords)
+                .sort(([, a], [, b]) => b.estimated1RM - a.estimated1RM)
+                .slice(0, 8)
+                .map(([name, pr]) => (
+                  <View key={name} style={styles.prRow}>
+                    <View style={styles.prInfo}>
+                      <Text style={styles.prName}>{name}</Text>
+                      <Text style={styles.prDate}>{pr.date}</Text>
+                    </View>
+                    <View style={styles.prValues}>
+                      <Text style={styles.prWeight}>{pr.weight} lbs</Text>
+                      <Text style={styles.prReps}>× {pr.reps}</Text>
+                    </View>
+                  </View>
+                ))}
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -488,5 +514,47 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 2,
+  },
+  prList: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  prRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.04)",
+  },
+  prInfo: {
+    flex: 1,
+  },
+  prName: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.text,
+    letterSpacing: -0.2,
+  },
+  prDate: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
+  prValues: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 4,
+  },
+  prWeight: {
+    fontSize: 16,
+    fontWeight: "800" as const,
+    color: Colors.indigo,
+    letterSpacing: -0.5,
+  },
+  prReps: {
+    fontSize: 12,
+    fontWeight: "500" as const,
+    color: Colors.textTertiary,
   },
 });
