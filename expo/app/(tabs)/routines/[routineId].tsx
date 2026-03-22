@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { ArrowLeft, Plus, Trash2, Search } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -168,7 +169,7 @@ export default function RoutineDetailScreen() {
             autoFocus
           />
         ) : (
-          <TouchableOpacity onPress={() => { setRoutineName(routine.name); setEditingName(true); }}>
+          <TouchableOpacity onPress={() => { setRoutineName(routine.name); setEditingName(true); }} style={styles.titleContainer}>
             <Text style={styles.headerTitle}>{routine.name}</Text>
           </TouchableOpacity>
         )}
@@ -196,8 +197,7 @@ export default function RoutineDetailScreen() {
               <View style={styles.exerciseInfo}>
                 <Text style={styles.exerciseName}>{exercise.exerciseName}</Text>
                 <Text style={styles.exerciseDetail}>
-                  {exercise.sets} × {exercise.reps}
-                  {exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
+                  {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
                 </Text>
               </View>
               <TouchableOpacity
@@ -267,12 +267,26 @@ export default function RoutineDetailScreen() {
             {MUSCLE_GROUPS.map((mg) => (
               <TouchableOpacity
                 key={mg}
-                style={[styles.musclePill, selectedMuscle === mg && styles.musclePillActive]}
                 onPress={() => setSelectedMuscle(mg)}
               >
-                <Text style={[styles.musclePillText, selectedMuscle === mg && styles.musclePillTextActive]}>
-                  {MUSCLE_GROUP_LABELS[mg]}
-                </Text>
+                {selectedMuscle === mg ? (
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.indigo]}
+                    style={styles.musclePill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.musclePillTextActive}>
+                      {MUSCLE_GROUP_LABELS[mg]}
+                    </Text>
+                  </LinearGradient>
+                ) : (
+                  <View style={[styles.musclePill, styles.musclePillInactive]}>
+                    <Text style={styles.musclePillText}>
+                      {MUSCLE_GROUP_LABELS[mg]}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -342,12 +356,16 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 4,
   },
+  titleContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
     color: Colors.text,
-    flex: 1,
     textAlign: "center" as const,
+    letterSpacing: -0.3,
   },
   nameInput: {
     fontSize: 20,
@@ -386,39 +404,48 @@ const styles = StyleSheet.create({
   exerciseRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 16,
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
   },
   exerciseNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: Colors.primaryUltraLight,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: "rgba(59,130,246,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(59,130,246,0.15)",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
   exerciseNumberText: {
-    fontSize: 13,
-    fontWeight: "700" as const,
+    fontSize: 14,
+    fontWeight: "800" as const,
     color: Colors.primary,
   },
   exerciseInfo: {
     flex: 1,
   },
   exerciseName: {
-    fontSize: 16,
-    fontWeight: "600" as const,
+    fontSize: 14,
+    fontWeight: "700" as const,
     color: Colors.text,
     marginBottom: 2,
+    letterSpacing: -0.3,
   },
   exerciseDetail: {
-    fontSize: 13,
-    color: Colors.textSecondary,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
   },
   removeButton: {
     padding: 8,
@@ -429,7 +456,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: Colors.primary,
     borderStyle: "dashed" as const,
@@ -457,7 +484,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.cardBorder,
+    borderBottomColor: "rgba(0,0,0,0.04)",
   },
   modalClose: {
     fontSize: 16,
@@ -469,6 +496,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700" as const,
     color: Colors.text,
+    letterSpacing: -0.3,
   },
   setsRepsRow: {
     flexDirection: "row",
@@ -485,17 +513,18 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginBottom: 6,
     textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
   },
   setsRepsInput: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 12,
     padding: 12,
     fontSize: 16,
     fontWeight: "600" as const,
     color: Colors.text,
     textAlign: "center" as const,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   muscleScroll: {
     maxHeight: 48,
@@ -509,13 +538,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: Colors.cardBackground,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
   },
-  musclePillActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  musclePillInactive: {
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   musclePillText: {
     fontSize: 14,
@@ -523,18 +550,20 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   musclePillTextActive: {
+    fontSize: 14,
+    fontWeight: "600" as const,
     color: Colors.white,
   },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 14,
     paddingHorizontal: 14,
     marginHorizontal: 20,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   searchInput: {
     flex: 1,
@@ -556,11 +585,11 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: Colors.primaryUltraLight,
-    borderRadius: 12,
+    backgroundColor: "rgba(59,130,246,0.06)",
+    borderRadius: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: Colors.primaryLight,
+    borderColor: "rgba(59,130,246,0.15)",
   },
   customExerciseText: {
     fontSize: 15,
@@ -573,7 +602,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.cardBorder,
+    borderBottomColor: "rgba(0,0,0,0.04)",
   },
   exerciseListName: {
     fontSize: 16,
@@ -581,7 +610,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   customBadge: {
-    backgroundColor: Colors.primaryUltraLight,
+    backgroundColor: "rgba(59,130,246,0.08)",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,

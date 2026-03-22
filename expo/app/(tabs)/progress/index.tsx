@@ -1,38 +1,31 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Flame, Target, TrendingUp, Calendar } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Flame } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
-import { getMonthCalendarDates, getCurrentMonthName, getToday } from "@/utils/helpers";
+import { getMonthCalendarDates, getToday } from "@/utils/helpers";
 
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, profile, getWorkoutsThisWeek, getWeeklyWorkoutCounts } = useGym();
+  const { streak, history, getWeeklyWorkoutCounts } = useGym();
 
-  const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
-  const weeklyGoal = profile?.trainingDaysPerWeek ?? 4;
   const weeklyCounts = useMemo(() => getWeeklyWorkoutCounts(8), [getWeeklyWorkoutCounts]);
   const maxWeeklyCount = useMemo(() => Math.max(...weeklyCounts, 1), [weeklyCounts]);
 
   const calendarDates = useMemo(() => getMonthCalendarDates(), []);
-  const monthName = useMemo(() => getCurrentMonthName(), []);
   const today = useMemo(() => getToday(), []);
 
   const completedDatesSet = useMemo(() => new Set(streak.completedDates), [streak.completedDates]);
 
-  const totalExercisesThisWeek = useMemo(() => {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - dayOfWeek);
-    startOfWeek.setHours(0, 0, 0, 0);
-    return history
-      .filter((h) => new Date(h.completedAt) >= startOfWeek)
-      .reduce((sum, h) => sum + h.exerciseCount, 0);
-  }, [history]);
+  const totalWorkouts = history.length;
+  const totalExercises = useMemo(
+    () => history.reduce((sum, h) => sum + h.exerciseCount, 0),
+    [history]
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -43,27 +36,26 @@ export default function ProgressScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.streakRow}>
-          <View style={styles.streakCard}>
-            <View style={styles.streakIconRow}>
-              <Flame size={24} color={Colors.streakFlame} />
-            </View>
-            <Text style={styles.streakValue}>{streak.currentStreak}</Text>
-            <Text style={styles.streakLabel}>Current Streak</Text>
+        {/* Streak Hero */}
+        <LinearGradient
+          colors={["#FFFBEB", "#FEF3C7", "#FDE68A"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.streakHero}
+        >
+          <View style={styles.streakDecor} />
+          <View style={styles.streakContent}>
+            <Flame size={36} color="#F59E0B" />
+            <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
+            <Text style={styles.streakLabel}>Day Streak 🔥</Text>
+            <Text style={styles.streakBest}>Best: {streak.longestStreak} days</Text>
           </View>
-          <View style={styles.streakCard}>
-            <View style={styles.streakIconRow}>
-              <TrendingUp size={24} color={Colors.primary} />
-            </View>
-            <Text style={styles.streakValue}>{streak.longestStreak}</Text>
-            <Text style={styles.streakLabel}>Best Streak</Text>
-          </View>
-        </View>
+        </LinearGradient>
 
+        {/* Activity Calendar */}
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Calendar size={18} color={Colors.primary} />
-            <Text style={styles.cardTitle}>{monthName}</Text>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Activity</Text>
           </View>
           <View style={styles.weekdayRow}>
             {WEEKDAYS.map((day, i) => (
@@ -78,80 +70,92 @@ export default function ProgressScreen() {
               const isToday = item.date === today;
               return (
                 <View key={i} style={styles.calendarCell}>
-                  <View
-                    style={[
-                      styles.calendarDay,
-                      isCompleted && styles.calendarDayCompleted,
-                      isToday && !isCompleted && styles.calendarDayToday,
-                      !item.isCurrentMonth && styles.calendarDayOtherMonth,
-                    ]}
-                  >
-                    <Text
+                  {isToday ? (
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={styles.calendarDay}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={[styles.calendarDayText, styles.calendarDayTextToday]}>
+                        {item.dayOfMonth}
+                      </Text>
+                    </LinearGradient>
+                  ) : (
+                    <View
                       style={[
-                        styles.calendarDayText,
-                        isCompleted && styles.calendarDayTextCompleted,
-                        !item.isCurrentMonth && styles.calendarDayTextOther,
+                        styles.calendarDay,
+                        isCompleted && styles.calendarDayCompleted,
+                        !item.isCurrentMonth && styles.calendarDayOtherMonth,
                       ]}
                     >
-                      {item.dayOfMonth}
-                    </Text>
-                  </View>
+                      <Text
+                        style={[
+                          styles.calendarDayText,
+                          isCompleted && styles.calendarDayTextCompleted,
+                          !item.isCurrentMonth && styles.calendarDayTextOther,
+                        ]}
+                      >
+                        {item.dayOfMonth}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               );
             })}
           </View>
         </View>
 
+        {/* Weekly Workouts Bar Chart */}
         <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Target size={18} color={Colors.primary} />
-            <Text style={styles.cardTitle}>This Week</Text>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>Weekly Workouts</Text>
           </View>
-          <View style={styles.weeklyStats}>
-            <View style={styles.weeklyStat}>
-              <Text style={styles.weeklyStatValue}>
-                {workoutsThisWeek}/{weeklyGoal}
-              </Text>
-              <Text style={styles.weeklyStatLabel}>Workouts</Text>
-            </View>
-            <View style={styles.weeklyStatDivider} />
-            <View style={styles.weeklyStat}>
-              <Text style={styles.weeklyStatValue}>{totalExercisesThisWeek}</Text>
-              <Text style={styles.weeklyStatLabel}>Exercises</Text>
-            </View>
-          </View>
-          <View style={styles.progressBarBg}>
-            <View
-              style={[
-                styles.progressBarFill,
-                { width: `${Math.min((workoutsThisWeek / weeklyGoal) * 100, 100)}%` },
-              ]}
-            />
+          <View style={styles.barChart}>
+            {weeklyCounts.map((count, i) => {
+              const isLast = i === weeklyCounts.length - 1;
+              const barHeight = Math.max((count / maxWeeklyCount) * 68, 4);
+              return (
+                <View key={i} style={styles.barColumn}>
+                  <Text style={[styles.barValue, isLast && styles.barValueActive]}>{count}</Text>
+                  {isLast ? (
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={[styles.bar, { height: barHeight }]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 0, y: 1 }}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.bar,
+                        styles.barInactive,
+                        { height: barHeight },
+                      ]}
+                    />
+                  )}
+                  <Text style={styles.barLabel}>W{i + 1}</Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <TrendingUp size={18} color={Colors.primary} />
-            <Text style={styles.cardTitle}>Last 8 Weeks</Text>
+        {/* Lifetime Stats */}
+        <View style={styles.lifetimeRow}>
+          <View style={styles.lifetimeCard}>
+            <View style={[styles.lifetimeIcon, { backgroundColor: "#EEF2FF" }]}>
+              <Text style={{ fontSize: 16 }}>🏋️</Text>
+            </View>
+            <Text style={styles.lifetimeValue}>{totalWorkouts}</Text>
+            <Text style={styles.lifetimeLabel}>WORKOUTS</Text>
           </View>
-          <View style={styles.barChart}>
-            {weeklyCounts.map((count, i) => (
-              <View key={i} style={styles.barColumn}>
-                <View style={styles.barContainer}>
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: `${Math.max((count / maxWeeklyCount) * 100, 4)}%`,
-                        backgroundColor: i === weeklyCounts.length - 1 ? Colors.primary : Colors.primaryLight,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.barLabel}>{count}</Text>
-              </View>
-            ))}
+          <View style={styles.lifetimeCard}>
+            <View style={[styles.lifetimeIcon, { backgroundColor: "#FFFBEB" }]}>
+              <Text style={{ fontSize: 16 }}>✨</Text>
+            </View>
+            <Text style={styles.lifetimeValue}>{totalExercises}</Text>
+            <Text style={styles.lifetimeLabel}>EXERCISES</Text>
           </View>
         </View>
       </ScrollView>
@@ -165,10 +169,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -1,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 16,
@@ -177,164 +181,213 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 18,
     paddingTop: 0,
     paddingBottom: 40,
+    gap: 14,
   },
-  streakRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  streakCard: {
-    flex: 1,
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 18,
-    padding: 18,
-    alignItems: "center",
+  streakHero: {
+    borderRadius: 24,
+    padding: 28,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "#FDE68A",
+    shadowColor: "#F59E0B",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 32,
+    elevation: 4,
   },
-  streakIconRow: {
-    marginBottom: 8,
+  streakDecor: {
+    position: "absolute",
+    top: -20,
+    right: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(245,158,11,0.08)",
   },
-  streakValue: {
-    fontSize: 36,
-    fontWeight: "800" as const,
+  streakContent: {
+    alignItems: "center",
+  },
+  streakNumber: {
+    fontSize: 52,
+    fontWeight: "900" as const,
     color: Colors.text,
+    letterSpacing: -2,
+    lineHeight: 56,
+    marginTop: 8,
   },
   streakLabel: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: "#92400E",
+    marginTop: 4,
+    letterSpacing: -0.2,
+  },
+  streakBest: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 8,
   },
   card: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+    overflow: "hidden",
   },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 16,
+  cardHeaderRow: {
+    padding: 16,
+    paddingBottom: 6,
   },
   cardTitle: {
-    fontSize: 17,
-    fontWeight: "700" as const,
+    fontSize: 15,
+    fontWeight: "800" as const,
     color: Colors.text,
+    letterSpacing: -0.3,
   },
   weekdayRow: {
     flexDirection: "row",
-    marginBottom: 4,
+    paddingHorizontal: 14,
+    marginBottom: 2,
   },
   weekdayCell: {
     flex: 1,
     alignItems: "center",
   },
   weekdayText: {
-    fontSize: 12,
-    fontWeight: "600" as const,
+    fontSize: 9,
+    fontWeight: "700" as const,
     color: Colors.textTertiary,
+    letterSpacing: 0.5,
   },
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    gap: 5,
   },
   calendarCell: {
-    width: "14.28%",
+    width: "13%",
+    aspectRatio: 1,
     alignItems: "center",
-    paddingVertical: 3,
+    justifyContent: "center",
   },
   calendarDay: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.02)",
+    borderWidth: 1,
+    borderColor: "transparent",
   },
   calendarDayCompleted: {
-    backgroundColor: Colors.primary,
-  },
-  calendarDayToday: {
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    backgroundColor: "rgba(99,102,241,0.12)",
+    borderColor: "rgba(99,102,241,0.12)",
   },
   calendarDayOtherMonth: {
     opacity: 0.3,
   },
   calendarDayText: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.text,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 9,
+    fontWeight: "500" as const,
+    color: Colors.textTertiary,
   },
   calendarDayTextCompleted: {
-    color: Colors.white,
+    color: Colors.indigo,
+    fontWeight: "700" as const,
+  },
+  calendarDayTextToday: {
+    color: "#FFFFFF",
+    fontWeight: "700" as const,
   },
   calendarDayTextOther: {
     color: Colors.textTertiary,
   },
-  weeklyStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  weeklyStat: {
-    flex: 1,
-    alignItems: "center",
-  },
-  weeklyStatValue: {
-    fontSize: 28,
-    fontWeight: "800" as const,
-    color: Colors.text,
-  },
-  weeklyStatLabel: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  weeklyStatDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: Colors.cardBorder,
-  },
-  progressBarBg: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.cardBorder,
-    overflow: "hidden" as const,
-  },
-  progressBarFill: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.primary,
-  },
   barChart: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    height: 120,
-    gap: 6,
+    alignItems: "flex-end",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 16,
+    paddingTop: 8,
+    height: 130,
   },
   barColumn: {
     flex: 1,
     alignItems: "center",
+    gap: 5,
   },
-  barContainer: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "flex-end",
+  barValue: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+  },
+  barValueActive: {
+    color: Colors.indigo,
   },
   bar: {
-    borderRadius: 6,
+    width: "100%",
+    borderRadius: 8,
     minHeight: 4,
   },
+  barInactive: {
+    backgroundColor: "rgba(99,102,241,0.1)",
+  },
   barLabel: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
-    marginTop: 6,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 8,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+  },
+  lifetimeRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  lifetimeCard: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  lifetimeIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  lifetimeValue: {
+    fontSize: 24,
+    fontWeight: "900" as const,
+    color: Colors.text,
+    letterSpacing: -1,
+  },
+  lifetimeLabel: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+    marginTop: 2,
   },
 });

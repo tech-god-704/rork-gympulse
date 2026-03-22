@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from "react-native";
-import { Trophy } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const CONFETTI_COUNT = 50;
-const CONFETTI_COLORS = ["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#06B6D4"];
+const CONFETTI_COUNT = 60;
+const CONFETTI_COLORS = ["#3B82F6", "#6366F1", "#FBBF24", "#34D399", "#F472B6", "#A78BFA", "#FB923C", "#2DD4BF", "#E879F9", "#60A5FA"];
 
 interface Props {
   visible: boolean;
@@ -110,31 +110,32 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
       ))}
 
       <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-        <View style={styles.trophyCircle}>
-          <Trophy size={40} color={Colors.white} />
-        </View>
-        <Text style={styles.title}>Workout Complete!</Text>
-        <Text style={styles.subtitle}>Great job crushing it today</Text>
+        <Text style={styles.emoji}>🎉</Text>
+        <Text style={styles.title}>Workout{"\n"}Complete!</Text>
+        <Text style={styles.subtitle}>Keep the streak alive!</Text>
 
         <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{exerciseCount}</Text>
-            <Text style={styles.statLabel}>Exercises</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{duration}m</Text>
-            <Text style={styles.statLabel}>Duration</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{streak}🔥</Text>
-            <Text style={styles.statLabel}>Streak</Text>
-          </View>
+          {[
+            { v: exerciseCount.toString(), l: "Exercises", c: Colors.indigo },
+            { v: `${streak + 1}`, l: "Day Streak", c: Colors.amber },
+            { v: `${duration}m`, l: "Duration", c: Colors.emerald },
+          ].map((s) => (
+            <View key={s.l} style={styles.statItem}>
+              <Text style={[styles.statValue, { color: s.c }]}>{s.v}</Text>
+              <Text style={styles.statLabel}>{s.l}</Text>
+            </View>
+          ))}
         </View>
 
-        <TouchableOpacity style={styles.doneButton} onPress={onDismiss} activeOpacity={0.8}>
-          <Text style={styles.doneButtonText}>Done</Text>
+        <TouchableOpacity onPress={onDismiss} activeOpacity={0.8}>
+          <LinearGradient
+            colors={[Colors.primary, Colors.indigo]}
+            style={styles.doneButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.doneButtonText}>Done ✓</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
     </Animated.View>
@@ -144,7 +145,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(255,255,255,0.92)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
@@ -153,70 +154,61 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   card: {
-    backgroundColor: Colors.white,
-    borderRadius: 24,
-    padding: 32,
     alignItems: "center",
+    padding: 28,
     width: "85%",
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 12,
   },
-  trophyCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
+  emoji: {
+    fontSize: 72,
+    marginBottom: 12,
   },
   title: {
-    fontSize: 26,
-    fontWeight: "800" as const,
+    fontSize: 32,
+    fontWeight: "900" as const,
     color: Colors.text,
-    marginBottom: 8,
+    textAlign: "center",
+    letterSpacing: -1.2,
+    lineHeight: 36,
   },
   subtitle: {
     fontSize: 15,
     color: Colors.textSecondary,
+    marginTop: 10,
     marginBottom: 28,
+    textAlign: "center",
   },
   statsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 32,
+    gap: 20,
   },
   statItem: {
     alignItems: "center",
-    paddingHorizontal: 16,
   },
   statValue: {
-    fontSize: 24,
-    fontWeight: "700" as const,
-    color: Colors.text,
+    fontSize: 30,
+    fontWeight: "900" as const,
+    letterSpacing: -1,
   },
   statLabel: {
-    fontSize: 12,
-    color: Colors.textSecondary,
+    fontSize: 11,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
     marginTop: 4,
   },
-  statDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: Colors.cardBorder,
-  },
   doneButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 48,
-    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 56,
+    borderRadius: 18,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    elevation: 6,
   },
   doneButtonText: {
-    color: Colors.white,
-    fontSize: 17,
+    color: "#FFFFFF",
+    fontSize: 16,
     fontWeight: "700" as const,
   },
 });
