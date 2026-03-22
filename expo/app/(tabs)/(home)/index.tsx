@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -167,10 +168,23 @@ export default function TodayScreen() {
   );
 
   const handleCancelWorkout = useCallback(() => {
-    cancelWorkout();
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Alert.alert(
+      "Cancel Workout",
+      "Are you sure? All progress for this session will be lost.",
+      [
+        { text: "Keep Going", style: "cancel" },
+        {
+          text: "Cancel Workout",
+          style: "destructive",
+          onPress: () => {
+            cancelWorkout();
+            if (Platform.OS !== "web") {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+          },
+        },
+      ]
+    );
   }, [cancelWorkout]);
 
   const onRefresh = useCallback(() => {
@@ -264,11 +278,7 @@ export default function TodayScreen() {
                   </View>
                 </View>
                 <View style={styles.heroRingContainer}>
-                  <ProgressRing
-                    progress={progress}
-                    completed={completedCount}
-                    total={totalCount}
-                  />
+                  <ProgressRing progress={progress} />
                 </View>
               </View>
             </LinearGradient>

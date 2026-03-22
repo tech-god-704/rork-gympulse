@@ -128,7 +128,13 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               </Text>
               <View style={styles.dot} />
               <Text style={styles.detail}>
-                {exercise.weight > 0 ? `${exercise.weight} lbs` : "BW"}
+                {(() => {
+                  const sets = exercise.setDetails || [];
+                  if (sets.length === 0) return exercise.weight > 0 ? `${exercise.weight} lbs` : "BW";
+                  const weights = [...new Set(sets.map((s) => s.weight))];
+                  if (weights.length === 1) return weights[0] > 0 ? `${weights[0]} lbs` : "BW";
+                  return `${Math.min(...weights)}-${Math.max(...weights)} lbs`;
+                })()}
               </Text>
               <View style={styles.muscleTag}>
                 <Text style={styles.muscleTagText}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>

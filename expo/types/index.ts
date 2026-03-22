@@ -19,6 +19,11 @@ export interface Exercise {
   isCustom: boolean;
 }
 
+export interface RoutineSetConfig {
+  reps: number;
+  weight: number;
+}
+
 export interface RoutineExercise {
   id: string;
   exerciseId: string;
@@ -27,6 +32,7 @@ export interface RoutineExercise {
   sets: number;
   reps: number;
   weight: number;
+  setConfigs?: RoutineSetConfig[];
 }
 
 export type WeekDay = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";

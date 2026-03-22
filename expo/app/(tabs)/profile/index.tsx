@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,8 +22,9 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, streak, history, saveProfile } = useGym();
+  const { profile, streak, history, saveProfile, refreshData } = useGym();
 
+  const [refreshing, setRefreshing] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(profile?.name ?? "");
   const [editingGoal, setEditingGoal] = useState(false);
@@ -89,6 +91,17 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              refreshData();
+              setTimeout(() => setRefreshing(false), 600);
+            }}
+            tintColor={Colors.indigo}
+          />
+        }
       >
         {/* Avatar Card */}
         <View style={styles.avatarCard}>
