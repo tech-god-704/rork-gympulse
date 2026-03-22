@@ -35,11 +35,13 @@ export default function TodayScreen() {
     completeWorkout,
     cancelWorkout,
     getWorkoutsThisWeek,
+    refreshData,
+    history,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0 });
+  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -78,9 +80,21 @@ export default function TodayScreen() {
     if (allComplete) {
       const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
       const duration = Math.round((Date.now() - startTime) / 60000);
+      // Calculate expected streak after this workout completes
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      let expectedStreak = streak.currentStreak;
+      if (streak.lastWorkoutDate === today) {
+        // already counted today
+      } else if (streak.lastWorkoutDate === yesterday || streak.lastWorkoutDate === null) {
+        expectedStreak = streak.currentStreak + 1;
+      } else {
+        expectedStreak = 1;
+      }
       setCompletionStats({
         exercises: totalCount,
         duration: Math.max(duration, 1),
+        expectedStreak,
       });
       setTimeout(() => {
         setShowConfetti(true);
@@ -89,7 +103,7 @@ export default function TodayScreen() {
         }
       }, 400);
     }
-  }, [currentSession, totalCount]);
+  }, [currentSession, totalCount, streak]);
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
@@ -141,8 +155,9 @@ export default function TodayScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
-  }, []);
+    refreshData();
+    setTimeout(() => setRefreshing(false), 600);
+  }, [refreshData]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -263,6 +278,22 @@ export default function TodayScreen() {
           </View>
         ) : (
           <View>
+            {/* Last Workout Summary */}
+            {history.length > 0 && (
+              <View style={styles.lastWorkoutCard}>
+                <Text style={styles.lastWorkoutLabel}>LAST WORKOUT</Text>
+                <Text style={styles.lastWorkoutName}>{history[0].routineName}</Text>
+                <View style={styles.lastWorkoutMeta}>
+                  <Text style={styles.lastWorkoutDetail}>
+                    {history[0].exerciseCount} exercises · {history[0].duration}min
+                  </Text>
+                  <Text style={styles.lastWorkoutDate}>
+                    {new Date(history[0].completedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>Ready to train?</Text>
               <Text style={styles.emptySubtitle}>Pick a routine to start today's workout</Text>
@@ -313,7 +344,7 @@ export default function TodayScreen() {
         visible={showConfetti}
         exerciseCount={completionStats.exercises}
         duration={completionStats.duration}
-        streak={streak.currentStreak}
+        streak={completionStats.expectedStreak || streak.currentStreak}
         onDismiss={handleDismissConfetti}
       />
     </View>
@@ -525,6 +556,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600" as const,
     color: Colors.error,
+  },
+  lastWorkoutCard: {
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  lastWorkoutLabel: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  lastWorkoutName: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  lastWorkoutMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  lastWorkoutDetail: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  lastWorkoutDate: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
   },
   emptyState: {
     alignItems: "center",

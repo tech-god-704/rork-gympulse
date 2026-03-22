@@ -11,7 +11,7 @@ const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData } = useGym();
   const [refreshing, setRefreshing] = useState(false);
 
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
@@ -19,7 +19,8 @@ export default function ProgressScreen() {
   const weeklyCounts = useMemo(() => getWeeklyWorkoutCounts(8), [getWeeklyWorkoutCounts]);
   const maxWeeklyCount = useMemo(() => Math.max(...weeklyCounts, 1), [weeklyCounts]);
 
-  const calendarDates = useMemo(() => getMonthCalendarDates(), []);
+  // Recompute when streak.completedDates changes (new workouts)
+  const calendarDates = useMemo(() => getMonthCalendarDates(), [streak.completedDates]);
   const today = useMemo(() => getToday(), []);
 
   const completedDatesSet = useMemo(() => new Set(streak.completedDates), [streak.completedDates]);
@@ -37,8 +38,9 @@ export default function ProgressScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
-  }, []);
+    refreshData();
+    setTimeout(() => setRefreshing(false), 600);
+  }, [refreshData]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -88,7 +90,7 @@ export default function ProgressScreen() {
                 <View key={i} style={styles.calendarCell}>
                   {isToday ? (
                     <LinearGradient
-                      colors={[Colors.primary, Colors.indigo]}
+                      colors={isCompleted ? [Colors.emerald, "#059669"] : [Colors.primary, Colors.indigo]}
                       style={styles.calendarDay}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
