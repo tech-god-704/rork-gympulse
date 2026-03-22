@@ -11,7 +11,6 @@ import {
   Platform,
   Animated,
   PanResponder,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -33,7 +32,6 @@ import { generateId } from "@/utils/helpers";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -80;
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 // ─── Swipeable Exercise Row ─────────────────────────────────
 interface SwipeableRowProps {

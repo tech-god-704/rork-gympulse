@@ -358,15 +358,15 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingBottom: 14,
-    gap: 5,
   },
   calendarCell: {
-    width: "13%",
+    width: "14.28%",
     aspectRatio: 1,
     alignItems: "center",
     justifyContent: "center",
+    padding: 2,
   },
   calendarDay: {
     width: "100%",
