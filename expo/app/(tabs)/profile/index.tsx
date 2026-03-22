@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingTop: 0,
     paddingBottom: 40,
-    gap: 14,
+    gap: 12,
   },
   avatarCard: {
     flexDirection: "row",
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 14,
-    fontWeight: "500" as const,
+    fontWeight: "600" as const,
     color: Colors.text,
   },
   settingRight: {

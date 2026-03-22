@@ -180,9 +180,9 @@ const swStyles = StyleSheet.create({
     padding: 16,
   },
   exerciseNumber: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 38,
+    height: 38,
+    borderRadius: 13,
     backgroundColor: "rgba(59,130,246,0.08)",
     borderWidth: 1.5,
     borderColor: "rgba(59,130,246,0.15)",

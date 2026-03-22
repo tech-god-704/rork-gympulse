@@ -387,9 +387,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dateLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textTertiary,
-    fontWeight: "500" as const,
+    fontWeight: "600" as const,
     letterSpacing: 0.5,
     marginBottom: 2,
   },
@@ -397,11 +397,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -1.2,
+    letterSpacing: -1,
   },
   statsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
     marginBottom: 16,
   },
   statCard: {
@@ -559,8 +559,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   exerciseCount: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "500" as const,
     color: Colors.textTertiary,
   },
   exerciseList: {
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: "#FEE2E2",
     backgroundColor: "#FEF2F2",

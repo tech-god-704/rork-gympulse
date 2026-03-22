@@ -208,15 +208,14 @@ const styles = StyleSheet.create({
     shadowColor: Colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowRadius: 8,
     elevation: 4,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 0,
+    paddingHorizontal: 18,
     paddingBottom: 40,
     gap: 12,
   },
@@ -243,7 +242,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 14,
+    borderRadius: 16,
   },
   emptyButtonText: {
     color: Colors.white,

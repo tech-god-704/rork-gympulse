@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     padding: 18,
     paddingTop: 0,
     paddingBottom: 40,
-    gap: 14,
+    gap: 12,
   },
   streakHero: {
     borderRadius: 24,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "800" as const,
     color: Colors.text,
     letterSpacing: -0.3,

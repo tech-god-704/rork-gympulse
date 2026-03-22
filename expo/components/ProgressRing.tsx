@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   percentText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800" as const,
     color: "#FFFFFF",
     letterSpacing: -0.5,
