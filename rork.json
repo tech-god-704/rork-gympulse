@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "GymPulse",
+      "path": "expo",
+      "framework": "react-native"
+    }
+  ]
+}
