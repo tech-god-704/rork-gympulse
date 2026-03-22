@@ -7,11 +7,11 @@ interface Props {
   progress: number;
   size?: number;
   strokeWidth?: number;
-  completed: number;
-  total: number;
+  completed?: number;
+  total?: number;
 }
 
-export default function ProgressRing({ progress, size = 72, strokeWidth = 6, completed, total }: Props) {
+export default function ProgressRing({ progress, size = 72, strokeWidth = 6 }: Props) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - Math.min(progress, 1));
@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   percentText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800" as const,
     color: "#FFFFFF",
     letterSpacing: -0.5,

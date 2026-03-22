@@ -15,6 +15,8 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
+import { getTodayWeekDay } from "@/utils/helpers";
+import { WeekDay } from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
 import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
@@ -49,6 +51,12 @@ export default function TodayScreen() {
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
   const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
+
+  // Find today's scheduled routine
+  const todayWeekDay = getTodayWeekDay() as WeekDay;
+  const todaysRoutine = useMemo(() => {
+    return routines.find((r) => r.scheduledDays?.includes(todayWeekDay));
+  }, [routines, todayWeekDay]);
 
   const completedCount = useMemo(
     () => currentSession?.exercises.filter((e) => e.completed).length ?? 0,
@@ -314,14 +322,41 @@ export default function TodayScreen() {
               </View>
             )}
 
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>Ready to train?</Text>
-              <Text style={styles.emptySubtitle}>Pick a routine to start today's workout</Text>
-            </View>
+            {/* Today's Scheduled Routine */}
+            {todaysRoutine && todaysRoutine.exercises.length > 0 ? (
+              <View>
+                <Text style={styles.scheduledLabel}>TODAY'S PLAN</Text>
+                <TouchableOpacity
+                  style={styles.scheduledCard}
+                  onPress={() => handleStartWorkout(todaysRoutine.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.routineCardLeft}>
+                    <Text style={styles.scheduledName}>{todaysRoutine.name}</Text>
+                    <Text style={styles.routineCardDetail}>
+                      {todaysRoutine.exercises.length} exercises · ~{todaysRoutine.exercises.length * 5 + 10}min
+                    </Text>
+                  </View>
+                  <LinearGradient
+                    colors={[Colors.primary, Colors.indigo]}
+                    style={styles.startButton}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={styles.startButtonText}>Start</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Ready to train?</Text>
+                <Text style={styles.emptySubtitle}>Pick a routine to start today's workout</Text>
+              </View>
+            )}
 
             {routines.length > 0 ? (
               <View style={styles.routinesList}>
-                {routines.map((routine) => (
+                {routines.filter((r) => r.id !== todaysRoutine?.id).map((routine) => (
                   <TouchableOpacity
                     key={routine.id}
                     style={styles.routineCard}
@@ -387,9 +422,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dateLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.textTertiary,
-    fontWeight: "500" as const,
+    fontWeight: "600" as const,
     letterSpacing: 0.5,
     marginBottom: 2,
   },
@@ -397,11 +432,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -1.2,
+    letterSpacing: -1,
   },
   statsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 12,
     marginBottom: 16,
   },
   statCard: {
@@ -559,8 +594,8 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   exerciseCount: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: "500" as const,
     color: Colors.textTertiary,
   },
   exerciseList: {
@@ -572,7 +607,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     borderColor: "#FEE2E2",
     backgroundColor: "#FEF2F2",
@@ -623,6 +658,46 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textTertiary,
     fontWeight: "500" as const,
+  },
+  scheduledLabel: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.indigo,
+    letterSpacing: 1.2,
+    marginBottom: 8,
+  },
+  scheduledCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(99,102,241,0.06)",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1.5,
+    borderColor: "rgba(99,102,241,0.15)",
+    marginBottom: 16,
+  },
+  scheduledName: {
+    fontSize: 18,
+    fontWeight: "800" as const,
+    color: Colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  startButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 14,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  startButtonText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
   emptyState: {
     alignItems: "center",

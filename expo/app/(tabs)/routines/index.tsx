@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
-import { MuscleGroup, MUSCLE_GROUP_LABELS } from "@/types";
+import { MuscleGroup, MUSCLE_GROUP_LABELS, WEEKDAY_SHORT } from "@/types";
 import { estimateRoutineDuration } from "@/utils/helpers";
 
 const ROUTINE_GRADIENTS: [string, string][] = [
@@ -123,6 +123,9 @@ export default function RoutinesScreen() {
                   <Text style={styles.routineName}>{routine.name}</Text>
                   <Text style={styles.routineDetail}>
                     {routine.exercises.length} exercises · ~{duration + 10} min
+                    {routine.scheduledDays && routine.scheduledDays.length > 0
+                      ? ` · ${routine.scheduledDays.map((d) => WEEKDAY_SHORT[d]).join(", ")}`
+                      : ""}
                   </Text>
                   {muscleGroups.length > 0 && (
                     <View style={styles.tagsRow}>
@@ -208,15 +211,14 @@ const styles = StyleSheet.create({
     shadowColor: Colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowRadius: 8,
     elevation: 4,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 0,
+    paddingHorizontal: 18,
     paddingBottom: 40,
     gap: 12,
   },
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 14,
+    borderRadius: 16,
   },
   emptyButtonText: {
     color: Colors.white,

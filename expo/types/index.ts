@@ -29,10 +29,35 @@ export interface RoutineExercise {
   weight: number;
 }
 
+export type WeekDay = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
+
+export const WEEKDAY_LABELS: Record<WeekDay, string> = {
+  monday: "Monday",
+  tuesday: "Tuesday",
+  wednesday: "Wednesday",
+  thursday: "Thursday",
+  friday: "Friday",
+  saturday: "Saturday",
+  sunday: "Sunday",
+};
+
+export const WEEKDAY_SHORT: Record<WeekDay, string> = {
+  monday: "Mon",
+  tuesday: "Tue",
+  wednesday: "Wed",
+  thursday: "Thu",
+  friday: "Fri",
+  saturday: "Sat",
+  sunday: "Sun",
+};
+
+export const ALL_WEEKDAYS: WeekDay[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
 export interface Routine {
   id: string;
   name: string;
   exercises: RoutineExercise[];
+  scheduledDays?: WeekDay[];
   createdAt: string;
 }
 

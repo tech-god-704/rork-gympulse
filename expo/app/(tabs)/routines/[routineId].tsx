@@ -11,7 +11,6 @@ import {
   Platform,
   Animated,
   PanResponder,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,12 +24,14 @@ import {
   MUSCLE_GROUP_LABELS,
   Exercise,
   RoutineExercise,
+  WeekDay,
+  WEEKDAY_SHORT,
+  ALL_WEEKDAYS,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -80;
-const SCREEN_WIDTH = Dimensions.get("window").width;
 
 // ─── Swipeable Exercise Row ─────────────────────────────────
 interface SwipeableRowProps {
@@ -180,9 +181,9 @@ const swStyles = StyleSheet.create({
     padding: 16,
   },
   exerciseNumber: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 38,
+    height: 38,
+    borderRadius: 13,
     backgroundColor: "rgba(59,130,246,0.08)",
     borderWidth: 1.5,
     borderColor: "rgba(59,130,246,0.15)",
@@ -542,6 +543,16 @@ export default function RoutineDetailScreen() {
     setEditingName(false);
   }, [routineId, routineName, updateRoutine]);
 
+  const handleToggleDay = useCallback((day: WeekDay) => {
+    if (!routine || !routineId) return;
+    const current = routine.scheduledDays || [];
+    const updated = current.includes(day)
+      ? current.filter((d) => d !== day)
+      : [...current, day];
+    updateRoutine(routineId, { scheduledDays: updated });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  }, [routine, routineId, updateRoutine]);
+
   if (!routine) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -573,6 +584,35 @@ export default function RoutineDetailScreen() {
         <TouchableOpacity onPress={handleDeleteRoutine} style={styles.deleteButton}>
           <Trash2 size={20} color={Colors.error} />
         </TouchableOpacity>
+      </View>
+
+      {/* Day Scheduler */}
+      <View style={styles.dayPickerRow}>
+        {ALL_WEEKDAYS.map((day) => {
+          const active = routine.scheduledDays?.includes(day);
+          return (
+            <TouchableOpacity
+              key={day}
+              onPress={() => handleToggleDay(day)}
+              activeOpacity={0.7}
+            >
+              {active ? (
+                <LinearGradient
+                  colors={[Colors.primary, Colors.indigo]}
+                  style={styles.dayChip}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.dayChipTextActive}>{WEEKDAY_SHORT[day]}</Text>
+                </LinearGradient>
+              ) : (
+                <View style={[styles.dayChip, styles.dayChipInactive]}>
+                  <Text style={styles.dayChipText}>{WEEKDAY_SHORT[day]}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Hint text */}
@@ -778,6 +818,35 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 4,
+  },
+  dayPickerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  dayChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 42,
+    alignItems: "center",
+  },
+  dayChipInactive: {
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
+  },
+  dayChipText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.textTertiary,
+  },
+  dayChipTextActive: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
   hintText: {
     fontSize: 11,

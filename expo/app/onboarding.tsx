@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     fontSize: 42,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -2,
+    letterSpacing: -1.5,
     lineHeight: 44,
   },
   appNameAccent: {
