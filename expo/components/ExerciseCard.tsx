@@ -12,9 +12,10 @@ interface Props {
   onRestTimer: () => void;
   onToggleSet?: (setNumber: number) => void;
   onUpdateSetWeight?: (setNumber: number, weight: number) => void;
+  previousPerformance?: { sets: { weight: number; reps: number }[] };
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [expanded, setExpanded] = useState(false);
@@ -48,14 +49,18 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
     onToggle();
   }, [exercise.completed, onToggle, scaleAnim]);
 
-  const handleSetToggle = useCallback((setNumber: number) => {
+  const handleSetToggle = useCallback((setNumber: number, wasCompleted: boolean) => {
     if (onToggleSet) {
       onToggleSet(setNumber);
       if (Platform.OS !== "web") {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void Haptics.impactAsync(wasCompleted ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
+      }
+      // Auto-start rest timer when completing a set (not when unchecking)
+      if (!wasCompleted) {
+        onRestTimer();
       }
     }
-  }, [onToggleSet]);
+  }, [onToggleSet, onRestTimer]);
 
   const handleWeightSave = useCallback((setNumber: number) => {
     if (onUpdateSetWeight && editWeight.trim()) {
@@ -169,7 +174,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
             <View key={set.setNumber} style={styles.setRow}>
               <TouchableOpacity
                 style={[styles.setCheckbox, set.completed && styles.setCheckboxCompleted]}
-                onPress={() => handleSetToggle(set.setNumber)}
+                onPress={() => handleSetToggle(set.setNumber, set.completed)}
                 activeOpacity={0.7}
               >
                 {set.completed && <Check size={12} color="#fff" />}
@@ -204,6 +209,12 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                     {set.weight > 0 ? `${set.weight} lbs` : "BW"}
                   </Text>
                 </TouchableOpacity>
+              )}
+              {/* Previous performance hint */}
+              {previousPerformance?.sets[set.setNumber - 1] && !set.completed && (
+                <Text style={styles.prevHint}>
+                  Last: {previousPerformance.sets[set.setNumber - 1].weight}×{previousPerformance.sets[set.setNumber - 1].reps}
+                </Text>
               )}
             </View>
           ))}
@@ -406,5 +417,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textTertiary,
     fontWeight: "500" as const,
+  },
+  prevHint: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 9,
+    color: Colors.textTertiary,
+    opacity: 0.6,
+    marginLeft: 4,
   },
 });

@@ -37,6 +37,7 @@ export default function TodayScreen() {
     getWorkoutsThisWeek,
     refreshData,
     history,
+    lastPerformance,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -55,6 +56,17 @@ export default function TodayScreen() {
   );
   const totalCount = currentSession?.exercises.length ?? 0;
   const progress = totalCount > 0 ? completedCount / totalCount : 0;
+
+  // Total volume lifted (weight × reps for completed sets)
+  const totalVolume = useMemo(() => {
+    if (!currentSession) return 0;
+    return currentSession.exercises.reduce((vol, ex) => {
+      const sets = ex.setDetails || [];
+      return vol + sets
+        .filter((s) => s.completed)
+        .reduce((sum, s) => sum + s.weight * s.reps, 0);
+    }, 0);
+  }, [currentSession]);
 
   const today = new Date();
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
@@ -229,12 +241,19 @@ export default function TodayScreen() {
                     </View>
                     <Text style={styles.heroProgressText}>{completedCount}/{totalCount}</Text>
                   </View>
-                  {elapsedMinutes > 0 && (
-                    <View style={styles.heroTimerRow}>
-                      <Clock size={12} color="rgba(255,255,255,0.5)" />
-                      <Text style={styles.heroTimerText}>{elapsedMinutes} min</Text>
-                    </View>
-                  )}
+                  <View style={styles.heroMetaRow}>
+                    {elapsedMinutes > 0 && (
+                      <View style={styles.heroTimerRow}>
+                        <Clock size={12} color="rgba(255,255,255,0.5)" />
+                        <Text style={styles.heroTimerText}>{elapsedMinutes} min</Text>
+                      </View>
+                    )}
+                    {totalVolume > 0 && (
+                      <Text style={styles.heroTimerText}>
+                        {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} lbs
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 <View style={styles.heroRingContainer}>
                   <ProgressRing
@@ -262,6 +281,7 @@ export default function TodayScreen() {
                     onRestTimer={() => setShowRestTimer(true)}
                     onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
                     onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
+                    previousPerformance={lastPerformance[exercise.exerciseName]}
                   />
                 ))}
               </View>
@@ -503,11 +523,16 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     fontWeight: "600" as const,
   },
+  heroMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 6,
+  },
   heroTimerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 6,
   },
   heroTimerText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",

@@ -125,10 +125,32 @@ export default function RestTimer({ visible, onClose }: Props) {
           )}
 
           {isRunning && (
-            <TouchableOpacity style={styles.pauseButton} onPress={togglePause} activeOpacity={0.8}>
-              <Pause size={20} color={Colors.white} />
-              <Text style={styles.pauseText}>Pause</Text>
-            </TouchableOpacity>
+            <View>
+              <View style={styles.adjustRow}>
+                <TouchableOpacity
+                  style={styles.adjustButton}
+                  onPress={() => {
+                    setTimeLeft((t) => Math.max(0, t - 15));
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                >
+                  <Text style={styles.adjustText}>-15s</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.adjustButton}
+                  onPress={() => {
+                    setTimeLeft((t) => t + 15);
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                >
+                  <Text style={styles.adjustText}>+15s</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity style={styles.pauseButton} onPress={togglePause} activeOpacity={0.8}>
+                <Pause size={20} color={Colors.white} />
+                <Text style={styles.pauseText}>Pause</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {!isRunning && timeLeft > 0 && timeLeft < seconds && (
@@ -283,6 +305,25 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 17,
     fontWeight: "700" as const,
+  },
+  adjustRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  adjustButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  adjustText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.text,
   },
   pauseButton: {
     backgroundColor: Colors.textSecondary,
