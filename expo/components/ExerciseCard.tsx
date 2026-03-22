@@ -9,7 +9,7 @@ interface Props {
   exercise: WorkoutSessionExercise;
   index?: number;
   onToggle: () => void;
-  onRestTimer: () => void;
+  onRestTimer: (seconds?: number) => void;
   onToggleSet?: (setNumber: number) => void;
   onUpdateSetWeight?: (setNumber: number, weight: number) => void;
   previousPerformance?: { sets: { weight: number; reps: number }[] };
@@ -57,7 +57,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
       }
       // Auto-start rest timer when completing a set (not when unchecking)
       if (!wasCompleted) {
-        onRestTimer();
+        onRestTimer(60);
       }
     }
   }, [onToggleSet, onRestTimer]);
@@ -149,7 +149,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                 <TouchableOpacity
                   key={s}
                   style={styles.restButton}
-                  onPress={() => onRestTimer()}
+                  onPress={() => onRestTimer(s)}
                   hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                 >
                   <Text style={styles.restButtonText}>{s}s</Text>

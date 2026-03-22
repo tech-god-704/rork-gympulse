@@ -215,7 +215,11 @@ export default function ProgressScreen() {
             <View style={[styles.lifetimeIcon, { backgroundColor: "#ECFDF5" }]}>
               <Text style={{ fontSize: 16 }}>⏱️</Text>
             </View>
-            <Text style={styles.lifetimeValue}>{totalDuration > 60 ? `${Math.round(totalDuration / 60)}h` : `${totalDuration}m`}</Text>
+            <Text style={styles.lifetimeValue}>
+              {totalDuration >= 60
+                ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
+                : `${totalDuration}m`}
+            </Text>
             <Text style={styles.lifetimeLabel}>TOTAL TIME</Text>
           </View>
         </View>
