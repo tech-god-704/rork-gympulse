@@ -30,6 +30,8 @@ export default function TodayScreen() {
     streak,
     startWorkout,
     toggleExerciseComplete,
+    toggleSetComplete,
+    updateSetWeight,
     completeWorkout,
     cancelWorkout,
     getWorkoutsThisWeek,
@@ -72,25 +74,44 @@ export default function TodayScreen() {
     return () => clearInterval(interval);
   }, [currentSession]);
 
+  const triggerCompletionCheck = useCallback((allComplete: boolean) => {
+    if (allComplete) {
+      const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
+      const duration = Math.round((Date.now() - startTime) / 60000);
+      setCompletionStats({
+        exercises: totalCount,
+        duration: Math.max(duration, 1),
+      });
+      setTimeout(() => {
+        setShowConfetti(true);
+        if (Platform.OS !== "web") {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }, 400);
+    }
+  }, [currentSession, totalCount]);
+
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
       const allComplete = toggleExerciseComplete(routineExerciseId);
-      if (allComplete) {
-        const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
-        const duration = Math.round((Date.now() - startTime) / 60000);
-        setCompletionStats({
-          exercises: totalCount,
-          duration: Math.max(duration, 1),
-        });
-        setTimeout(() => {
-          setShowConfetti(true);
-          if (Platform.OS !== "web") {
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
-        }, 400);
-      }
+      triggerCompletionCheck(allComplete);
     },
-    [toggleExerciseComplete, currentSession, totalCount]
+    [toggleExerciseComplete, triggerCompletionCheck]
+  );
+
+  const handleToggleSet = useCallback(
+    (routineExerciseId: string, setNumber: number) => {
+      const allComplete = toggleSetComplete(routineExerciseId, setNumber);
+      triggerCompletionCheck(allComplete);
+    },
+    [toggleSetComplete, triggerCompletionCheck]
+  );
+
+  const handleUpdateSetWeight = useCallback(
+    (routineExerciseId: string, setNumber: number, weight: number) => {
+      updateSetWeight(routineExerciseId, setNumber, weight);
+    },
+    [updateSetWeight]
   );
 
   const handleDismissConfetti = useCallback(() => {
@@ -224,6 +245,8 @@ export default function TodayScreen() {
                     index={index}
                     onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
                     onRestTimer={() => setShowRestTimer(true)}
+                    onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
+                    onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
                   />
                 ))}
               </View>

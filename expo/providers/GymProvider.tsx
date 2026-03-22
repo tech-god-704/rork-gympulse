@@ -306,6 +306,12 @@ function useGymState() {
           reps: e.reps,
           weight: e.weight,
           completed: false,
+          setDetails: Array.from({ length: e.sets }, (_, i) => ({
+            setNumber: i + 1,
+            reps: e.reps,
+            weight: e.weight,
+            completed: false,
+          })),
         })),
         startedAt: new Date().toISOString(),
         isComplete: false,
@@ -333,6 +339,54 @@ function useGymState() {
       };
       saveSessionMutation.mutate(updatedSession);
       return allComplete;
+    },
+    [currentSession, saveSessionMutation]
+  );
+
+  const toggleSetComplete = useCallback(
+    (routineExerciseId: string, setNumber: number) => {
+      if (!currentSession) return false;
+      const updatedExercises = currentSession.exercises.map((e) => {
+        if (e.routineExerciseId !== routineExerciseId) return e;
+        const updatedSets = (e.setDetails || []).map((s) =>
+          s.setNumber === setNumber ? { ...s, completed: !s.completed } : s
+        );
+        const allSetsComplete = updatedSets.every((s) => s.completed);
+        return {
+          ...e,
+          setDetails: updatedSets,
+          completed: allSetsComplete,
+          completedAt: allSetsComplete ? new Date().toISOString() : undefined,
+        };
+      });
+      const allComplete = updatedExercises.every((e) => e.completed);
+      const updatedSession: WorkoutSession = {
+        ...currentSession,
+        exercises: updatedExercises,
+        isComplete: allComplete,
+        completedAt: allComplete ? new Date().toISOString() : undefined,
+      };
+      saveSessionMutation.mutate(updatedSession);
+      return allComplete;
+    },
+    [currentSession, saveSessionMutation]
+  );
+
+  const updateSetWeight = useCallback(
+    (routineExerciseId: string, setNumber: number, weight: number) => {
+      if (!currentSession) return;
+      const updatedExercises = currentSession.exercises.map((e) => {
+        if (e.routineExerciseId !== routineExerciseId) return e;
+        const updatedSets = (e.setDetails || []).map((s) =>
+          s.setNumber === setNumber ? { ...s, weight } : s
+        );
+        return { ...e, setDetails: updatedSets };
+      });
+      const updatedSession: WorkoutSession = {
+        ...currentSession,
+        exercises: updatedExercises,
+      };
+      saveSessionMutation.mutate(updatedSession);
     },
     [currentSession, saveSessionMutation]
   );
@@ -437,6 +491,8 @@ function useGymState() {
     addCustomExercise,
     startWorkout,
     toggleExerciseComplete,
+    toggleSetComplete,
+    updateSetWeight,
     completeWorkout,
     cancelWorkout,
     getWorkoutsThisWeek,
