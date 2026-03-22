@@ -26,6 +26,9 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         y: new Animated.Value(-20),
         rotate: new Animated.Value(0),
         opacity: new Animated.Value(1),
+        w: 8 + Math.random() * 6,
+        h: 14 + Math.random() * 8,
+        rounded: Math.random() > 0.5,
       })),
     []
   );
@@ -90,9 +93,9 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
             styles.confettiPiece,
             {
               backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-              width: 8 + Math.random() * 6,
-              height: 14 + Math.random() * 8,
-              borderRadius: Math.random() > 0.5 ? 10 : 2,
+              width: anim.w,
+              height: anim.h,
+              borderRadius: anim.rounded ? 10 : 2,
               opacity: anim.opacity,
               transform: [
                 { translateX: anim.x },

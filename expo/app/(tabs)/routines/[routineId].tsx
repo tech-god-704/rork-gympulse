@@ -87,9 +87,10 @@ export default function RoutineDetailScreen() {
     [routineId, customSets, customReps, customWeight, addExerciseToRoutine]
   );
 
-  const handleAddCustom = useCallback(() => {
-    if (!customName.trim() || !routineId) return;
-    const exercise = addCustomExercise(customName.trim(), selectedMuscle);
+  const handleAddCustom = useCallback((nameOverride?: string) => {
+    const exerciseName = nameOverride || customName.trim();
+    if (!exerciseName || !routineId) return;
+    const exercise = addCustomExercise(exerciseName, selectedMuscle);
     const routineExercise: RoutineExercise = {
       id: generateId(),
       exerciseId: exercise.id,
@@ -307,8 +308,7 @@ export default function RoutineDetailScreen() {
               <TouchableOpacity
                 style={styles.customExerciseRow}
                 onPress={() => {
-                  setCustomName(searchQuery.trim());
-                  handleAddCustom();
+                  handleAddCustom(searchQuery.trim());
                 }}
               >
                 <Plus size={18} color={Colors.primary} />

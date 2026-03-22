@@ -30,22 +30,21 @@ export default function RestTimer({ visible, onClose }: Props) {
   );
 
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false);
-            if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    if (!isRunning) return;
+    intervalRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          setIsRunning(false);
+          if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, timeLeft]);
+  }, [isRunning]);
 
   useEffect(() => {
     if (isRunning) {
@@ -118,7 +117,7 @@ export default function RestTimer({ visible, onClose }: Props) {
                   onPress={() => startTimer(p)}
                 >
                   <Text style={[styles.presetText, seconds === p && styles.presetTextActive]}>
-                    {p >= 60 ? `${p / 60}m` : `${p}s`}
+                    {p < 60 ? `${p}s` : p % 60 === 0 ? `${p / 60}m` : `${Math.floor(p / 60)}:${String(p % 60).padStart(2, "0")}`}
                   </Text>
                 </TouchableOpacity>
               ))}

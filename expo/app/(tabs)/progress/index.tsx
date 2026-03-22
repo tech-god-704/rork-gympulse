@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, Platform } from "react-native";
+import React, { useMemo, useState, useCallback } from "react";
+import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Flame } from "lucide-react-native";
@@ -11,8 +11,11 @@ const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWeeklyWorkoutCounts } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile } = useGym();
+  const [refreshing, setRefreshing] = useState(false);
 
+  const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
+  const weeklyGoal = profile?.trainingDaysPerWeek ?? 4;
   const weeklyCounts = useMemo(() => getWeeklyWorkoutCounts(8), [getWeeklyWorkoutCounts]);
   const maxWeeklyCount = useMemo(() => Math.max(...weeklyCounts, 1), [weeklyCounts]);
 
@@ -27,6 +30,16 @@ export default function ProgressScreen() {
     [history]
   );
 
+  const totalDuration = useMemo(
+    () => history.reduce((sum, h) => sum + h.duration, 0),
+    [history]
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 500);
+  }, []);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Text style={styles.title}>Progress</Text>
@@ -35,6 +48,9 @@ export default function ProgressScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+        }
       >
         {/* Streak Hero */}
         <LinearGradient
@@ -106,6 +122,42 @@ export default function ProgressScreen() {
           </View>
         </View>
 
+        {/* This Week Summary */}
+        <View style={styles.card}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.cardTitle}>This Week</Text>
+          </View>
+          <View style={styles.weekSummary}>
+            <View style={styles.weekSummaryStat}>
+              <Text style={styles.weekSummaryValue}>{workoutsThisWeek}/{weeklyGoal}</Text>
+              <Text style={styles.weekSummaryLabel}>Workouts</Text>
+            </View>
+            <View style={styles.weekSummaryDivider} />
+            <View style={styles.weekSummaryStat}>
+              <Text style={styles.weekSummaryValue}>
+                {history
+                  .filter((h) => {
+                    const now = new Date();
+                    const startOfWeek = new Date(now);
+                    startOfWeek.setDate(now.getDate() - now.getDay());
+                    startOfWeek.setHours(0, 0, 0, 0);
+                    return new Date(h.completedAt) >= startOfWeek;
+                  })
+                  .reduce((sum, h) => sum + h.exerciseCount, 0)}
+              </Text>
+              <Text style={styles.weekSummaryLabel}>Exercises</Text>
+            </View>
+          </View>
+          <View style={styles.weekProgressBg}>
+            <LinearGradient
+              colors={[Colors.primary, Colors.indigo]}
+              style={[styles.weekProgressFill, { width: `${Math.min((workoutsThisWeek / weeklyGoal) * 100, 100)}%` }]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            />
+          </View>
+        </View>
+
         {/* Weekly Workouts Bar Chart */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
@@ -156,6 +208,13 @@ export default function ProgressScreen() {
             </View>
             <Text style={styles.lifetimeValue}>{totalExercises}</Text>
             <Text style={styles.lifetimeLabel}>EXERCISES</Text>
+          </View>
+          <View style={styles.lifetimeCard}>
+            <View style={[styles.lifetimeIcon, { backgroundColor: "#ECFDF5" }]}>
+              <Text style={{ fontSize: 16 }}>⏱️</Text>
+            </View>
+            <Text style={styles.lifetimeValue}>{totalDuration > 60 ? `${Math.round(totalDuration / 60)}h` : `${totalDuration}m`}</Text>
+            <Text style={styles.lifetimeLabel}>TOTAL TIME</Text>
           </View>
         </View>
       </ScrollView>
@@ -315,6 +374,44 @@ const styles = StyleSheet.create({
   calendarDayTextOther: {
     color: Colors.textTertiary,
   },
+  weekSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  weekSummaryStat: {
+    flex: 1,
+    alignItems: "center",
+  },
+  weekSummaryValue: {
+    fontSize: 28,
+    fontWeight: "800" as const,
+    color: Colors.text,
+    letterSpacing: -1,
+  },
+  weekSummaryLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  weekSummaryDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  weekProgressBg: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    marginHorizontal: 16,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  weekProgressFill: {
+    height: 6,
+    borderRadius: 3,
+  },
   barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -360,7 +457,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.6)",
     borderRadius: 20,
-    padding: 16,
+    padding: 14,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.7)",
@@ -379,13 +476,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   lifetimeValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "900" as const,
     color: Colors.text,
     letterSpacing: -1,
   },
   lifetimeLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: Colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 2,

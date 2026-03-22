@@ -53,7 +53,8 @@ export function getMonthCalendarDates(): { date: string; dayOfMonth: number; isC
   const month = today.getMonth();
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
-  const startPad = firstDay.getDay();
+  // Convert Sunday=0 to Monday-start: Mon=0, Tue=1, ..., Sun=6
+  const startPad = (firstDay.getDay() + 6) % 7;
   const dates: { date: string; dayOfMonth: number; isCurrentMonth: boolean }[] = [];
 
   for (let i = startPad - 1; i >= 0; i--) {
