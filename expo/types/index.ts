@@ -52,7 +52,7 @@ export interface WorkoutSessionExercise {
   weight: number;
   completed: boolean;
   completedAt?: string;
-  setDetails: SetData[];
+  setDetails?: SetData[];
 }
 
 export interface WorkoutSession {
