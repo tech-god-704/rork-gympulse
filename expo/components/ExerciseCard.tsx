@@ -61,8 +61,8 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer }: Props) {
         },
       ]}
     >
-      <TouchableOpacity style={styles.content} onPress={handleToggle} activeOpacity={0.7} testID={`exercise-${exercise.routineExerciseId}`}>
-        <View style={styles.leftSection}>
+      <View style={styles.content}>
+        <TouchableOpacity style={styles.toggleArea} onPress={handleToggle} activeOpacity={0.7} testID={`exercise-${exercise.routineExerciseId}`}>
           <Animated.View
             style={[
               styles.checkbox,
@@ -101,17 +101,14 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer }: Props) {
               </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
         {!exercise.completed && (
           <View style={styles.restButtons}>
             {[60, 90].map((s) => (
               <TouchableOpacity
                 key={s}
                 style={styles.restButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onRestTimer();
-                }}
+                onPress={() => onRestTimer()}
                 hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
               >
                 <Text style={styles.restButtonText}>{s}s</Text>
@@ -119,7 +116,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer }: Props) {
             ))}
           </View>
         )}
-      </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -143,7 +140,7 @@ const styles = StyleSheet.create({
     padding: 13,
     paddingHorizontal: 14,
   },
-  leftSection: {
+  toggleArea: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
