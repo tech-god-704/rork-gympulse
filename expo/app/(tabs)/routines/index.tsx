@@ -10,7 +10,8 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Plus, Clock, Dumbbell, ChevronRight } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Plus, Dumbbell, ChevronRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -18,15 +19,16 @@ import { useGym } from "@/providers/GymProvider";
 import { MuscleGroup, MUSCLE_GROUP_LABELS } from "@/types";
 import { estimateRoutineDuration } from "@/utils/helpers";
 
-const MUSCLE_COLORS: Record<MuscleGroup, string> = {
-  chest: Colors.muscleChest,
-  back: Colors.muscleBack,
-  shoulders: Colors.muscleShoulders,
-  arms: Colors.muscleArms,
-  legs: Colors.muscleLegs,
-  core: Colors.muscleCore,
-  cardio: Colors.muscleCardio,
-};
+const ROUTINE_GRADIENTS: [string, string][] = [
+  [Colors.primary, Colors.indigo],
+  [Colors.indigo, Colors.violet],
+  ["#06B6D4", "#10B981"],
+  ["#F59E0B", "#F43F5E"],
+  [Colors.violet, "#EC4899"],
+  [Colors.primary, "#06B6D4"],
+];
+
+const ROUTINE_EMOJIS = ["🔥", "💪", "🦵", "⚡", "🏆", "🎯"];
 
 export default function RoutinesScreen() {
   const insets = useSafeAreaInsets();
@@ -57,11 +59,17 @@ export default function RoutinesScreen() {
       <View style={styles.headerRow}>
         <Text style={styles.title}>Routines</Text>
         <TouchableOpacity
-          style={styles.addButton}
           onPress={() => setShowCreate(true)}
           activeOpacity={0.8}
         >
-          <Plus size={20} color={Colors.white} />
+          <LinearGradient
+            colors={[Colors.primary, Colors.indigo]}
+            style={styles.addButton}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Plus size={20} color={Colors.white} />
+          </LinearGradient>
         </TouchableOpacity>
       </View>
 
@@ -76,18 +84,26 @@ export default function RoutinesScreen() {
             <Text style={styles.emptyTitle}>No routines yet</Text>
             <Text style={styles.emptySubtitle}>Create your first workout routine to get started</Text>
             <TouchableOpacity
-              style={styles.emptyButton}
               onPress={() => setShowCreate(true)}
               activeOpacity={0.8}
             >
-              <Plus size={18} color={Colors.white} />
-              <Text style={styles.emptyButtonText}>Create Routine</Text>
+              <LinearGradient
+                colors={[Colors.primary, Colors.indigo]}
+                style={styles.emptyButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Plus size={18} color={Colors.white} />
+                <Text style={styles.emptyButtonText}>Create Routine</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         ) : (
-          routines.map((routine) => {
+          routines.map((routine, idx) => {
             const muscleGroups = getMuscleGroups(routine);
             const duration = estimateRoutineDuration(routine.exercises.length);
+            const gradientColors = ROUTINE_GRADIENTS[idx % ROUTINE_GRADIENTS.length];
+            const emoji = ROUTINE_EMOJIS[idx % ROUTINE_EMOJIS.length];
             return (
               <TouchableOpacity
                 key={routine.id}
@@ -95,34 +111,32 @@ export default function RoutinesScreen() {
                 onPress={() => router.push(`/(tabs)/routines/${routine.id}`)}
                 activeOpacity={0.7}
               >
-                <View style={styles.routineCardHeader}>
+                <LinearGradient
+                  colors={gradientColors}
+                  style={styles.routineIcon}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.routineEmoji}>{emoji}</Text>
+                </LinearGradient>
+                <View style={styles.routineInfo}>
                   <Text style={styles.routineName}>{routine.name}</Text>
-                  <ChevronRight size={20} color={Colors.textTertiary} />
+                  <Text style={styles.routineDetail}>
+                    {routine.exercises.length} exercises · ~{duration + 10} min
+                  </Text>
+                  {muscleGroups.length > 0 && (
+                    <View style={styles.tagsRow}>
+                      {muscleGroups.map((mg) => (
+                        <View key={mg} style={styles.muscleTag}>
+                          <Text style={styles.muscleTagText}>
+                            {MUSCLE_GROUP_LABELS[mg]}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                 </View>
-                <View style={styles.routineDetails}>
-                  <View style={styles.routineDetailItem}>
-                    <Dumbbell size={14} color={Colors.textSecondary} />
-                    <Text style={styles.routineDetailText}>{routine.exercises.length} exercises</Text>
-                  </View>
-                  <View style={styles.routineDetailItem}>
-                    <Clock size={14} color={Colors.textSecondary} />
-                    <Text style={styles.routineDetailText}>~{duration} min</Text>
-                  </View>
-                </View>
-                {muscleGroups.length > 0 && (
-                  <View style={styles.tagsRow}>
-                    {muscleGroups.map((mg) => (
-                      <View
-                        key={mg}
-                        style={[styles.muscleTag, { backgroundColor: MUSCLE_COLORS[mg] + "18" }]}
-                      >
-                        <Text style={[styles.muscleTagText, { color: MUSCLE_COLORS[mg] }]}>
-                          {MUSCLE_GROUP_LABELS[mg]}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
+                <ChevronRight size={18} color={Colors.textTertiary} />
               </TouchableOpacity>
             );
           })
@@ -180,18 +194,22 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -1,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 4,
   },
   scrollView: {
     flex: 1,
@@ -223,7 +241,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: Colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 14,
@@ -234,50 +251,68 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
   },
   routineCard: {
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+    gap: 14,
   },
-  routineCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  routineIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 4,
+  },
+  routineEmoji: {
+    fontSize: 26,
+  },
+  routineInfo: {
+    flex: 1,
   },
   routineName: {
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: "700" as const,
     color: Colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 2,
   },
-  routineDetails: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 12,
-  },
-  routineDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  routineDetailText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
+  routineDetail: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginBottom: 6,
   },
   tagsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 4,
   },
   muscleTag: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   muscleTagText: {
-    fontSize: 12,
-    fontWeight: "600" as const,
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.3,
   },
   modalOverlay: {
     flex: 1,
@@ -287,7 +322,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: Colors.white,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     width: "85%",
     shadowColor: Colors.shadow,
@@ -304,12 +339,12 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
-    borderRadius: 12,
+    borderColor: "rgba(0,0,0,0.06)",
+    borderRadius: 14,
     padding: 14,
     fontSize: 16,
     color: Colors.text,
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: "rgba(0,0,0,0.02)",
     marginBottom: 20,
   },
   modalButtons: {
@@ -319,8 +354,8 @@ const styles = StyleSheet.create({
   modalCancel: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: Colors.cardBackground,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.03)",
     alignItems: "center",
   },
   modalCancelText: {
@@ -331,7 +366,7 @@ const styles = StyleSheet.create({
   modalCreate: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: Colors.primary,
     alignItems: "center",
   },

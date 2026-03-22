@@ -8,7 +8,8 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Flame, Play, X } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Flame, Target, Play, X } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -31,14 +32,16 @@ export default function TodayScreen() {
     toggleExerciseComplete,
     completeWorkout,
     cancelWorkout,
+    getWorkoutsThisWeek,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0 });
 
-  const greeting = useMemo(() => getGreeting(), []);
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
+  const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
+  const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
 
   const completedCount = useMemo(
     () => currentSession?.exercises.filter((e) => e.completed).length ?? 0,
@@ -47,12 +50,9 @@ export default function TodayScreen() {
   const totalCount = currentSession?.exercises.length ?? 0;
   const progress = totalCount > 0 ? completedCount / totalCount : 0;
 
-  const sortedExercises = useMemo(() => {
-    if (!currentSession) return [];
-    const incomplete = currentSession.exercises.filter((e) => !e.completed);
-    const complete = currentSession.exercises.filter((e) => e.completed);
-    return [...incomplete, ...complete];
-  }, [currentSession]);
+  const today = new Date();
+  const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
+  const monthDay = today.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
@@ -107,42 +107,94 @@ export default function TodayScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{greeting},</Text>
-            <Text style={styles.name}>{firstName}! 💪</Text>
+          <Text style={styles.dateLabel}>{dayName}, {monthDay}</Text>
+          <Text style={styles.greeting}>Let's go, {firstName} 💪</Text>
+        </View>
+
+        {/* Stats Row */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <LinearGradient
+              colors={["#FFFBEB", "#FEF3C7"]}
+              style={styles.statIconBg}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Flame size={22} color="#F59E0B" />
+            </LinearGradient>
+            <View>
+              <Text style={styles.statValue}>{streak.currentStreak}</Text>
+              <Text style={styles.statLabel}>Day Streak</Text>
+            </View>
           </View>
-          <View style={styles.streakBadge}>
-            <Flame size={18} color={Colors.streakFlame} />
-            <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
+          <View style={styles.statCard}>
+            <LinearGradient
+              colors={["#EEF2FF", "#E0E7FF"]}
+              style={styles.statIconBg}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <Target size={22} color={Colors.indigo} />
+            </LinearGradient>
+            <View>
+              <Text style={styles.statValue}>{workoutsThisWeek}/{weeklyGoal}</Text>
+              <Text style={styles.statLabel}>This Week</Text>
+            </View>
           </View>
         </View>
 
         {currentSession ? (
           <View>
-            <View style={styles.workoutHeader}>
-              <View style={styles.workoutInfo}>
-                <Text style={styles.workoutTitle}>{currentSession.routineName}</Text>
-                <Text style={styles.workoutSubtitle}>
-                  {completedCount} of {totalCount} exercises done
-                </Text>
+            {/* Hero Workout Card */}
+            <LinearGradient
+              colors={[Colors.primary, Colors.indigo, Colors.violet]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.heroDecor1} />
+              <View style={styles.heroDecor2} />
+              <View style={styles.heroDecor3} />
+              <View style={styles.heroContent}>
+                <View style={styles.heroLeft}>
+                  <Text style={styles.heroLabel}>TODAY'S WORKOUT</Text>
+                  <Text style={styles.heroTitle}>{currentSession.routineName} 🔥</Text>
+                  <View style={styles.heroProgressRow}>
+                    <View style={styles.heroProgressBg}>
+                      <View style={[styles.heroProgressFill, { width: `${progress * 100}%` }]} />
+                    </View>
+                    <Text style={styles.heroProgressText}>{completedCount}/{totalCount}</Text>
+                  </View>
+                </View>
+                <View style={styles.heroRingContainer}>
+                  <ProgressRing
+                    progress={progress}
+                    completed={completedCount}
+                    total={totalCount}
+                  />
+                </View>
               </View>
-              <ProgressRing
-                progress={progress}
-                completed={completedCount}
-                total={totalCount}
-              />
-            </View>
+            </LinearGradient>
 
-            <View style={styles.exerciseList}>
-              {sortedExercises.map((exercise) => (
-                <ExerciseCard
-                  key={exercise.routineExerciseId}
-                  exercise={exercise}
-                  onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
-                  onRestTimer={() => setShowRestTimer(true)}
-                />
-              ))}
+            {/* Exercises */}
+            <View style={styles.exerciseSection}>
+              <View style={styles.exerciseHeader}>
+                <Text style={styles.exerciseSectionTitle}>Exercises</Text>
+                <Text style={styles.exerciseCount}>{completedCount} of {totalCount}</Text>
+              </View>
+              <View style={styles.exerciseList}>
+                {currentSession.exercises.map((exercise, index) => (
+                  <ExerciseCard
+                    key={exercise.routineExerciseId}
+                    exercise={exercise}
+                    index={index}
+                    onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
+                    onRestTimer={() => setShowRestTimer(true)}
+                  />
+                ))}
+              </View>
             </View>
 
             <TouchableOpacity
@@ -173,12 +225,17 @@ export default function TodayScreen() {
                     <View style={styles.routineCardLeft}>
                       <Text style={styles.routineCardName}>{routine.name}</Text>
                       <Text style={styles.routineCardDetail}>
-                        {routine.exercises.length} exercises · ~{routine.exercises.length * 5}min
+                        {routine.exercises.length} exercises · ~{routine.exercises.length * 5 + 10}min
                       </Text>
                     </View>
-                    <View style={styles.playButton}>
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={styles.playButton}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
                       <Play size={18} color={Colors.white} fill={Colors.white} />
-                    </View>
+                    </LinearGradient>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -217,69 +274,174 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 18,
     paddingBottom: 40,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 28,
+    marginBottom: 16,
+  },
+  dateLabel: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   greeting: {
-    fontSize: 16,
-    color: Colors.textSecondary,
+    fontSize: 28,
+    fontWeight: "800" as const,
+    color: Colors.text,
+    letterSpacing: -1.2,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  statIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "900" as const,
+    color: Colors.text,
+    letterSpacing: -1,
+    lineHeight: 28,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: Colors.textTertiary,
     fontWeight: "500" as const,
   },
-  name: {
-    fontSize: 28,
+  heroCard: {
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 16,
+    overflow: "hidden",
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.3,
+    shadowRadius: 48,
+    elevation: 8,
+  },
+  heroDecor1: {
+    position: "absolute",
+    top: -40,
+    right: -40,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  heroDecor2: {
+    position: "absolute",
+    bottom: -30,
+    left: -30,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  heroDecor3: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
+  heroContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  heroLeft: {
+    flex: 1,
+    marginRight: 16,
+  },
+  heroLabel: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.5)",
+    fontWeight: "700" as const,
+    letterSpacing: 2,
+  },
+  heroTitle: {
+    fontSize: 26,
+    fontWeight: "800" as const,
+    color: "#FFFFFF",
+    marginTop: 6,
+    letterSpacing: -0.8,
+  },
+  heroProgressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 10,
+  },
+  heroProgressBg: {
+    height: 5,
+    width: 110,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    overflow: "hidden",
+  },
+  heroProgressFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+  heroProgressText: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "600" as const,
+  },
+  heroRingContainer: {
+    // ProgressRing renders here
+  },
+  exerciseSection: {
+    marginBottom: 16,
+  },
+  exerciseHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginBottom: 10,
+  },
+  exerciseSectionTitle: {
+    fontSize: 18,
     fontWeight: "800" as const,
     color: Colors.text,
     letterSpacing: -0.5,
   },
-  streakBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFF7ED",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#FED7AA",
-  },
-  streakNumber: {
-    fontSize: 18,
-    fontWeight: "800" as const,
-    color: Colors.streakFlame,
-  },
-  workoutHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  workoutInfo: {
-    flex: 1,
-    marginRight: 16,
-  },
-  workoutTitle: {
-    fontSize: 22,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 4,
-  },
-  workoutSubtitle: {
-    fontSize: 14,
-    color: Colors.textSecondary,
+  exerciseCount: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
   },
   exerciseList: {
-    marginBottom: 16,
+    gap: 8,
   },
   cancelButton: {
     flexDirection: "row",
@@ -318,20 +480,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
   },
   routineCardLeft: {
     flex: 1,
   },
   routineCardName: {
     fontSize: 17,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     color: Colors.text,
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   routineCardDetail: {
     fontSize: 13,
@@ -340,21 +508,20 @@ const styles = StyleSheet.create({
   playButton: {
     width: 42,
     height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.primary,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   createPrompt: {
     alignItems: "center",
     paddingVertical: 20,
     paddingHorizontal: 24,
-    backgroundColor: Colors.primaryUltraLight,
+    backgroundColor: "rgba(59,130,246,0.06)",
     borderRadius: 16,
     borderWidth: 1.5,
     borderColor: Colors.primaryLight,

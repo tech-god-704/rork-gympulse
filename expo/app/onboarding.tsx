@@ -12,7 +12,8 @@ import {
   ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Flame, ChevronRight, Dumbbell, Zap, Trophy } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Zap, Check } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -21,17 +22,17 @@ import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-const GOALS: { key: FitnessGoal; label: string; icon: React.ReactNode }[] = [
-  { key: "build_muscle", label: "Build Muscle", icon: <Dumbbell size={22} color={Colors.primary} /> },
-  { key: "lose_weight", label: "Lose Weight", icon: <Flame size={22} color={Colors.streakFlame} /> },
-  { key: "stay_active", label: "Stay Active", icon: <Zap size={22} color={Colors.warning} /> },
-  { key: "get_stronger", label: "Get Stronger", icon: <Trophy size={22} color={Colors.success} /> },
+const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
+  { key: "build_muscle", label: "Build Muscle", emoji: "💪", desc: "Hypertrophy focused", color: Colors.primary },
+  { key: "lose_weight", label: "Lose Weight", emoji: "🔥", desc: "Cut & lean out", color: Colors.rose },
+  { key: "stay_active", label: "Stay Active", emoji: "🏃", desc: "General fitness", color: Colors.emerald },
+  { key: "get_stronger", label: "Get Stronger", emoji: "⚡", desc: "Strength & power", color: Colors.amber },
 ];
 
-const LEVELS: { key: ExperienceLevel; label: string; desc: string }[] = [
-  { key: "beginner", label: "Beginner", desc: "New to the gym" },
-  { key: "intermediate", label: "Intermediate", desc: "1-3 years experience" },
-  { key: "advanced", label: "Advanced", desc: "3+ years experience" },
+const LEVELS: { key: ExperienceLevel; label: string; emoji: string; desc: string; color: string }[] = [
+  { key: "beginner", label: "Beginner", emoji: "🌱", desc: "Just getting started", color: Colors.emerald },
+  { key: "intermediate", label: "Intermediate", emoji: "⚡", desc: "1-3 years training", color: Colors.amber },
+  { key: "advanced", label: "Advanced", emoji: "🏆", desc: "3+ years structured", color: Colors.rose },
 ];
 
 export default function OnboardingScreen() {
@@ -43,7 +44,7 @@ export default function OnboardingScreen() {
   const [name, setName] = useState("");
   const [goal, setGoal] = useState<FitnessGoal | null>(null);
   const [level, setLevel] = useState<ExperienceLevel | null>(null);
-  const [trainingDays, setTrainingDays] = useState(4);
+  const [trainingDays, setTrainingDays] = useState(5);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -51,30 +52,14 @@ export default function OnboardingScreen() {
   const animateTransition = useCallback(
     (nextStep: number) => {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: -50,
-          duration: 150,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -50, duration: 150, useNativeDriver: true }),
       ]).start(() => {
         setStep(nextStep);
         slideAnim.setValue(50);
         Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-          }),
+          Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
         ]).start();
       });
     },
@@ -85,10 +70,10 @@ export default function OnboardingScreen() {
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    if (step < 2) {
+    if (step < 3) {
       animateTransition(step + 1);
     } else {
-      const profile: UserProfile = {
+      const profileData: UserProfile = {
         name: name.trim() || "Athlete",
         fitnessGoal: goal ?? "stay_active",
         experienceLevel: level ?? "beginner",
@@ -96,104 +81,202 @@ export default function OnboardingScreen() {
         onboardingComplete: true,
         createdAt: new Date().toISOString(),
       };
-      completeOnboarding(profile);
+      completeOnboarding(profileData);
       router.replace("/(tabs)/(home)");
     }
   }, [step, name, goal, level, trainingDays, animateTransition, completeOnboarding, router]);
 
   const canProceed =
-    step === 0 || (step === 1 && name.trim().length > 0 && goal !== null && level !== null) || step === 2;
+    step === 0 ||
+    (step === 1 && goal !== null) ||
+    (step === 2 && level !== null) ||
+    step === 3;
 
-  const renderStep0 = () => (
-    <View style={styles.stepContainer}>
-      <View style={styles.welcomeIconContainer}>
-        <View style={styles.welcomeIconCircle}>
-          <Dumbbell size={48} color={Colors.white} />
-        </View>
-      </View>
-      <Text style={styles.appName}>GymPulse</Text>
-      <Text style={styles.tagline}>Track it. Check it. Crush it.</Text>
-      <Text style={styles.subtitle}>Your personal workout tracker that makes every rep count.</Text>
+  const ProgressDots = () => (
+    <View style={styles.progressRow}>
+      {[0, 1, 2, 3].map((i) => (
+        <View
+          key={i}
+          style={[
+            styles.progressDot,
+            { flex: i <= step ? 2 : 1 },
+            i <= step && styles.progressDotActive,
+          ]}
+        />
+      ))}
     </View>
   );
 
+  // Step 0: Welcome
+  const renderStep0 = () => (
+    <View style={styles.stepCenter}>
+      <LinearGradient
+        colors={[Colors.primary, Colors.indigo, Colors.violet]}
+        style={styles.logoMark}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Zap size={48} color="#fff" fill="#fff" />
+      </LinearGradient>
+      <Text style={styles.appName}>
+        Gym<Text style={styles.appNameAccent}>Pulse</Text>
+      </Text>
+      <Text style={styles.tagline}>
+        Track it. Check it. <Text style={styles.taglineBold}>Crush it.</Text>
+      </Text>
+      <View style={styles.welcomeStats}>
+        {[{ n: "156", l: "Workouts" }, { n: "12", l: "Streak" }, { n: "847", l: "Exercises" }].map((s) => (
+          <View key={s.l} style={styles.welcomeStat}>
+            <Text style={styles.welcomeStatValue}>{s.n}</Text>
+            <Text style={styles.welcomeStatLabel}>{s.l}</Text>
+          </View>
+        ))}
+      </View>
+
+      <TextInput
+        style={styles.nameInput}
+        value={name}
+        onChangeText={setName}
+        placeholder="Enter your name"
+        placeholderTextColor={Colors.textTertiary}
+        autoCapitalize="words"
+        testID="name-input"
+      />
+    </View>
+  );
+
+  // Step 1: Goal
   const renderStep1 = () => (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.stepContainer}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.stepTitle}>About You</Text>
-        <Text style={styles.stepSubtitle}>Let's personalize your experience</Text>
-
-        <Text style={styles.fieldLabel}>What's your name?</Text>
-        <TextInput
-          style={styles.nameInput}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-          placeholderTextColor={Colors.textTertiary}
-          autoCapitalize="words"
-          testID="name-input"
-        />
-
-        <Text style={styles.fieldLabel}>Fitness Goal</Text>
-        <View style={styles.optionsGrid}>
-          {GOALS.map((g) => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>
+        What's your{"\n"}
+        <Text style={styles.stepTitleAccent}>mission</Text>?
+      </Text>
+      <Text style={styles.stepSubtitle}>We'll shape your experience around it.</Text>
+      <View style={styles.optionList}>
+        {GOALS.map((g) => {
+          const selected = goal === g.key;
+          return (
             <TouchableOpacity
               key={g.key}
-              style={[styles.goalCard, goal === g.key && styles.goalCardActive]}
+              style={[
+                styles.optionCard,
+                selected && { borderColor: g.color, borderWidth: 2, backgroundColor: `${g.color}08` },
+              ]}
               onPress={() => {
                 setGoal(g.key);
                 if (Platform.OS !== "web") void Haptics.selectionAsync();
               }}
+              activeOpacity={0.7}
               testID={`goal-${g.key}`}
             >
-              {g.icon}
-              <Text style={[styles.goalLabel, goal === g.key && styles.goalLabelActive]}>{g.label}</Text>
+              <View style={[styles.optionEmoji, selected && { backgroundColor: `${g.color}12` }]}>
+                <Text style={{ fontSize: 26 }}>{g.emoji}</Text>
+              </View>
+              <View style={styles.optionInfo}>
+                <Text style={styles.optionLabel}>{g.label}</Text>
+                <Text style={styles.optionDesc}>{g.desc}</Text>
+              </View>
+              {selected && (
+                <LinearGradient
+                  colors={[g.color, `${g.color}dd`]}
+                  style={styles.optionCheck}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Check size={14} color="#fff" />
+                </LinearGradient>
+              )}
             </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.fieldLabel}>Experience Level</Text>
-        {LEVELS.map((l) => (
-          <TouchableOpacity
-            key={l.key}
-            style={[styles.levelCard, level === l.key && styles.levelCardActive]}
-            onPress={() => {
-              setLevel(l.key);
-              if (Platform.OS !== "web") void Haptics.selectionAsync();
-            }}
-            testID={`level-${l.key}`}
-          >
-            <View>
-              <Text style={[styles.levelLabel, level === l.key && styles.levelLabelActive]}>{l.label}</Text>
-              <Text style={styles.levelDesc}>{l.desc}</Text>
-            </View>
-            {level === l.key && <View style={styles.levelCheck} />}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          );
+        })}
+      </View>
+    </View>
   );
 
+  // Step 2: Experience
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Training Schedule</Text>
-      <Text style={styles.stepSubtitle}>How many days per week do you want to train?</Text>
+      <Text style={styles.stepTitle}>
+        Your{"\n"}
+        <Text style={styles.stepTitleAccent2}>experience</Text>?
+      </Text>
+      <Text style={styles.stepSubtitle}>No judgment — just calibration.</Text>
+      <View style={styles.optionList}>
+        {LEVELS.map((x) => {
+          const selected = level === x.key;
+          return (
+            <TouchableOpacity
+              key={x.key}
+              style={[
+                styles.optionCard,
+                styles.optionCardLarge,
+                selected && { borderColor: x.color, borderWidth: 2, backgroundColor: `${x.color}08` },
+              ]}
+              onPress={() => {
+                setLevel(x.key);
+                if (Platform.OS !== "web") void Haptics.selectionAsync();
+              }}
+              activeOpacity={0.7}
+              testID={`level-${x.key}`}
+            >
+              <View style={[styles.optionEmojiLg, selected && { backgroundColor: `${x.color}12` }]}>
+                <Text style={{ fontSize: 30 }}>{x.emoji}</Text>
+              </View>
+              <View style={styles.optionInfo}>
+                <Text style={styles.optionLabelLg}>{x.label}</Text>
+                <Text style={styles.optionDesc}>{x.desc}</Text>
+              </View>
+              {selected && (
+                <LinearGradient
+                  colors={[x.color, `${x.color}dd`]}
+                  style={styles.optionCheck}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Check size={14} color="#fff" />
+                </LinearGradient>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
 
-      <Text style={styles.bigNumber}>{trainingDays}</Text>
-      <Text style={styles.bigNumberLabel}>days per week</Text>
-
+  // Step 3: Training days
+  const renderStep3 = () => (
+    <View style={styles.stepContainer}>
+      <Text style={styles.stepTitle}>
+        How many{"\n"}
+        <Text style={styles.stepTitleAccent3}>days</Text> a week?
+      </Text>
+      <Text style={styles.stepSubtitle}>Pick your rhythm. You can always change this.</Text>
       <View style={styles.daysRow}>
         {[2, 3, 4, 5, 6, 7].map((d) => (
           <TouchableOpacity
             key={d}
-            style={[styles.dayPill, trainingDays === d && styles.dayPillActive]}
             onPress={() => {
               setTrainingDays(d);
               if (Platform.OS !== "web") void Haptics.selectionAsync();
             }}
             testID={`days-${d}`}
           >
-            <Text style={[styles.dayPillText, trainingDays === d && styles.dayPillTextActive]}>{d}</Text>
+            {trainingDays === d ? (
+              <LinearGradient
+                colors={[Colors.primary, Colors.indigo]}
+                style={[styles.dayButton, styles.dayButtonActive]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.dayButtonTextActive}>{d}</Text>
+                <Text style={styles.dayButtonSubtext}>days</Text>
+              </LinearGradient>
+            ) : (
+              <View style={styles.dayButton}>
+                <Text style={styles.dayButtonText}>{d}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -202,29 +285,46 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-      <View style={styles.progressRow}>
-        {[0, 1, 2].map((i) => (
-          <View key={i} style={[styles.progressDot, i <= step && styles.progressDotActive]} />
-        ))}
-      </View>
+      {step > 0 && <ProgressDots />}
 
-      <Animated.View
-        style={[styles.content, { opacity: fadeAnim, transform: [{ translateX: slideAnim }] }]}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.content}
       >
-        {step === 0 && renderStep0()}
-        {step === 1 && renderStep1()}
-        {step === 2 && renderStep2()}
-      </Animated.View>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX: slideAnim }] }}>
+            {step === 0 && renderStep0()}
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <TouchableOpacity
-        style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
         onPress={handleNext}
         disabled={!canProceed}
         testID="next-button"
         activeOpacity={0.8}
       >
-        <Text style={styles.nextButtonText}>{step === 0 ? "Get Started" : step === 2 ? "Let's Go!" : "Continue"}</Text>
-        <ChevronRight size={20} color={Colors.white} />
+        <LinearGradient
+          colors={
+            step === 3
+              ? [Colors.primary, Colors.indigo, Colors.violet]
+              : [Colors.primary, Colors.indigo]
+          }
+          style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <Text style={styles.nextButtonText}>
+            {step === 0 ? "Get Started →" : step === 3 ? "Let's Crush It 🔥" : "Continue"}
+          </Text>
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
@@ -238,221 +338,237 @@ const styles = StyleSheet.create({
   },
   progressRow: {
     flexDirection: "row",
-    justifyContent: "center",
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   progressDot: {
-    width: 32,
     height: 4,
-    borderRadius: 2,
-    backgroundColor: Colors.cardBorder,
+    borderRadius: 3,
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   progressDotActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.indigo,
   },
   content: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    paddingBottom: 20,
+  },
+  stepCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   stepContainer: {
     flex: 1,
-    justifyContent: "center",
   },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  welcomeIconContainer: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  welcomeIconCircle: {
+  logoMark: {
     width: 96,
     height: 96,
-    borderRadius: 48,
-    backgroundColor: Colors.primary,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    marginBottom: 32,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.35,
+    shadowRadius: 48,
     elevation: 8,
   },
   appName: {
     fontSize: 42,
     fontWeight: "800" as const,
     color: Colors.text,
-    textAlign: "center",
-    letterSpacing: -1,
+    letterSpacing: -2,
+    lineHeight: 44,
+  },
+  appNameAccent: {
+    color: Colors.indigo,
   },
   tagline: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: Colors.primary,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  subtitle: {
     fontSize: 16,
     color: Colors.textSecondary,
-    textAlign: "center",
     marginTop: 12,
     lineHeight: 22,
+    letterSpacing: -0.2,
+  },
+  taglineBold: {
+    fontWeight: "700" as const,
+    color: Colors.text,
+  },
+  welcomeStats: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 36,
+    marginBottom: 36,
+  },
+  welcomeStat: {
+    alignItems: "center",
+  },
+  welcomeStatValue: {
+    fontSize: 22,
+    fontWeight: "800" as const,
+    color: Colors.text,
+  },
+  welcomeStatLabel: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+  },
+  nameInput: {
+    width: "100%",
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.06)",
+    borderRadius: 18,
+    padding: 16,
+    fontSize: 17,
+    color: Colors.text,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    textAlign: "center",
   },
   stepTitle: {
     fontSize: 32,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -0.5,
-    marginBottom: 8,
+    letterSpacing: -1,
+    lineHeight: 36,
+    marginBottom: 4,
+  },
+  stepTitleAccent: {
+    color: Colors.primary,
+  },
+  stepTitleAccent2: {
+    color: Colors.violet,
+  },
+  stepTitleAccent3: {
+    color: Colors.cyan,
   },
   stepSubtitle: {
-    fontSize: 16,
-    color: Colors.textSecondary,
-    marginBottom: 32,
-  },
-  fieldLabel: {
     fontSize: 14,
-    fontWeight: "600" as const,
     color: Colors.textSecondary,
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    marginTop: 24,
+    marginBottom: 22,
   },
-  nameInput: {
-    borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
-    borderRadius: 14,
-    padding: 16,
-    fontSize: 17,
-    color: Colors.text,
-    backgroundColor: Colors.cardBackground,
-  },
-  optionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  optionList: {
     gap: 10,
   },
-  goalCard: {
-    width: (SCREEN_WIDTH - 58) / 2,
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-    backgroundColor: Colors.cardBackground,
-    borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
+  optionCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-  },
-  goalCardActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryUltraLight,
-  },
-  goalLabel: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.text,
-  },
-  goalLabelActive: {
-    color: Colors.primary,
-  },
-  levelCard: {
-    paddingVertical: 16,
+    gap: 14,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    borderRadius: 20,
+    padding: 14,
     paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: Colors.cardBackground,
-    borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
-    marginBottom: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+  },
+  optionCardLarge: {
+    padding: 18,
+  },
+  optionEmoji: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  levelCardActive: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryUltraLight,
+  optionEmojiLg: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  levelLabel: {
+  optionInfo: {
+    flex: 1,
+  },
+  optionLabel: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    letterSpacing: -0.3,
+  },
+  optionLabelLg: {
     fontSize: 16,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     color: Colors.text,
   },
-  levelLabelActive: {
-    color: Colors.primary,
+  optionDesc: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    marginTop: 1,
   },
-  levelDesc: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  levelCheck: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: Colors.primary,
-  },
-  bigNumber: {
-    fontSize: 80,
-    fontWeight: "800" as const,
-    color: Colors.primary,
-    textAlign: "center",
-    marginTop: 40,
-  },
-  bigNumberLabel: {
-    fontSize: 18,
-    color: Colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 40,
+  optionCheck: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: "center",
+    alignItems: "center",
   },
   daysRow: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 12,
+    gap: 10,
+    marginTop: 14,
   },
-  dayPill: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.cardBackground,
+  dayButton: {
+    width: 50,
+    height: 62,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
   },
-  dayPillActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  dayButtonActive: {
+    borderWidth: 0,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    elevation: 6,
+    transform: [{ scale: 1.1 }],
   },
-  dayPillText: {
-    fontSize: 18,
-    fontWeight: "700" as const,
+  dayButtonText: {
+    fontSize: 22,
+    fontWeight: "800" as const,
     color: Colors.text,
   },
-  dayPillTextActive: {
-    color: Colors.white,
+  dayButtonTextActive: {
+    fontSize: 22,
+    fontWeight: "800" as const,
+    color: "#fff",
+  },
+  dayButtonSubtext: {
+    fontSize: 7,
+    fontWeight: "600" as const,
+    color: "rgba(255,255,255,0.8)",
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
   },
   nextButton: {
-    backgroundColor: Colors.primary,
     paddingVertical: 18,
-    borderRadius: 16,
-    flexDirection: "row",
-    justifyContent: "center",
+    borderRadius: 18,
     alignItems: "center",
-    gap: 8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 28,
+    elevation: 6,
   },
   nextButtonDisabled: {
     opacity: 0.4,
   },
   nextButtonText: {
-    color: Colors.white,
-    fontSize: 18,
+    color: "#fff",
+    fontSize: 17,
     fontWeight: "700" as const,
+    letterSpacing: -0.3,
   },
 });

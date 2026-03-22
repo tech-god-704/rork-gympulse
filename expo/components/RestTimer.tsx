@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Platform } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { X, Play, Pause } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -83,6 +84,7 @@ export default function RestTimer({ visible, onClose }: Props) {
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.sheet}>
+          <View style={styles.handle} />
           <View style={styles.header}>
             <Text style={styles.title}>Rest Timer</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
@@ -100,7 +102,7 @@ export default function RestTimer({ visible, onClose }: Props) {
               style={[
                 styles.progressRing,
                 {
-                  borderColor: isRunning ? Colors.primary : timeLeft === 0 ? Colors.success : Colors.cardBorder,
+                  borderColor: isRunning ? Colors.primary : timeLeft === 0 ? Colors.success : "rgba(0,0,0,0.06)",
                   borderWidth: 4,
                 },
               ]}
@@ -124,33 +126,43 @@ export default function RestTimer({ visible, onClose }: Props) {
           )}
 
           {isRunning && (
-            <TouchableOpacity style={styles.pauseButton} onPress={togglePause}>
+            <TouchableOpacity style={styles.pauseButton} onPress={togglePause} activeOpacity={0.8}>
               <Pause size={20} color={Colors.white} />
               <Text style={styles.pauseText}>Pause</Text>
             </TouchableOpacity>
           )}
 
           {!isRunning && timeLeft > 0 && timeLeft < seconds && (
-            <TouchableOpacity style={styles.pauseButton} onPress={togglePause}>
+            <TouchableOpacity style={styles.pauseButton} onPress={togglePause} activeOpacity={0.8}>
               <Play size={20} color={Colors.white} />
               <Text style={styles.pauseText}>Resume</Text>
             </TouchableOpacity>
           )}
 
           {(!isRunning && timeLeft === seconds) && (
-            <TouchableOpacity
-              style={styles.startButton}
-              onPress={() => startTimer(seconds)}
-              activeOpacity={0.8}
-            >
-              <Play size={20} color={Colors.white} />
-              <Text style={styles.startText}>Start</Text>
+            <TouchableOpacity onPress={() => startTimer(seconds)} activeOpacity={0.8}>
+              <LinearGradient
+                colors={[Colors.primary, Colors.indigo]}
+                style={styles.startButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Play size={20} color={Colors.white} />
+                <Text style={styles.startText}>Start</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
 
           {timeLeft === 0 && (
-            <TouchableOpacity style={styles.startButton} onPress={handleClose} activeOpacity={0.8}>
-              <Text style={styles.startText}>Close</Text>
+            <TouchableOpacity onPress={handleClose} activeOpacity={0.8}>
+              <LinearGradient
+                colors={[Colors.emerald, "#059669"]}
+                style={styles.startButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.startText}>Close</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
         </View>
@@ -166,11 +178,19 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 24,
     paddingBottom: 40,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    alignSelf: "center",
+    marginBottom: 16,
   },
   header: {
     flexDirection: "row",
@@ -180,8 +200,9 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: "700" as const,
+    fontWeight: "800" as const,
     color: Colors.text,
+    letterSpacing: -0.3,
   },
   closeButton: {
     padding: 8,
@@ -201,6 +222,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: "800" as const,
     color: Colors.text,
+    letterSpacing: -1,
   },
   timerLabel: {
     fontSize: 14,
@@ -228,13 +250,13 @@ const styles = StyleSheet.create({
   presetPill: {
     paddingVertical: 10,
     paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: Colors.cardBackground,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(0,0,0,0.05)",
   },
   presetPillActive: {
-    backgroundColor: Colors.primaryUltraLight,
+    backgroundColor: "rgba(59,130,246,0.08)",
     borderColor: Colors.primary,
   },
   presetText: {
@@ -246,13 +268,17 @@ const styles = StyleSheet.create({
     color: Colors.primary,
   },
   startButton: {
-    backgroundColor: Colors.primary,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 18,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 6,
   },
   startText: {
     color: Colors.white,
@@ -262,7 +288,7 @@ const styles = StyleSheet.create({
   pauseButton: {
     backgroundColor: Colors.textSecondary,
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 18,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",

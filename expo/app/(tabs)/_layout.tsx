@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { CalendarCheck, Dumbbell, BarChart3, User } from "lucide-react-native";
+import { Home, LayoutGrid, BarChart3, User } from "lucide-react-native";
 import React from "react";
 
 import Colors from "@/constants/colors";
@@ -8,12 +8,19 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
+        tabBarActiveTintColor: Colors.indigo,
         tabBarInactiveTintColor: Colors.textTertiary,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.white,
-          borderTopColor: Colors.cardBorder,
+          backgroundColor: "rgba(246,248,252,0.85)",
+          borderTopColor: "rgba(0,0,0,0.04)",
+          paddingTop: 4,
+          height: 80,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "600" as const,
+          letterSpacing: 0.3,
         },
       }}
     >
@@ -21,14 +28,14 @@ export default function TabLayout() {
         name="(home)"
         options={{
           title: "Today",
-          tabBarIcon: ({ color }) => <CalendarCheck size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="routines"
         options={{
           title: "Routines",
-          tabBarIcon: ({ color }) => <Dumbbell size={22} color={color} />,
+          tabBarIcon: ({ color }) => <LayoutGrid size={22} color={color} />,
         }}
       />
       <Tabs.Screen

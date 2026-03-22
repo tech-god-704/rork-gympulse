@@ -9,7 +9,8 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { User, Calendar, Target, Dumbbell, ChevronRight } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Flame, ChevronRight, Dumbbell, Trophy } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
@@ -20,7 +21,7 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, saveProfile } = useGym();
+  const { profile, streak, history, saveProfile } = useGym();
 
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(profile?.name ?? "");
@@ -31,6 +32,12 @@ export default function ProfileScreen() {
   const memberSince = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })
     : "Today";
+
+  const initials = profile?.name
+    ? profile.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "GP";
+
+  const totalWorkouts = history.length;
 
   const handleSaveName = useCallback(() => {
     if (profile && nameValue.trim()) {
@@ -83,136 +90,197 @@ export default function ProfileScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <User size={40} color={Colors.white} />
-          </View>
-          {editingName ? (
-            <TextInput
-              style={styles.nameInput}
-              value={nameValue}
-              onChangeText={setNameValue}
-              onBlur={handleSaveName}
-              onSubmitEditing={handleSaveName}
-              autoFocus
-            />
-          ) : (
-            <TouchableOpacity
-              onPress={() => {
-                setNameValue(profile.name);
-                setEditingName(true);
-              }}
-            >
-              <Text style={styles.profileName}>{profile.name}</Text>
-            </TouchableOpacity>
-          )}
-          <View style={styles.memberRow}>
-            <Calendar size={14} color={Colors.textTertiary} />
+        {/* Avatar Card */}
+        <View style={styles.avatarCard}>
+          <LinearGradient
+            colors={[Colors.primary, Colors.indigo, Colors.violet]}
+            style={styles.avatar}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Text style={styles.avatarText}>{initials}</Text>
+          </LinearGradient>
+          <View style={styles.avatarInfo}>
+            {editingName ? (
+              <TextInput
+                style={styles.nameInput}
+                value={nameValue}
+                onChangeText={setNameValue}
+                onBlur={handleSaveName}
+                onSubmitEditing={handleSaveName}
+                autoFocus
+              />
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  setNameValue(profile.name);
+                  setEditingName(true);
+                }}
+              >
+                <Text style={styles.profileName}>{profile.name}</Text>
+              </TouchableOpacity>
+            )}
             <Text style={styles.memberText}>Member since {memberSince}</Text>
+            <View style={styles.badgesRow}>
+              <View style={styles.badgeActive}>
+                <Text style={styles.badgeActiveText}>{GOAL_LABELS[profile.fitnessGoal]}</Text>
+              </View>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{LEVEL_LABELS[profile.experienceLevel]}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Settings</Text>
-
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={() => setEditingGoal(!editingGoal)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: Colors.primaryUltraLight }]}>
-              <Target size={18} color={Colors.primary} />
-            </View>
-            <View>
-              <Text style={styles.settingLabel}>Fitness Goal</Text>
-              <Text style={styles.settingValue}>{GOAL_LABELS[profile.fitnessGoal]}</Text>
-            </View>
-          </View>
-          <ChevronRight size={18} color={Colors.textTertiary} />
-        </TouchableOpacity>
-        {editingGoal && (
-          <View style={styles.optionsList}>
-            {GOALS.map((g) => (
-              <TouchableOpacity
-                key={g}
-                style={[styles.optionItem, profile.fitnessGoal === g && styles.optionItemActive]}
-                onPress={() => handleChangeGoal(g)}
+        {/* Stat Cards Grid */}
+        <View style={styles.statGrid}>
+          {[
+            { v: streak.currentStreak.toString(), l: "STREAK", icon: <Flame size={18} color="#F59E0B" />, bg: ["#FFFBEB", "#FEF3C7"] as [string, string] },
+            { v: totalWorkouts.toString(), l: "WORKOUTS", icon: <Dumbbell size={18} color={Colors.indigo} />, bg: ["#EEF2FF", "#E0E7FF"] as [string, string] },
+            { v: streak.longestStreak.toString(), l: "BEST", icon: <Trophy size={18} color={Colors.emerald} />, bg: ["#ECFDF5", "#D1FAE5"] as [string, string] },
+          ].map((s) => (
+            <View key={s.l} style={styles.statGridCard}>
+              <LinearGradient
+                colors={s.bg}
+                style={styles.statGridIcon}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
-                <Text
-                  style={[styles.optionText, profile.fitnessGoal === g && styles.optionTextActive]}
-                >
-                  {GOAL_LABELS[g]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                {s.icon}
+              </LinearGradient>
+              <Text style={styles.statGridValue}>{s.v}</Text>
+              <Text style={styles.statGridLabel}>{s.l}</Text>
+            </View>
+          ))}
+        </View>
 
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={() => setEditingLevel(!editingLevel)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: "#FEF3C7" }]}>
-              <Dumbbell size={18} color={Colors.warning} />
-            </View>
-            <View>
-              <Text style={styles.settingLabel}>Experience Level</Text>
-              <Text style={styles.settingValue}>{LEVEL_LABELS[profile.experienceLevel]}</Text>
-            </View>
-          </View>
-          <ChevronRight size={18} color={Colors.textTertiary} />
-        </TouchableOpacity>
-        {editingLevel && (
-          <View style={styles.optionsList}>
-            {LEVELS.map((l) => (
-              <TouchableOpacity
-                key={l}
-                style={[styles.optionItem, profile.experienceLevel === l && styles.optionItemActive]}
-                onPress={() => handleChangeLevel(l)}
-              >
-                <Text
-                  style={[styles.optionText, profile.experienceLevel === l && styles.optionTextActive]}
-                >
-                  {LEVEL_LABELS[l]}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={styles.settingRow}
-          onPress={() => setEditingDays(!editingDays)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.settingLeft}>
-            <View style={[styles.settingIcon, { backgroundColor: "#DCFCE7" }]}>
-              <Calendar size={18} color={Colors.success} />
-            </View>
-            <View>
-              <Text style={styles.settingLabel}>Training Days</Text>
+        {/* Settings List */}
+        <View style={styles.settingsList}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setEditingDays(!editingDays)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.settingLabel}>Training Days</Text>
+            <View style={styles.settingRight}>
               <Text style={styles.settingValue}>{profile.trainingDaysPerWeek} days/week</Text>
+              <ChevronRight size={14} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+          {editingDays && (
+            <View style={styles.daysRow}>
+              {[2, 3, 4, 5, 6, 7].map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => handleChangeDays(d)}
+                >
+                  {profile.trainingDaysPerWeek === d ? (
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={styles.dayPill}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.dayPillTextActive}>{d}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.dayPill, styles.dayPillInactive]}>
+                      <Text style={styles.dayPillText}>{d}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.settingDivider} />
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setEditingGoal(!editingGoal)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.settingLabel}>Fitness Goal</Text>
+            <View style={styles.settingRight}>
+              <Text style={styles.settingValue}>{GOAL_LABELS[profile.fitnessGoal]}</Text>
+              <ChevronRight size={14} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+          {editingGoal && (
+            <View style={styles.optionsList}>
+              {GOALS.map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  style={[styles.optionItem, profile.fitnessGoal === g && styles.optionItemActive]}
+                  onPress={() => handleChangeGoal(g)}
+                >
+                  <Text
+                    style={[styles.optionText, profile.fitnessGoal === g && styles.optionTextActive]}
+                  >
+                    {GOAL_LABELS[g]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.settingDivider} />
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setEditingLevel(!editingLevel)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.settingLabel}>Experience</Text>
+            <View style={styles.settingRight}>
+              <Text style={styles.settingValue}>{LEVEL_LABELS[profile.experienceLevel]}</Text>
+              <ChevronRight size={14} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+          {editingLevel && (
+            <View style={styles.optionsList}>
+              {LEVELS.map((l) => (
+                <TouchableOpacity
+                  key={l}
+                  style={[styles.optionItem, profile.experienceLevel === l && styles.optionItemActive]}
+                  onPress={() => handleChangeLevel(l)}
+                >
+                  <Text
+                    style={[styles.optionText, profile.experienceLevel === l && styles.optionTextActive]}
+                  >
+                    {LEVEL_LABELS[l]}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Notifications</Text>
+            <View style={styles.settingRight}>
+              <Text style={styles.settingValue}>On</Text>
+              <ChevronRight size={14} color={Colors.textTertiary} />
             </View>
           </View>
-          <ChevronRight size={18} color={Colors.textTertiary} />
-        </TouchableOpacity>
-        {editingDays && (
-          <View style={styles.daysRow}>
-            {[2, 3, 4, 5, 6, 7].map((d) => (
-              <TouchableOpacity
-                key={d}
-                style={[styles.dayPill, profile.trainingDaysPerWeek === d && styles.dayPillActive]}
-                onPress={() => handleChangeDays(d)}
-              >
-                <Text style={[styles.dayPillText, profile.trainingDaysPerWeek === d && styles.dayPillTextActive]}>
-                  {d}
-                </Text>
-              </TouchableOpacity>
-            ))}
+
+          <View style={styles.settingDivider} />
+
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Dark Mode</Text>
+            <View style={styles.settingRight}>
+              <Text style={styles.settingValue}>Off</Text>
+              <ChevronRight size={14} color={Colors.textTertiary} />
+            </View>
           </View>
-        )}
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerApp}>GymPulse <Text style={styles.footerVersion}>v1.0</Text></Text>
+          <Text style={styles.footerSub}>Media Ape Ventures</Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -224,10 +292,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
-    letterSpacing: -0.5,
+    letterSpacing: -1,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 16,
@@ -236,106 +304,221 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 18,
     paddingTop: 0,
     paddingBottom: 40,
+    gap: 14,
   },
-  avatarSection: {
+  avatarCard: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 32,
+    gap: 16,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primary,
+    width: 68,
+    height: 68,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 14,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 6,
+  },
+  avatarText: {
+    fontSize: 26,
+    fontWeight: "800" as const,
+    color: "#FFFFFF",
+  },
+  avatarInfo: {
+    flex: 1,
   },
   profileName: {
-    fontSize: 24,
-    fontWeight: "700" as const,
+    fontSize: 22,
+    fontWeight: "800" as const,
     color: Colors.text,
-    marginBottom: 4,
+    letterSpacing: -0.5,
   },
   nameInput: {
-    fontSize: 24,
-    fontWeight: "700" as const,
+    fontSize: 22,
+    fontWeight: "800" as const,
     color: Colors.text,
     borderBottomWidth: 2,
     borderBottomColor: Colors.primary,
     paddingBottom: 4,
-    textAlign: "center" as const,
-    marginBottom: 4,
-  },
-  memberRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    letterSpacing: -0.5,
   },
   memberText: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.textTertiary,
+    marginTop: 2,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
+  badgesRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 6,
+  },
+  badgeActive: {
+    backgroundColor: "rgba(59,130,246,0.1)",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  badgeActiveText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.primary,
     textTransform: "uppercase" as const,
-    letterSpacing: 0.5,
-    marginBottom: 12,
+    letterSpacing: 0.3,
+  },
+  badge: {
+    backgroundColor: "rgba(0,0,0,0.03)",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.3,
+  },
+  statGrid: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  statGridCard: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    padding: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  statGridIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  statGridValue: {
+    fontSize: 22,
+    fontWeight: "900" as const,
+    color: Colors.text,
+    letterSpacing: -0.8,
+    lineHeight: 24,
+  },
+  statGridLabel: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+    marginTop: 3,
+  },
+  settingsList: {
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+    overflow: "hidden",
   },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: Colors.cardBackground,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  settingLeft: {
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: "500" as const,
+    color: Colors.text,
+  },
+  settingRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 4,
   },
-  settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+  settingValue: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 12,
+    color: Colors.textTertiary,
+  },
+  settingDivider: {
+    height: 1,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    marginHorizontal: 16,
+  },
+  daysRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  dayPill: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
-  settingLabel: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginBottom: 2,
+  dayPillInactive: {
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
   },
-  settingValue: {
+  dayPillText: {
     fontSize: 16,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     color: Colors.text,
+  },
+  dayPillTextActive: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.white,
   },
   optionsList: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   optionItem: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
+    borderColor: "rgba(0,0,0,0.04)",
   },
   optionItemActive: {
-    backgroundColor: Colors.primaryUltraLight,
+    backgroundColor: "rgba(59,130,246,0.08)",
     borderColor: Colors.primary,
   },
   optionText: {
@@ -346,32 +529,25 @@ const styles = StyleSheet.create({
   optionTextActive: {
     color: Colors.primary,
   },
-  daysRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
-    marginBottom: 12,
-  },
-  dayPill: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.cardBackground,
-    justifyContent: "center",
+  footer: {
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: Colors.cardBorder,
+    paddingVertical: 8,
   },
-  dayPillActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  dayPillText: {
-    fontSize: 16,
+  footerApp: {
+    fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: Colors.textTertiary,
+    letterSpacing: -0.3,
   },
-  dayPillTextActive: {
-    color: Colors.white,
+  footerVersion: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    fontWeight: "500" as const,
+  },
+  footerSub: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    opacity: 0.5,
+    marginTop: 4,
   },
 });
