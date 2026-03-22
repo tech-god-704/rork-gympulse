@@ -120,7 +120,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         <View style={styles.statsRow}>
           {[
             { v: exerciseCount.toString(), l: "Exercises", c: Colors.indigo },
-            { v: `${streak + 1}`, l: "Day Streak", c: Colors.amber },
+            { v: `${streak}`, l: "Day Streak", c: Colors.amber },
             { v: `${duration}m`, l: "Duration", c: Colors.emerald },
           ].map((s) => (
             <View key={s.l} style={styles.statItem}>

@@ -36,6 +36,13 @@ export interface Routine {
   createdAt: string;
 }
 
+export interface SetData {
+  setNumber: number;
+  reps: number;
+  weight: number;
+  completed: boolean;
+}
+
 export interface WorkoutSessionExercise {
   routineExerciseId: string;
   exerciseName: string;
@@ -45,6 +52,7 @@ export interface WorkoutSessionExercise {
   weight: number;
   completed: boolean;
   completedAt?: string;
+  setDetails?: SetData[];
 }
 
 export interface WorkoutSession {

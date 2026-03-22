@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import createContextHook from "@nkzw/create-context-hook";
@@ -11,6 +11,7 @@ import {
   WorkoutHistory,
   StreakData,
   MuscleGroup,
+  SetData,
 } from "@/types";
 import { BUILT_IN_EXERCISES, STARTER_ROUTINES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
@@ -22,10 +23,73 @@ const STORAGE_KEYS = {
   CURRENT_SESSION: "gympulse_current_session",
   HISTORY: "gympulse_history",
   STREAK: "gympulse_streak",
+  LAST_PERFORMANCE: "gympulse_last_performance",
+  PERSONAL_RECORDS: "gympulse_personal_records",
 };
+
+// Per-exercise last performance data
+interface ExercisePerformance {
+  sets: { weight: number; reps: number }[];
+  date: string;
+}
+
+// Personal record per exercise
+interface PersonalRecord {
+  weight: number;
+  reps: number;
+  estimated1RM: number;
+  date: string;
+}
+
+type PerformanceMap = Record<string, ExercisePerformance>;
+type PRMap = Record<string, PersonalRecord>;
 
 function createDefaultStreak(): StreakData {
   return { currentStreak: 0, longestStreak: 0, lastWorkoutDate: null, completedDates: [] };
+}
+
+// Calculate what the streak should be right now (decays if user missed days)
+function recalculateStreak(streakData: StreakData): StreakData {
+  if (!streakData.lastWorkoutDate) return streakData;
+  const today = getToday();
+  const yesterday = formatDate(new Date(Date.now() - 86400000));
+
+  // If last workout was today or yesterday, streak is still alive
+  if (streakData.lastWorkoutDate === today || streakData.lastWorkoutDate === yesterday) {
+    return streakData;
+  }
+  // Streak is broken - reset to 0
+  return {
+    ...streakData,
+    currentStreak: 0,
+  };
+}
+
+// Ensure setDetails exists on a session exercise (backwards compat)
+function ensureSetDetails(exercise: {
+  sets: number;
+  reps: number;
+  weight: number;
+  completed: boolean;
+  setDetails?: SetData[];
+}): SetData[] {
+  if (exercise.setDetails && exercise.setDetails.length > 0) {
+    return exercise.setDetails;
+  }
+  return Array.from({ length: exercise.sets }, (_, i) => ({
+    setNumber: i + 1,
+    reps: exercise.reps,
+    weight: exercise.weight,
+    completed: exercise.completed, // sync with exercise-level state
+  }));
+}
+
+// Get start of calendar week (Sunday)
+function getStartOfWeek(date: Date): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() - d.getDay());
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 export const [GymProvider, useGym] = createContextHook(() => {
@@ -41,7 +105,15 @@ function useGymState() {
   const [currentSession, setCurrentSession] = useState<WorkoutSession | null>(null);
   const [history, setHistory] = useState<WorkoutHistory[]>([]);
   const [streak, setStreak] = useState<StreakData>(createDefaultStreak());
+  const [lastPerformance, setLastPerformance] = useState<PerformanceMap>({});
+  const [personalRecords, setPersonalRecords] = useState<PRMap>({});
   const [isLoading, setIsLoading] = useState(true);
+
+  // Use ref for currentSession to avoid stale closure in rapid toggles
+  const sessionRef = useRef<WorkoutSession | null>(null);
+  useEffect(() => {
+    sessionRef.current = currentSession;
+  }, [currentSession]);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -71,7 +143,14 @@ function useGymState() {
     queryKey: ["currentSession"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
-      return stored ? (JSON.parse(stored) as WorkoutSession) : null;
+      if (!stored) return null;
+      const session = JSON.parse(stored) as WorkoutSession;
+      // Migrate: ensure all exercises have setDetails
+      session.exercises = session.exercises.map((e) => ({
+        ...e,
+        setDetails: ensureSetDetails(e),
+      }));
+      return session;
     },
   });
 
@@ -87,7 +166,24 @@ function useGymState() {
     queryKey: ["streak"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.STREAK);
-      return stored ? (JSON.parse(stored) as StreakData) : createDefaultStreak();
+      const data = stored ? (JSON.parse(stored) as StreakData) : createDefaultStreak();
+      return recalculateStreak(data);
+    },
+  });
+
+  const perfQuery = useQuery({
+    queryKey: ["lastPerformance"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.LAST_PERFORMANCE);
+      return stored ? (JSON.parse(stored) as PerformanceMap) : {};
+    },
+  });
+
+  const prQuery = useQuery({
+    queryKey: ["personalRecords"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.PERSONAL_RECORDS);
+      return stored ? (JSON.parse(stored) as PRMap) : {};
     },
   });
 
@@ -116,13 +212,23 @@ function useGymState() {
   }, [streakQuery.data]);
 
   useEffect(() => {
+    if (perfQuery.data !== undefined) setLastPerformance(perfQuery.data);
+  }, [perfQuery.data]);
+
+  useEffect(() => {
+    if (prQuery.data !== undefined) setPersonalRecords(prQuery.data);
+  }, [prQuery.data]);
+
+  useEffect(() => {
     const allDone =
       !profileQuery.isLoading &&
       !routinesQuery.isLoading &&
       !customExQuery.isLoading &&
       !sessionQuery.isLoading &&
       !historyQuery.isLoading &&
-      !streakQuery.isLoading;
+      !streakQuery.isLoading &&
+      !perfQuery.isLoading &&
+      !prQuery.isLoading;
     if (allDone) setIsLoading(false);
   }, [
     profileQuery.isLoading,
@@ -131,8 +237,11 @@ function useGymState() {
     sessionQuery.isLoading,
     historyQuery.isLoading,
     streakQuery.isLoading,
+    perfQuery.isLoading,
+    prQuery.isLoading,
   ]);
 
+  // ─── Mutations ────────────────────────────────────────────
   const saveProfileMutation = useMutation({
     mutationFn: async (p: UserProfile) => {
       await AsyncStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(p));
@@ -164,19 +273,20 @@ function useGymState() {
     },
   });
 
-  const saveSessionMutation = useMutation({
-    mutationFn: async (s: WorkoutSession | null) => {
-      if (s) {
-        await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(s));
-      } else {
-        await AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
-      }
-      return s;
-    },
-    onSuccess: (s) => {
+  // For session, update state immediately (optimistic) to prevent stale closures
+  const saveSession = useCallback(
+    (s: WorkoutSession | null) => {
       setCurrentSession(s);
+      sessionRef.current = s;
+      // Fire async save
+      if (s) {
+        void AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(s));
+      } else {
+        void AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+      }
     },
-  });
+    []
+  );
 
   const saveHistoryMutation = useMutation({
     mutationFn: async (h: WorkoutHistory[]) => {
@@ -198,6 +308,7 @@ function useGymState() {
     },
   });
 
+  // ─── Actions ──────────────────────────────────────────────
   const saveProfile = useCallback(
     (p: UserProfile) => {
       saveProfileMutation.mutate(p);
@@ -298,65 +409,178 @@ function useGymState() {
         id: generateId(),
         routineId: routine.id,
         routineName: routine.name,
-        exercises: routine.exercises.map((e) => ({
-          routineExerciseId: e.id,
-          exerciseName: e.exerciseName,
-          muscleGroup: e.muscleGroup,
-          sets: e.sets,
-          reps: e.reps,
-          weight: e.weight,
-          completed: false,
-        })),
+        exercises: routine.exercises.map((e) => {
+          // Auto-fill from previous performance if available
+          const prev = lastPerformance[e.exerciseName];
+          return {
+            routineExerciseId: e.id,
+            exerciseName: e.exerciseName,
+            muscleGroup: e.muscleGroup,
+            sets: e.sets,
+            reps: e.reps,
+            weight: e.weight,
+            completed: false,
+            setDetails: Array.from({ length: e.sets }, (_, i) => ({
+              setNumber: i + 1,
+              reps: prev?.sets[i]?.reps ?? e.reps,
+              weight: prev?.sets[i]?.weight ?? e.weight,
+              completed: false,
+            })),
+          };
+        }),
         startedAt: new Date().toISOString(),
         isComplete: false,
       };
-      saveSessionMutation.mutate(session);
+      saveSession(session);
       return session;
     },
-    [saveSessionMutation]
+    [saveSession, lastPerformance]
   );
 
+  // Toggle exercise complete — also syncs setDetails
   const toggleExerciseComplete = useCallback(
     (routineExerciseId: string) => {
-      if (!currentSession) return false;
-      const updatedExercises = currentSession.exercises.map((e) =>
-        e.routineExerciseId === routineExerciseId
-          ? { ...e, completed: !e.completed, completedAt: !e.completed ? new Date().toISOString() : undefined }
-          : e
-      );
-      const allComplete = updatedExercises.every((e) => e.completed);
+      const session = sessionRef.current;
+      if (!session) return false;
+      const updatedExercises = session.exercises.map((e) => {
+        if (e.routineExerciseId !== routineExerciseId) return e;
+        const newCompleted = !e.completed;
+        // Sync setDetails with exercise-level toggle
+        const updatedSets = ensureSetDetails(e).map((s) => ({
+          ...s,
+          completed: newCompleted,
+        }));
+        return {
+          ...e,
+          completed: newCompleted,
+          completedAt: newCompleted ? new Date().toISOString() : undefined,
+          setDetails: updatedSets,
+        };
+      });
+      const allComplete = updatedExercises.every((ex) => ex.completed);
       const updatedSession: WorkoutSession = {
-        ...currentSession,
+        ...session,
         exercises: updatedExercises,
         isComplete: allComplete,
         completedAt: allComplete ? new Date().toISOString() : undefined,
       };
-      saveSessionMutation.mutate(updatedSession);
+      saveSession(updatedSession);
       return allComplete;
     },
-    [currentSession, saveSessionMutation]
+    [saveSession]
+  );
+
+  // Toggle individual set complete
+  const toggleSetComplete = useCallback(
+    (routineExerciseId: string, setNumber: number) => {
+      const session = sessionRef.current;
+      if (!session) return false;
+      const updatedExercises = session.exercises.map((e) => {
+        if (e.routineExerciseId !== routineExerciseId) return e;
+        const sets = ensureSetDetails(e);
+        const updatedSets = sets.map((s) =>
+          s.setNumber === setNumber ? { ...s, completed: !s.completed } : s
+        );
+        const allSetsComplete = updatedSets.length > 0 && updatedSets.every((s) => s.completed);
+        return {
+          ...e,
+          setDetails: updatedSets,
+          completed: allSetsComplete,
+          completedAt: allSetsComplete ? new Date().toISOString() : undefined,
+        };
+      });
+      const allComplete = updatedExercises.every((ex) => ex.completed);
+      const updatedSession: WorkoutSession = {
+        ...session,
+        exercises: updatedExercises,
+        isComplete: allComplete,
+        completedAt: allComplete ? new Date().toISOString() : undefined,
+      };
+      saveSession(updatedSession);
+      return allComplete;
+    },
+    [saveSession]
+  );
+
+  // Update weight for a specific set
+  const updateSetWeight = useCallback(
+    (routineExerciseId: string, setNumber: number, weight: number) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      const updatedExercises = session.exercises.map((e) => {
+        if (e.routineExerciseId !== routineExerciseId) return e;
+        const sets = ensureSetDetails(e);
+        const updatedSets = sets.map((s) =>
+          s.setNumber === setNumber ? { ...s, weight } : s
+        );
+        return { ...e, setDetails: updatedSets };
+      });
+      const updatedSession: WorkoutSession = {
+        ...session,
+        exercises: updatedExercises,
+      };
+      saveSession(updatedSession);
+    },
+    [saveSession]
   );
 
   const completeWorkout = useCallback(() => {
-    if (!currentSession) return;
+    const session = sessionRef.current;
+    if (!session) return;
 
-    const startTime = new Date(currentSession.startedAt).getTime();
+    const startTime = new Date(session.startedAt).getTime();
     const endTime = Date.now();
     const duration = Math.round((endTime - startTime) / 60000);
 
     const historyEntry: WorkoutHistory = {
       id: generateId(),
-      routineId: currentSession.routineId,
-      routineName: currentSession.routineName,
+      routineId: session.routineId,
+      routineName: session.routineName,
       completedAt: new Date().toISOString(),
-      exerciseCount: currentSession.exercises.length,
+      exerciseCount: session.exercises.length,
       duration,
     };
 
     const updatedHistory = [historyEntry, ...history];
     saveHistoryMutation.mutate(updatedHistory);
 
+    // Save per-exercise performance for auto-fill next time
+    const updatedPerf = { ...lastPerformance };
+    const updatedPRs = { ...personalRecords };
     const today = getToday();
+
+    session.exercises.forEach((ex) => {
+      const sets = ensureSetDetails(ex);
+      const completedSets = sets.filter((s) => s.completed);
+      if (completedSets.length > 0) {
+        updatedPerf[ex.exerciseName] = {
+          sets: completedSets.map((s) => ({ weight: s.weight, reps: s.reps })),
+          date: today,
+        };
+        // Check for PR (Epley formula: 1RM = weight * (1 + reps/30))
+        completedSets.forEach((s) => {
+          if (s.weight > 0) {
+            const estimated1RM = s.weight * (1 + s.reps / 30);
+            const existingPR = updatedPRs[ex.exerciseName];
+            if (!existingPR || estimated1RM > existingPR.estimated1RM) {
+              updatedPRs[ex.exerciseName] = {
+                weight: s.weight,
+                reps: s.reps,
+                estimated1RM,
+                date: today,
+              };
+            }
+          }
+        });
+      }
+    });
+
+    setLastPerformance(updatedPerf);
+    setPersonalRecords(updatedPRs);
+    void AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(updatedPerf));
+    void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(updatedPRs));
+
+    // Update streak
     const updatedDates = streak.completedDates.includes(today)
       ? streak.completedDates
       : [...streak.completedDates, today];
@@ -365,7 +589,7 @@ function useGymState() {
     const yesterday = formatDate(new Date(Date.now() - 86400000));
 
     if (streak.lastWorkoutDate === today) {
-      // already counted
+      // already counted today
     } else if (streak.lastWorkoutDate === yesterday || streak.lastWorkoutDate === null) {
       newStreak = streak.currentStreak + 1;
     } else {
@@ -381,32 +605,31 @@ function useGymState() {
     };
     saveStreakMutation.mutate(updatedStreak);
 
-    saveSessionMutation.mutate(null);
-  }, [currentSession, history, streak, saveHistoryMutation, saveStreakMutation, saveSessionMutation]);
+    saveSession(null);
+  }, [history, streak, lastPerformance, personalRecords, saveHistoryMutation, saveStreakMutation, saveSession]);
 
   const cancelWorkout = useCallback(() => {
-    saveSessionMutation.mutate(null);
-  }, [saveSessionMutation]);
+    saveSession(null);
+  }, [saveSession]);
 
+  // ─── Computed Data ────────────────────────────────────────
   const getWorkoutsThisWeek = useCallback(() => {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - dayOfWeek);
-    startOfWeek.setHours(0, 0, 0, 0);
-
+    const startOfWeek = getStartOfWeek(new Date());
     return history.filter((h) => new Date(h.completedAt) >= startOfWeek).length;
   }, [history]);
 
+  // Calendar-week aligned weekly counts
   const getWeeklyWorkoutCounts = useCallback(
     (weeks: number) => {
       const counts: number[] = [];
-      const now = new Date();
+      const currentWeekStart = getStartOfWeek(new Date());
+
       for (let w = weeks - 1; w >= 0; w--) {
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - (w + 1) * 7);
-        const weekEnd = new Date(now);
-        weekEnd.setDate(now.getDate() - w * 7);
+        const weekStart = new Date(currentWeekStart);
+        weekStart.setDate(weekStart.getDate() - w * 7);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+
         const count = history.filter((h) => {
           const d = new Date(h.completedAt);
           return d >= weekStart && d < weekEnd;
@@ -417,6 +640,15 @@ function useGymState() {
     },
     [history]
   );
+
+  // Invalidate queries for pull-to-refresh
+  const refreshData = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["history"] });
+    void queryClient.invalidateQueries({ queryKey: ["streak"] });
+    void queryClient.invalidateQueries({ queryKey: ["routines"] });
+    void queryClient.invalidateQueries({ queryKey: ["profile"] });
+    void queryClient.invalidateQueries({ queryKey: ["currentSession"] });
+  }, [queryClient]);
 
   return {
     profile,
@@ -437,9 +669,14 @@ function useGymState() {
     addCustomExercise,
     startWorkout,
     toggleExerciseComplete,
+    toggleSetComplete,
+    updateSetWeight,
     completeWorkout,
     cancelWorkout,
     getWorkoutsThisWeek,
     getWeeklyWorkoutCounts,
+    refreshData,
+    lastPerformance,
+    personalRecords,
   };
 }

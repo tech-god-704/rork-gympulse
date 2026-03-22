@@ -30,14 +30,19 @@ export default function TodayScreen() {
     streak,
     startWorkout,
     toggleExerciseComplete,
+    toggleSetComplete,
+    updateSetWeight,
     completeWorkout,
     cancelWorkout,
     getWorkoutsThisWeek,
+    refreshData,
+    history,
+    lastPerformance,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0 });
+  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -51,6 +56,17 @@ export default function TodayScreen() {
   );
   const totalCount = currentSession?.exercises.length ?? 0;
   const progress = totalCount > 0 ? completedCount / totalCount : 0;
+
+  // Total volume lifted (weight × reps for completed sets)
+  const totalVolume = useMemo(() => {
+    if (!currentSession) return 0;
+    return currentSession.exercises.reduce((vol, ex) => {
+      const sets = ex.setDetails || [];
+      return vol + sets
+        .filter((s) => s.completed)
+        .reduce((sum, s) => sum + s.weight * s.reps, 0);
+    }, 0);
+  }, [currentSession]);
 
   const today = new Date();
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
@@ -72,25 +88,56 @@ export default function TodayScreen() {
     return () => clearInterval(interval);
   }, [currentSession]);
 
+  const triggerCompletionCheck = useCallback((allComplete: boolean) => {
+    if (allComplete) {
+      const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
+      const duration = Math.round((Date.now() - startTime) / 60000);
+      // Calculate expected streak after this workout completes
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      let expectedStreak = streak.currentStreak;
+      if (streak.lastWorkoutDate === today) {
+        // already counted today
+      } else if (streak.lastWorkoutDate === yesterday || streak.lastWorkoutDate === null) {
+        expectedStreak = streak.currentStreak + 1;
+      } else {
+        expectedStreak = 1;
+      }
+      setCompletionStats({
+        exercises: totalCount,
+        duration: Math.max(duration, 1),
+        expectedStreak,
+      });
+      setTimeout(() => {
+        setShowConfetti(true);
+        if (Platform.OS !== "web") {
+          void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      }, 400);
+    }
+  }, [currentSession, totalCount, streak]);
+
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
       const allComplete = toggleExerciseComplete(routineExerciseId);
-      if (allComplete) {
-        const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
-        const duration = Math.round((Date.now() - startTime) / 60000);
-        setCompletionStats({
-          exercises: totalCount,
-          duration: Math.max(duration, 1),
-        });
-        setTimeout(() => {
-          setShowConfetti(true);
-          if (Platform.OS !== "web") {
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
-        }, 400);
-      }
+      triggerCompletionCheck(allComplete);
     },
-    [toggleExerciseComplete, currentSession, totalCount]
+    [toggleExerciseComplete, triggerCompletionCheck]
+  );
+
+  const handleToggleSet = useCallback(
+    (routineExerciseId: string, setNumber: number) => {
+      const allComplete = toggleSetComplete(routineExerciseId, setNumber);
+      triggerCompletionCheck(allComplete);
+    },
+    [toggleSetComplete, triggerCompletionCheck]
+  );
+
+  const handleUpdateSetWeight = useCallback(
+    (routineExerciseId: string, setNumber: number, weight: number) => {
+      updateSetWeight(routineExerciseId, setNumber, weight);
+    },
+    [updateSetWeight]
   );
 
   const handleDismissConfetti = useCallback(() => {
@@ -120,8 +167,9 @@ export default function TodayScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 500);
-  }, []);
+    refreshData();
+    setTimeout(() => setRefreshing(false), 600);
+  }, [refreshData]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -193,12 +241,19 @@ export default function TodayScreen() {
                     </View>
                     <Text style={styles.heroProgressText}>{completedCount}/{totalCount}</Text>
                   </View>
-                  {elapsedMinutes > 0 && (
-                    <View style={styles.heroTimerRow}>
-                      <Clock size={12} color="rgba(255,255,255,0.5)" />
-                      <Text style={styles.heroTimerText}>{elapsedMinutes} min</Text>
-                    </View>
-                  )}
+                  <View style={styles.heroMetaRow}>
+                    {elapsedMinutes > 0 && (
+                      <View style={styles.heroTimerRow}>
+                        <Clock size={12} color="rgba(255,255,255,0.5)" />
+                        <Text style={styles.heroTimerText}>{elapsedMinutes} min</Text>
+                      </View>
+                    )}
+                    {totalVolume > 0 && (
+                      <Text style={styles.heroTimerText}>
+                        {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} lbs
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 <View style={styles.heroRingContainer}>
                   <ProgressRing
@@ -224,6 +279,9 @@ export default function TodayScreen() {
                     index={index}
                     onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
                     onRestTimer={() => setShowRestTimer(true)}
+                    onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
+                    onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
+                    previousPerformance={lastPerformance[exercise.exerciseName]}
                   />
                 ))}
               </View>
@@ -240,6 +298,22 @@ export default function TodayScreen() {
           </View>
         ) : (
           <View>
+            {/* Last Workout Summary */}
+            {history.length > 0 && (
+              <View style={styles.lastWorkoutCard}>
+                <Text style={styles.lastWorkoutLabel}>LAST WORKOUT</Text>
+                <Text style={styles.lastWorkoutName}>{history[0].routineName}</Text>
+                <View style={styles.lastWorkoutMeta}>
+                  <Text style={styles.lastWorkoutDetail}>
+                    {history[0].exerciseCount} exercises · {history[0].duration}min
+                  </Text>
+                  <Text style={styles.lastWorkoutDate}>
+                    {new Date(history[0].completedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                  </Text>
+                </View>
+              </View>
+            )}
+
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>Ready to train?</Text>
               <Text style={styles.emptySubtitle}>Pick a routine to start today's workout</Text>
@@ -290,7 +364,7 @@ export default function TodayScreen() {
         visible={showConfetti}
         exerciseCount={completionStats.exercises}
         duration={completionStats.duration}
-        streak={streak.currentStreak}
+        streak={completionStats.expectedStreak || streak.currentStreak}
         onDismiss={handleDismissConfetti}
       />
     </View>
@@ -449,11 +523,16 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     fontWeight: "600" as const,
   },
+  heroMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 6,
+  },
   heroTimerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 6,
   },
   heroTimerText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
@@ -502,6 +581,48 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600" as const,
     color: Colors.error,
+  },
+  lastWorkoutCard: {
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  lastWorkoutLabel: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  lastWorkoutName: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  lastWorkoutMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  lastWorkoutDetail: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+  lastWorkoutDate: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
   },
   emptyState: {
     alignItems: "center",
