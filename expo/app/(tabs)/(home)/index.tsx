@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,15 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, Target, Play, X } from "lucide-react-native";
+import { Flame, Target, Play, X, Clock } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
-import { getGreeting } from "@/utils/helpers";
 import ExerciseCard from "@/components/ExerciseCard";
 import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
@@ -38,6 +38,8 @@ export default function TodayScreen() {
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0 });
+  const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
   const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
@@ -53,6 +55,22 @@ export default function TodayScreen() {
   const today = new Date();
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
   const monthDay = today.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
+
+  // Live workout timer
+  useEffect(() => {
+    if (!currentSession) {
+      setElapsedMinutes(0);
+      return;
+    }
+    const updateElapsed = () => {
+      const startTime = new Date(currentSession.startedAt).getTime();
+      const elapsed = Math.floor((Date.now() - startTime) / 60000);
+      setElapsedMinutes(elapsed);
+    };
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 30000); // update every 30s
+    return () => clearInterval(interval);
+  }, [currentSession]);
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
@@ -100,12 +118,20 @@ export default function TodayScreen() {
     }
   }, [cancelWorkout]);
 
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 500);
+  }, []);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
@@ -167,6 +193,12 @@ export default function TodayScreen() {
                     </View>
                     <Text style={styles.heroProgressText}>{completedCount}/{totalCount}</Text>
                   </View>
+                  {elapsedMinutes > 0 && (
+                    <View style={styles.heroTimerRow}>
+                      <Clock size={12} color="rgba(255,255,255,0.5)" />
+                      <Text style={styles.heroTimerText}>{elapsedMinutes} min</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.heroRingContainer}>
                   <ProgressRing
@@ -416,6 +448,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "rgba(255,255,255,0.7)",
     fontWeight: "600" as const,
+  },
+  heroTimerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 6,
+  },
+  heroTimerText: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.45)",
+    fontWeight: "500" as const,
   },
   heroRingContainer: {
     // ProgressRing renders here
