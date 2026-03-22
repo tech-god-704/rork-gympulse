@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   Modal,
   Alert,
   Platform,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Plus, Trash2, Search } from "lucide-react-native";
+import { ArrowLeft, Plus, Trash2, Search, Check, X } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -26,7 +29,390 @@ import {
 import { generateId } from "@/utils/helpers";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
+const SWIPE_THRESHOLD = -80;
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
+// ─── Swipeable Exercise Row ─────────────────────────────────
+interface SwipeableRowProps {
+  exercise: RoutineExercise;
+  index: number;
+  onDelete: () => void;
+  onTap: () => void;
+}
+
+function SwipeableExerciseRow({ exercise, index, onDelete, onTap }: SwipeableRowProps) {
+  const translateX = useRef(new Animated.Value(0)).current;
+  const isOpen = useRef(false);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 20;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dx < 0) {
+          translateX.setValue(Math.max(gestureState.dx, -100));
+        } else if (isOpen.current) {
+          translateX.setValue(Math.min(gestureState.dx - 80, 0));
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < SWIPE_THRESHOLD) {
+          Animated.spring(translateX, {
+            toValue: -80,
+            useNativeDriver: true,
+            friction: 8,
+          }).start();
+          isOpen.current = true;
+          if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else {
+          Animated.spring(translateX, {
+            toValue: 0,
+            useNativeDriver: true,
+            friction: 8,
+          }).start();
+          isOpen.current = false;
+        }
+      },
+    })
+  ).current;
+
+  const closeSwipe = useCallback(() => {
+    Animated.spring(translateX, {
+      toValue: 0,
+      useNativeDriver: true,
+      friction: 8,
+    }).start();
+    isOpen.current = false;
+  }, [translateX]);
+
+  const handleDelete = useCallback(() => {
+    closeSwipe();
+    onDelete();
+  }, [closeSwipe, onDelete]);
+
+  return (
+    <View style={swStyles.container}>
+      {/* Delete action behind */}
+      <View style={swStyles.deleteAction}>
+        <TouchableOpacity style={swStyles.deleteButton} onPress={handleDelete} activeOpacity={0.7}>
+          <Trash2 size={20} color="#fff" />
+          <Text style={swStyles.deleteText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Foreground row */}
+      <Animated.View
+        style={[swStyles.foreground, { transform: [{ translateX }] }]}
+        {...panResponder.panHandlers}
+      >
+        <TouchableOpacity
+          style={swStyles.rowContent}
+          onPress={() => {
+            if (isOpen.current) {
+              closeSwipe();
+            } else {
+              onTap();
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={swStyles.exerciseNumber}>
+            <Text style={swStyles.exerciseNumberText}>{index + 1}</Text>
+          </View>
+          <View style={swStyles.exerciseInfo}>
+            <Text style={swStyles.exerciseName}>{exercise.exerciseName}</Text>
+            <Text style={swStyles.exerciseDetail}>
+              {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+}
+
+const swStyles = StyleSheet.create({
+  container: {
+    marginBottom: 10,
+    borderRadius: 16,
+    overflow: "hidden",
+  },
+  deleteAction: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.error,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  deleteButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 2,
+    width: 80,
+    height: "100%",
+  },
+  deleteText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "600" as const,
+    marginTop: 2,
+  },
+  foreground: {
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.7)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  rowContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  exerciseNumber: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    backgroundColor: "rgba(59,130,246,0.08)",
+    borderWidth: 1.5,
+    borderColor: "rgba(59,130,246,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 14,
+  },
+  exerciseNumberText: {
+    fontSize: 14,
+    fontWeight: "800" as const,
+    color: Colors.primary,
+  },
+  exerciseInfo: {
+    flex: 1,
+  },
+  exerciseName: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 2,
+    letterSpacing: -0.3,
+  },
+  exerciseDetail: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 11,
+    color: Colors.textTertiary,
+  },
+});
+
+// ─── Edit Modal ─────────────────────────────────────────────
+interface EditModalProps {
+  visible: boolean;
+  exercise: RoutineExercise | null;
+  onSave: (id: string, sets: number, reps: number, weight: number) => void;
+  onClose: () => void;
+}
+
+function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProps) {
+  const [sets, setSets] = useState("");
+  const [reps, setReps] = useState("");
+  const [weight, setWeight] = useState("");
+
+  React.useEffect(() => {
+    if (exercise) {
+      setSets(exercise.sets.toString());
+      setReps(exercise.reps.toString());
+      setWeight(exercise.weight.toString());
+    }
+  }, [exercise]);
+
+  const handleSave = () => {
+    if (!exercise) return;
+    onSave(
+      exercise.id,
+      parseInt(sets, 10) || 1,
+      parseInt(reps, 10) || 1,
+      parseInt(weight, 10) || 0,
+    );
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  if (!exercise) return null;
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View style={editStyles.overlay}>
+        <View style={editStyles.card}>
+          <View style={editStyles.header}>
+            <Text style={editStyles.title}>{exercise.exerciseName}</Text>
+            <TouchableOpacity onPress={onClose} style={editStyles.closeBtn}>
+              <X size={20} color={Colors.textTertiary} />
+            </TouchableOpacity>
+          </View>
+
+          <View style={editStyles.fieldsRow}>
+            <View style={editStyles.field}>
+              <Text style={editStyles.fieldLabel}>SETS</Text>
+              <TextInput
+                style={editStyles.fieldInput}
+                value={sets}
+                onChangeText={setSets}
+                keyboardType="number-pad"
+                selectTextOnFocus
+              />
+            </View>
+            <View style={editStyles.field}>
+              <Text style={editStyles.fieldLabel}>REPS</Text>
+              <TextInput
+                style={editStyles.fieldInput}
+                value={reps}
+                onChangeText={setReps}
+                keyboardType="number-pad"
+                selectTextOnFocus
+              />
+            </View>
+            <View style={editStyles.field}>
+              <Text style={editStyles.fieldLabel}>WEIGHT</Text>
+              <TextInput
+                style={editStyles.fieldInput}
+                value={weight}
+                onChangeText={setWeight}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor={Colors.textTertiary}
+                selectTextOnFocus
+              />
+            </View>
+          </View>
+
+          <View style={editStyles.buttons}>
+            <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
+              <Text style={editStyles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
+              <LinearGradient
+                colors={[Colors.primary, Colors.indigo]}
+                style={editStyles.saveBtn}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Check size={18} color="#fff" />
+                <Text style={editStyles.saveText}>Save</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const editStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    width: "85%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    letterSpacing: -0.3,
+    flex: 1,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  fieldsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+  },
+  field: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  fieldInput: {
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    textAlign: "center" as const,
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.06)",
+  },
+  buttons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    alignItems: "center",
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  saveBtn: {
+    flex: 1,
+    flexDirection: "row",
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  saveText: {
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: "#fff",
+  },
+});
+
+// ═══ MAIN SCREEN ════════════════════════════════════════════
 export default function RoutineDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -46,12 +432,12 @@ export default function RoutineDetailScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup>("chest");
   const [searchQuery, setSearchQuery] = useState("");
-  const [customName, setCustomName] = useState("");
   const [customSets, setCustomSets] = useState("3");
   const [customReps, setCustomReps] = useState("10");
   const [customWeight, setCustomWeight] = useState("0");
   const [editingName, setEditingName] = useState(false);
   const [routineName, setRoutineName] = useState(routine?.name ?? "");
+  const [editingExercise, setEditingExercise] = useState<RoutineExercise | null>(null);
 
   const filteredExercises = useMemo(() => {
     return allExercises.filter(
@@ -79,7 +465,6 @@ export default function RoutineDetailScreen() {
       }
       setShowAddModal(false);
       setSearchQuery("");
-      setCustomName("");
       setCustomSets("3");
       setCustomReps("10");
       setCustomWeight("0");
@@ -88,7 +473,7 @@ export default function RoutineDetailScreen() {
   );
 
   const handleAddCustom = useCallback((nameOverride?: string) => {
-    const exerciseName = nameOverride || customName.trim();
+    const exerciseName = nameOverride || "";
     if (!exerciseName || !routineId) return;
     const exercise = addCustomExercise(exerciseName, selectedMuscle);
     const routineExercise: RoutineExercise = {
@@ -106,11 +491,10 @@ export default function RoutineDetailScreen() {
     }
     setShowAddModal(false);
     setSearchQuery("");
-    setCustomName("");
     setCustomSets("3");
     setCustomReps("10");
     setCustomWeight("0");
-  }, [customName, routineId, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
+  }, [routineId, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
 
   const handleRemoveExercise = useCallback(
     (exerciseId: string) => {
@@ -121,6 +505,18 @@ export default function RoutineDetailScreen() {
       }
     },
     [routineId, removeExerciseFromRoutine]
+  );
+
+  const handleEditSave = useCallback(
+    (exerciseId: string, sets: number, reps: number, weight: number) => {
+      if (!routine || !routineId) return;
+      const updatedExercises = routine.exercises.map((e) =>
+        e.id === exerciseId ? { ...e, sets, reps, weight } : e
+      );
+      updateRoutine(routineId, { exercises: updatedExercises });
+      setEditingExercise(null);
+    },
+    [routine, routineId, updateRoutine]
   );
 
   const handleDeleteRoutine = useCallback(() => {
@@ -179,6 +575,11 @@ export default function RoutineDetailScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Hint text */}
+      {routine.exercises.length > 0 && (
+        <Text style={styles.hintText}>Tap to edit · Swipe left to delete</Text>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -191,24 +592,13 @@ export default function RoutineDetailScreen() {
           </View>
         ) : (
           routine.exercises.map((exercise, index) => (
-            <View key={exercise.id} style={styles.exerciseRow}>
-              <View style={styles.exerciseNumber}>
-                <Text style={styles.exerciseNumberText}>{index + 1}</Text>
-              </View>
-              <View style={styles.exerciseInfo}>
-                <Text style={styles.exerciseName}>{exercise.exerciseName}</Text>
-                <Text style={styles.exerciseDetail}>
-                  {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => handleRemoveExercise(exercise.id)}
-                style={styles.removeButton}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Trash2 size={16} color={Colors.textTertiary} />
-              </TouchableOpacity>
-            </View>
+            <SwipeableExerciseRow
+              key={exercise.id}
+              exercise={exercise}
+              index={index}
+              onDelete={() => handleRemoveExercise(exercise.id)}
+              onTap={() => setEditingExercise(exercise)}
+            />
           ))
         )}
 
@@ -222,10 +612,19 @@ export default function RoutineDetailScreen() {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* Edit Exercise Modal */}
+      <EditExerciseModal
+        visible={editingExercise !== null}
+        exercise={editingExercise}
+        onSave={handleEditSave}
+        onClose={() => setEditingExercise(null)}
+      />
+
+      {/* Add Exercise Modal */}
       <Modal visible={showAddModal} animationType="slide">
         <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => { setShowAddModal(false); setSearchQuery(""); setCustomName(""); }}>
+            <TouchableOpacity onPress={() => { setShowAddModal(false); setSearchQuery(""); }}>
               <Text style={styles.modalClose}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Add Exercise</Text>
@@ -380,11 +779,19 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 4,
   },
+  hintText: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    textAlign: "center",
+    marginBottom: 4,
+    letterSpacing: 0.2,
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 20,
+    paddingTop: 8,
     paddingBottom: 40,
   },
   emptyState: {
@@ -400,55 +807,6 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 14,
     color: Colors.textSecondary,
-  },
-  exerciseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 20,
-    elevation: 2,
-  },
-  exerciseNumber: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
-    backgroundColor: "rgba(59,130,246,0.08)",
-    borderWidth: 1.5,
-    borderColor: "rgba(59,130,246,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  exerciseNumberText: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: Colors.primary,
-  },
-  exerciseInfo: {
-    flex: 1,
-  },
-  exerciseName: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    marginBottom: 2,
-    letterSpacing: -0.3,
-  },
-  exerciseDetail: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
-    color: Colors.textTertiary,
-  },
-  removeButton: {
-    padding: 8,
   },
   addExerciseButton: {
     flexDirection: "row",
