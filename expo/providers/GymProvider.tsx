@@ -25,6 +25,7 @@ const STORAGE_KEYS = {
   STREAK: "gympulse_streak",
   LAST_PERFORMANCE: "gympulse_last_performance",
   PERSONAL_RECORDS: "gympulse_personal_records",
+  EXERCISE_NOTES: "gympulse_exercise_notes",
 };
 
 // Per-exercise last performance data
@@ -43,6 +44,7 @@ interface PersonalRecord {
 
 type PerformanceMap = Record<string, ExercisePerformance>;
 type PRMap = Record<string, PersonalRecord>;
+type ExerciseNotesMap = Record<string, string>; // exerciseName -> last note
 
 function createDefaultStreak(): StreakData {
   return { currentStreak: 0, longestStreak: 0, lastWorkoutDate: null, completedDates: [] };
@@ -108,6 +110,7 @@ function useGymState() {
   const [streak, setStreak] = useState<StreakData>(createDefaultStreak());
   const [lastPerformance, setLastPerformance] = useState<PerformanceMap>({});
   const [personalRecords, setPersonalRecords] = useState<PRMap>({});
+  const [exerciseNotes, setExerciseNotes] = useState<ExerciseNotesMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Use refs for values accessed in rapid-fire callbacks to avoid stale closures
@@ -116,6 +119,7 @@ function useGymState() {
   const streakRef = useRef<StreakData>(createDefaultStreak());
   const lastPerformanceRef = useRef<PerformanceMap>({});
   const personalRecordsRef = useRef<PRMap>({});
+  const exerciseNotesRef = useRef<ExerciseNotesMap>({});
   const completingRef = useRef(false);
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
@@ -123,6 +127,7 @@ function useGymState() {
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { lastPerformanceRef.current = lastPerformance; }, [lastPerformance]);
   useEffect(() => { personalRecordsRef.current = personalRecords; }, [personalRecords]);
+  useEffect(() => { exerciseNotesRef.current = exerciseNotes; }, [exerciseNotes]);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -207,6 +212,15 @@ function useGymState() {
     },
   });
 
+  const notesQuery = useQuery({
+    queryKey: ["exerciseNotes"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.EXERCISE_NOTES);
+      if (!stored) return {};
+      try { return JSON.parse(stored) as ExerciseNotesMap; } catch { return {}; }
+    },
+  });
+
   useEffect(() => {
     if (profileQuery.data !== undefined) setProfile(profileQuery.data);
   }, [profileQuery.data]);
@@ -240,6 +254,10 @@ function useGymState() {
   }, [prQuery.data]);
 
   useEffect(() => {
+    if (notesQuery.data !== undefined) setExerciseNotes(notesQuery.data);
+  }, [notesQuery.data]);
+
+  useEffect(() => {
     const allDone =
       !profileQuery.isLoading &&
       !routinesQuery.isLoading &&
@@ -248,7 +266,8 @@ function useGymState() {
       !historyQuery.isLoading &&
       !streakQuery.isLoading &&
       !perfQuery.isLoading &&
-      !prQuery.isLoading;
+      !prQuery.isLoading &&
+      !notesQuery.isLoading;
     if (allDone) setIsLoading(false);
   }, [
     profileQuery.isLoading,
@@ -259,6 +278,7 @@ function useGymState() {
     streakQuery.isLoading,
     perfQuery.isLoading,
     prQuery.isLoading,
+    notesQuery.isLoading,
   ]);
 
   // ─── Mutations ────────────────────────────────────────────
@@ -611,10 +631,21 @@ function useGymState() {
       }
     });
 
+    // Save exercise notes for next time
+    const currentNotes = exerciseNotesRef.current;
+    const updatedNotes = { ...currentNotes };
+    session.exercises.forEach((ex) => {
+      if (ex.note && ex.note.trim()) {
+        updatedNotes[ex.exerciseName] = ex.note.trim();
+      }
+    });
+    setExerciseNotes(updatedNotes);
+
     setLastPerformance(updatedPerf);
     setPersonalRecords(updatedPRs);
     void AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(updatedPerf)).catch(() => {});
     void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(updatedPRs)).catch(() => {});
+    void AsyncStorage.setItem(STORAGE_KEYS.EXERCISE_NOTES, JSON.stringify(updatedNotes)).catch(() => {});
 
     // Update streak
     const updatedDates = currentStreak.completedDates.includes(today)
@@ -648,9 +679,53 @@ function useGymState() {
     }
   }, [saveHistoryMutation, saveStreakMutation, saveSession]);
 
+  // Update note for an exercise in the current session
+  const updateExerciseNote = useCallback(
+    (routineExerciseId: string, note: string) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      const updatedExercises = session.exercises.map((e) =>
+        e.routineExerciseId === routineExerciseId ? { ...e, note } : e
+      );
+      const updatedSession: WorkoutSession = { ...session, exercises: updatedExercises };
+      saveSession(updatedSession);
+    },
+    [saveSession]
+  );
+
+  // Update session-level note
+  const updateSessionNote = useCallback(
+    (note: string) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      const updatedSession: WorkoutSession = { ...session, note };
+      saveSession(updatedSession);
+    },
+    [saveSession]
+  );
+
   const cancelWorkout = useCallback(() => {
     saveSession(null);
   }, [saveSession]);
+
+  // ─── Mode ───────────────────────────────────────────────
+  // Advanced mode: auto-set from experience level, or manually toggled
+  const isAdvancedMode = useMemo(() => {
+    if (profile?.advancedMode !== undefined) return profile.advancedMode;
+    // Default: intermediate and advanced get advanced mode
+    return profile?.experienceLevel !== "beginner";
+  }, [profile?.advancedMode, profile?.experienceLevel]);
+
+  const toggleAdvancedMode = useCallback(() => {
+    if (!profile) return;
+    const newMode = !isAdvancedMode;
+    saveProfile({ ...profile, advancedMode: newMode });
+  }, [profile, isAdvancedMode, saveProfile]);
+
+  const dismissModeBanner = useCallback(() => {
+    if (!profile) return;
+    saveProfile({ ...profile, hasSeenModeBanner: true });
+  }, [profile, saveProfile]);
 
   // ─── Computed Data ────────────────────────────────────────
   const getWorkoutsThisWeek = useCallback(() => {
@@ -718,5 +793,11 @@ function useGymState() {
     refreshData,
     lastPerformance,
     personalRecords,
+    exerciseNotes,
+    updateExerciseNote,
+    updateSessionNote,
+    isAdvancedMode,
+    toggleAdvancedMode,
+    dismissModeBanner,
   };
 }

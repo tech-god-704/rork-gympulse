@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame } from "lucide-react-native";
+import { Flame, Trophy, TrendingUp } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { getMonthCalendarDates, getToday } from "@/utils/helpers";
@@ -11,7 +11,7 @@ const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, isAdvancedMode } = useGym();
   const [refreshing, setRefreshing] = useState(false);
 
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
@@ -36,6 +36,16 @@ export default function ProgressScreen() {
     [history]
   );
 
+  const goalMotivation = useMemo(() => {
+    switch (profile?.fitnessGoal) {
+      case "build_muscle": return "Track your volume and watch those muscles grow";
+      case "get_stronger": return "Every PR brings you closer to your strongest self";
+      case "lose_weight": return "Consistency is everything — keep that streak alive";
+      case "stay_active": return "Showing up is what matters most";
+      default: return "Keep pushing forward";
+    }
+  }, [profile?.fitnessGoal]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     refreshData();
@@ -44,7 +54,10 @@ export default function ProgressScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>Progress</Text>
+      <View style={styles.titleSection}>
+        <Text style={styles.title}>Progress</Text>
+        <Text style={styles.titleSubtext}>{goalMotivation}</Text>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -259,26 +272,60 @@ export default function ProgressScreen() {
           </View>
         )}
 
-        {/* Personal Records */}
+        {/* PR Wall - Trophy Case */}
         {Object.keys(personalRecords).length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardTitle}>Personal Records 🏆</Text>
+              <View style={styles.prTitleRow}>
+                <Trophy size={18} color={Colors.amber} />
+                <Text style={styles.cardTitle}>PR Wall</Text>
+              </View>
+              <Text style={styles.prCount}>{Object.keys(personalRecords).length} records</Text>
             </View>
+
+            {/* Top 4 Big Lifts highlighted (advanced only) */}
+            {isAdvancedMode && (() => {
+              const bigLifts = ["Bench Press", "Squat", "Deadlift", "Overhead Press"];
+              const topPRs = bigLifts
+                .filter((name) => personalRecords[name])
+                .map((name) => ({ name, ...personalRecords[name] }));
+              if (topPRs.length === 0) return null;
+              return (
+                <View style={styles.bigLiftRow}>
+                  {topPRs.map((pr) => (
+                    <View key={pr.name} style={styles.bigLiftCard}>
+                      <Text style={styles.bigLiftName}>{pr.name.split(" ")[0]}</Text>
+                      <Text style={styles.bigLiftWeight}>{pr.weight}</Text>
+                      <Text style={styles.bigLiftUnit}>lbs</Text>
+                      <Text style={styles.bigLift1RM}>1RM: {Math.round(pr.estimated1RM)}</Text>
+                    </View>
+                  ))}
+                </View>
+              );
+            })()}
+
             <View style={styles.prList}>
               {Object.entries(personalRecords)
                 .sort(([, a], [, b]) => b.estimated1RM - a.estimated1RM)
-                .slice(0, 8)
-                .map(([name, pr]) => (
+                .map(([name, pr], index) => (
                   <View key={name} style={styles.prRow}>
+                    <View style={styles.prRank}>
+                      <Text style={styles.prRankText}>{index + 1}</Text>
+                    </View>
                     <View style={styles.prInfo}>
                       <Text style={styles.prName}>{name}</Text>
                       <Text style={styles.prDate}>{pr.date}</Text>
                     </View>
                     <View style={styles.prValues}>
                       <Text style={styles.prWeight}>{pr.weight} lbs</Text>
-                      <Text style={styles.prReps}>× {pr.reps}</Text>
+                      <Text style={styles.prReps}>x {pr.reps}</Text>
                     </View>
+                    {isAdvancedMode && (
+                      <View style={styles.pr1RMBadge}>
+                        <TrendingUp size={10} color={Colors.indigo} />
+                        <Text style={styles.pr1RMText}>{Math.round(pr.estimated1RM)}</Text>
+                      </View>
+                    )}
                   </View>
                 ))}
             </View>
@@ -294,14 +341,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  titleSection: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
   title: {
     fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
     letterSpacing: -1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+  },
+  titleSubtext: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,
@@ -372,6 +426,9 @@ const styles = StyleSheet.create({
   cardHeaderRow: {
     padding: 16,
     paddingBottom: 6,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   cardTitle: {
     fontSize: 16,
@@ -591,17 +648,80 @@ const styles = StyleSheet.create({
     fontWeight: "500" as const,
     color: Colors.textTertiary,
   },
+  prTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  prCount: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+  },
+  bigLiftRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  bigLiftCard: {
+    flex: 1,
+    backgroundColor: "rgba(99,102,241,0.06)",
+    borderRadius: 14,
+    padding: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.1)",
+  },
+  bigLiftName: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
+    marginBottom: 4,
+  },
+  bigLiftWeight: {
+    fontSize: 22,
+    fontWeight: "900" as const,
+    color: Colors.indigo,
+    letterSpacing: -1,
+  },
+  bigLiftUnit: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    fontWeight: "500" as const,
+  },
+  bigLift1RM: {
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 9,
+    color: Colors.textTertiary,
+    marginTop: 4,
+  },
   prList: {
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
   prRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.04)",
+    gap: 10,
+  },
+  prRank: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  prRankText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
   },
   prInfo: {
     flex: 1,
@@ -618,20 +738,32 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   prValues: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    gap: 4,
+    alignItems: "flex-end",
   },
   prWeight: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800" as const,
     color: Colors.indigo,
     letterSpacing: -0.5,
   },
   prReps: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "500" as const,
     color: Colors.textTertiary,
+  },
+  pr1RMBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(99,102,241,0.08)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  pr1RMText: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.indigo,
   },
   emptyState: {
     alignItems: "center",
