@@ -94,7 +94,7 @@ export default function TodayScreen() {
       setElapsedMinutes(elapsed);
     };
     updateElapsed();
-    const interval = setInterval(updateElapsed, 30000); // update every 30s
+    const interval = setInterval(updateElapsed, 5000); // update every 5s
     return () => clearInterval(interval);
   }, [currentSession]);
 
@@ -104,7 +104,8 @@ export default function TodayScreen() {
       const duration = Math.round((Date.now() - startTime) / 60000);
       // Calculate expected streak after this workout completes
       const today = getToday();
-      const yesterday = formatDate(new Date(Date.now() - 86400000));
+      const yd = new Date(); yd.setDate(yd.getDate() - 1);
+      const yesterday = formatDate(yd);
       let expectedStreak = streak.currentStreak;
       if (streak.lastWorkoutDate === today) {
         // already counted today
@@ -279,7 +280,7 @@ export default function TodayScreen() {
                   </View>
                 </View>
                 <View style={styles.heroRingContainer}>
-                  <ProgressRing progress={progress} />
+                  <ProgressRing progress={progress} completed={completedCount} total={totalCount} />
                 </View>
               </View>
             </LinearGradient>
@@ -344,6 +345,8 @@ export default function TodayScreen() {
                   style={styles.scheduledCard}
                   onPress={() => handleStartWorkout(todaysRoutine.id)}
                   activeOpacity={0.7}
+                  accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
+                  accessibilityRole="button"
                 >
                   <View style={styles.routineCardLeft}>
                     <Text style={styles.scheduledName}>{todaysRoutine.name}</Text>
@@ -555,15 +558,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   heroProgressBg: {
-    height: 5,
+    height: 10,
     width: 110,
-    borderRadius: 3,
+    borderRadius: 5,
     backgroundColor: "rgba(255,255,255,0.15)",
     overflow: "hidden",
   },
   heroProgressFill: {
     height: "100%",
-    borderRadius: 3,
+    borderRadius: 5,
     backgroundColor: "rgba(255,255,255,0.9)",
   },
   heroProgressText: {

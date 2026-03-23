@@ -64,7 +64,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
 
   const handleWeightSave = useCallback((setNumber: number) => {
     if (onUpdateSetWeight && editWeight.trim()) {
-      const w = parseInt(editWeight, 10);
+      const w = parseFloat(editWeight);
       if (!isNaN(w) && w >= 0) {
         onUpdateSetWeight(setNumber, w);
       }
@@ -96,7 +96,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
     >
       {/* Main exercise row */}
       <View style={styles.content}>
-        <TouchableOpacity style={styles.toggleArea} onPress={handleToggle} activeOpacity={0.7} testID={`exercise-${exercise.routineExerciseId}`}>
+        <TouchableOpacity style={styles.toggleArea} onPress={handleToggle} activeOpacity={0.7} testID={`exercise-${exercise.routineExerciseId}`} accessibilityLabel={`${exercise.exerciseName}, ${completedSets} of ${totalSets} sets complete`} accessibilityRole="button">
           <Animated.View
             style={[
               styles.checkbox,
@@ -195,7 +195,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                     style={styles.editWeightInput}
                     value={editWeight}
                     onChangeText={setEditWeight}
-                    keyboardType="number-pad"
+                    keyboardType="decimal-pad"
                     autoFocus
                     selectTextOnFocus
                     onBlur={() => handleWeightSave(set.setNumber)}

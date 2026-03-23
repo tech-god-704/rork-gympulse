@@ -52,7 +52,8 @@ function createDefaultStreak(): StreakData {
 function recalculateStreak(streakData: StreakData): StreakData {
   if (!streakData.lastWorkoutDate) return streakData;
   const today = getToday();
-  const yesterday = formatDate(new Date(Date.now() - 86400000));
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yesterday = formatDate(y);
 
   // If last workout was today or yesterday, streak is still alive
   if (streakData.lastWorkoutDate === today || streakData.lastWorkoutDate === yesterday) {
@@ -115,6 +116,7 @@ function useGymState() {
   const streakRef = useRef<StreakData>(createDefaultStreak());
   const lastPerformanceRef = useRef<PerformanceMap>({});
   const personalRecordsRef = useRef<PRMap>({});
+  const completingRef = useRef(false);
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
   useEffect(() => { historyRef.current = history; }, [history]);
@@ -126,7 +128,8 @@ function useGymState() {
     queryKey: ["profile"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.PROFILE);
-      return stored ? (JSON.parse(stored) as UserProfile) : null;
+      if (!stored) return null;
+      try { return JSON.parse(stored) as UserProfile; } catch { return null; }
     },
   });
 
@@ -134,7 +137,8 @@ function useGymState() {
     queryKey: ["routines"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
-      return stored ? (JSON.parse(stored) as Routine[]) : [];
+      if (!stored) return [];
+      try { return JSON.parse(stored) as Routine[]; } catch { return []; }
     },
   });
 
@@ -142,7 +146,8 @@ function useGymState() {
     queryKey: ["customExercises"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXERCISES);
-      return stored ? (JSON.parse(stored) as Exercise[]) : [];
+      if (!stored) return [];
+      try { return JSON.parse(stored) as Exercise[]; } catch { return []; }
     },
   });
 
@@ -151,13 +156,15 @@ function useGymState() {
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
       if (!stored) return null;
-      const session = JSON.parse(stored) as WorkoutSession;
-      // Migrate: ensure all exercises have setDetails
-      session.exercises = session.exercises.map((e) => ({
-        ...e,
-        setDetails: ensureSetDetails(e),
-      }));
-      return session;
+      try {
+        const session = JSON.parse(stored) as WorkoutSession;
+        // Migrate: ensure all exercises have setDetails
+        session.exercises = session.exercises.map((e) => ({
+          ...e,
+          setDetails: ensureSetDetails(e),
+        }));
+        return session;
+      } catch { return null; }
     },
   });
 
@@ -165,7 +172,8 @@ function useGymState() {
     queryKey: ["history"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.HISTORY);
-      return stored ? (JSON.parse(stored) as WorkoutHistory[]) : [];
+      if (!stored) return [];
+      try { return JSON.parse(stored) as WorkoutHistory[]; } catch { return []; }
     },
   });
 
@@ -173,8 +181,11 @@ function useGymState() {
     queryKey: ["streak"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.STREAK);
-      const data = stored ? (JSON.parse(stored) as StreakData) : createDefaultStreak();
-      return recalculateStreak(data);
+      if (!stored) return recalculateStreak(createDefaultStreak());
+      try {
+        const data = JSON.parse(stored) as StreakData;
+        return recalculateStreak(data);
+      } catch { return recalculateStreak(createDefaultStreak()); }
     },
   });
 
@@ -182,7 +193,8 @@ function useGymState() {
     queryKey: ["lastPerformance"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.LAST_PERFORMANCE);
-      return stored ? (JSON.parse(stored) as PerformanceMap) : {};
+      if (!stored) return {};
+      try { return JSON.parse(stored) as PerformanceMap; } catch { return {}; }
     },
   });
 
@@ -190,7 +202,8 @@ function useGymState() {
     queryKey: ["personalRecords"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.PERSONAL_RECORDS);
-      return stored ? (JSON.parse(stored) as PRMap) : {};
+      if (!stored) return {};
+      try { return JSON.parse(stored) as PRMap; } catch { return {}; }
     },
   });
 
@@ -287,9 +300,9 @@ function useGymState() {
       sessionRef.current = s;
       // Fire async save
       if (s) {
-        void AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(s));
+        void AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(s)).catch(() => {});
       } else {
-        void AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION);
+        void AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION).catch(() => {});
       }
     },
     []
@@ -348,9 +361,11 @@ function useGymState() {
 
   const addRoutine = useCallback(
     (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return null;
       const newRoutine: Routine = {
         id: generateId(),
-        name,
+        name: trimmed,
         exercises: [],
         createdAt: new Date().toISOString(),
       };
@@ -399,7 +414,9 @@ function useGymState() {
 
   const addCustomExercise = useCallback(
     (name: string, muscleGroup: MuscleGroup) => {
-      const ex: Exercise = { id: generateId(), name, muscleGroup, isCustom: true };
+      const trimmed = name.trim();
+      if (!trimmed) return null;
+      const ex: Exercise = { id: generateId(), name: trimmed, muscleGroup, isCustom: true };
       const updated = [...customExercises, ex];
       saveCustomExMutation.mutate(updated);
       return ex;
@@ -513,6 +530,7 @@ function useGymState() {
   // Update weight for a specific set
   const updateSetWeight = useCallback(
     (routineExerciseId: string, setNumber: number, weight: number) => {
+      if (weight < 0 || !Number.isFinite(weight)) return;
       const session = sessionRef.current;
       if (!session) return;
       const updatedExercises = session.exercises.map((e) => {
@@ -533,8 +551,11 @@ function useGymState() {
   );
 
   const completeWorkout = useCallback(() => {
+    if (completingRef.current) return;
+    completingRef.current = true;
+
     const session = sessionRef.current;
-    if (!session) return;
+    if (!session) { completingRef.current = false; return; }
 
     const startTime = new Date(session.startedAt).getTime();
     const endTime = Date.now();
@@ -591,8 +612,8 @@ function useGymState() {
 
     setLastPerformance(updatedPerf);
     setPersonalRecords(updatedPRs);
-    void AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(updatedPerf));
-    void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(updatedPRs));
+    void AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(updatedPerf)).catch(() => {});
+    void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(updatedPRs)).catch(() => {});
 
     // Update streak
     const updatedDates = currentStreak.completedDates.includes(today)
@@ -600,7 +621,8 @@ function useGymState() {
       : [...currentStreak.completedDates, today];
 
     let newStreak = currentStreak.currentStreak;
-    const yesterday = formatDate(new Date(Date.now() - 86400000));
+    const yd = new Date(); yd.setDate(yd.getDate() - 1);
+    const yesterday = formatDate(yd);
 
     if (currentStreak.lastWorkoutDate === today) {
       // already counted today
@@ -620,6 +642,7 @@ function useGymState() {
     saveStreakMutation.mutate(updatedStreak);
 
     saveSession(null);
+    completingRef.current = false;
   }, [saveHistoryMutation, saveStreakMutation, saveSession]);
 
   const cancelWorkout = useCallback(() => {

@@ -6,6 +6,7 @@ import Colors from "@/constants/colors";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CONFETTI_COUNT = 60;
 const CONFETTI_COLORS = ["#3B82F6", "#6366F1", "#FBBF24", "#34D399", "#F472B6", "#A78BFA", "#FB923C", "#2DD4BF", "#E879F9", "#60A5FA"];
+const CELEBRATION_EMOJIS = ["🎉", "💪", "🏆", "⚡", "🔥", "✨", "🥳", "👏"];
 
 interface Props {
   visible: boolean;
@@ -113,7 +114,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
       ))}
 
       <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-        <Text style={styles.emoji}>🎉</Text>
+        <Text style={styles.emoji}>{CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)]}</Text>
         <Text style={styles.title}>Workout{"\n"}Complete!</Text>
         <Text style={styles.subtitle}>Keep the streak alive!</Text>
 
