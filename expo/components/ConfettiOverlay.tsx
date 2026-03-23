@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from "react";
+import React, { useEffect, useRef, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
@@ -19,6 +19,7 @@ interface Props {
 export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, onDismiss }: Props) {
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const [celebrationEmoji, setCelebrationEmoji] = useState("🎉");
 
   const confettiAnims = useMemo(
     () =>
@@ -36,6 +37,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
 
   useEffect(() => {
     if (visible) {
+      setCelebrationEmoji(CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)]);
       overlayAnim.setValue(0);
       scaleAnim.setValue(0.5);
 
@@ -114,7 +116,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
       ))}
 
       <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-        <Text style={styles.emoji}>{CELEBRATION_EMOJIS[Math.floor(Math.random() * CELEBRATION_EMOJIS.length)]}</Text>
+        <Text style={styles.emoji}>{celebrationEmoji}</Text>
         <Text style={styles.title}>Workout{"\n"}Complete!</Text>
         <Text style={styles.subtitle}>Keep the streak alive!</Text>
 
