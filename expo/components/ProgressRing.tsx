@@ -11,7 +11,7 @@ interface Props {
   total?: number;
 }
 
-export default function ProgressRing({ progress, size = 72, strokeWidth = 6 }: Props) {
+export default function ProgressRing({ progress, size = 72, strokeWidth = 6, completed, total }: Props) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - Math.min(progress, 1));
@@ -47,9 +47,13 @@ export default function ProgressRing({ progress, size = 72, strokeWidth = 6 }: P
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
-      <View style={styles.centerText}>
+      <View
+        style={styles.centerText}
+        accessibilityLabel={completed != null && total != null ? `${completed} of ${total} exercises complete` : `${Math.round(progress * 100)} percent complete`}
+        accessibilityRole="progressbar"
+      >
         <Text style={styles.percentText}>
-          {Math.round(progress * 100)}%
+          {completed != null && total != null ? `${completed}/${total}` : `${Math.round(progress * 100)}%`}
         </Text>
       </View>
     </View>

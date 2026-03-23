@@ -90,8 +90,15 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap }: SwipeableRow
 
   const handleDelete = useCallback(() => {
     closeSwipe();
-    onDelete();
-  }, [closeSwipe, onDelete]);
+    Alert.alert(
+      "Remove Exercise",
+      `Remove "${exercise.exerciseName}" from this routine?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Remove", style: "destructive", onPress: onDelete },
+      ]
+    );
+  }, [closeSwipe, onDelete, exercise.exerciseName]);
 
   return (
     <View style={swStyles.container}>

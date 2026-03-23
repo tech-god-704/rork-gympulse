@@ -54,6 +54,14 @@ export default function ProgressScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
         }
       >
+        {history.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>💪</Text>
+            <Text style={styles.emptyTitle}>No workouts yet</Text>
+            <Text style={styles.emptySubtitle}>Complete your first workout to start tracking progress!</Text>
+          </View>
+        )}
+
         {/* Streak Hero */}
         <LinearGradient
           colors={["#FFFBEB", "#FEF3C7", "#FDE68A"]}
@@ -624,5 +632,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "500" as const,
     color: Colors.textTertiary,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+  },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: Colors.textTertiary,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
