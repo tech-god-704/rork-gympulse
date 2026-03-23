@@ -23,6 +23,21 @@ import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
 import ConfettiOverlay from "@/components/ConfettiOverlay";
 
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace("#", "");
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+function getLuminance(hex: string): number {
+  const [r, g, b] = hexToRgb(hex);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+}
+
+function isBlueish(hex: string): boolean {
+  const [r, g, b] = hexToRgb(hex);
+  return b > 150 && b > r * 1.3 && b > g * 1.2;
+}
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -338,33 +353,45 @@ export default function TodayScreen() {
             )}
 
             {/* Today's Scheduled Routine */}
-            {todaysRoutine && todaysRoutine.exercises.length > 0 ? (
+            {todaysRoutine && todaysRoutine.exercises.length > 0 ? (() => {
+              const tbg = todaysRoutine.color;
+              const tDark = tbg ? getLuminance(tbg) < 0.55 : false;
+              const tAltPlay = tbg ? isBlueish(tbg) : false;
+              const tPlayColors: [string, string] = tAltPlay
+                ? ["#FFFFFF", "#F0F0F0"]
+                : [Colors.primary, Colors.indigo];
+              const tStartTextColor = tAltPlay ? tbg : "#fff";
+              return (
               <View>
                 <Text style={styles.scheduledLabel}>TODAY'S PLAN</Text>
                 <TouchableOpacity
-                  style={styles.scheduledCard}
+                  style={[
+                    styles.scheduledCard,
+                    tbg ? { backgroundColor: tbg, borderColor: tbg } : undefined,
+                  ]}
                   onPress={() => handleStartWorkout(todaysRoutine.id)}
                   activeOpacity={0.7}
                   accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
                   accessibilityRole="button"
                 >
                   <View style={styles.routineCardLeft}>
-                    <Text style={styles.scheduledName}>{todaysRoutine.name}</Text>
-                    <Text style={styles.routineCardDetail}>
+                    <Text style={[styles.scheduledName, tDark && { color: "#fff" }]}>{todaysRoutine.name}</Text>
+                    <Text style={[styles.routineCardDetail, tDark && { color: "rgba(255,255,255,0.75)" }]}>
                       {todaysRoutine.exercises.length} exercises · ~{todaysRoutine.exercises.length * 5 + 10}min
                     </Text>
                   </View>
                   <LinearGradient
-                    colors={[Colors.primary, Colors.indigo]}
+                    colors={tPlayColors}
                     style={styles.startButton}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                   >
-                    <Text style={styles.startButtonText}>Start</Text>
+                    <Text style={[styles.startButtonText, { color: tStartTextColor }]}>Start</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
-            ) : (
+              );
+            })() : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyTitle}>Ready to train?</Text>
                 <Text style={styles.emptySubtitle}>Pick a routine to start today's workout</Text>
@@ -373,29 +400,41 @@ export default function TodayScreen() {
 
             {routines.length > 0 ? (
               <View style={styles.routinesList}>
-                {routines.filter((r) => r.id !== todaysRoutine?.id && r.exercises.length > 0).map((routine) => (
+                {routines.filter((r) => r.id !== todaysRoutine?.id && r.exercises.length > 0).map((routine) => {
+                  const bg = routine.color;
+                  const isDark = bg ? getLuminance(bg) < 0.55 : false;
+                  const useAltPlay = bg ? isBlueish(bg) : false;
+                  const playColors: [string, string] = useAltPlay
+                    ? ["#FFFFFF", "#F0F0F0"]
+                    : [Colors.primary, Colors.indigo];
+                  const playIconColor = useAltPlay ? bg : Colors.white;
+                  return (
                   <TouchableOpacity
                     key={routine.id}
-                    style={styles.routineCard}
+                    style={[
+                      styles.routineCard,
+                      bg ? { backgroundColor: bg, borderColor: bg } : undefined,
+                    ]}
                     onPress={() => handleStartWorkout(routine.id)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.routineCardLeft}>
-                      <Text style={styles.routineCardName}>{routine.name}</Text>
-                      <Text style={styles.routineCardDetail}>
+                      <Text style={[styles.routineCardName, isDark && { color: "#fff" }]}>{routine.name}</Text>
+                      <Text style={[styles.routineCardDetail, isDark && { color: "rgba(255,255,255,0.75)" }]}>
                         {routine.exercises.length} exercises · ~{routine.exercises.length * 5 + 10}min
                       </Text>
                     </View>
                     <LinearGradient
-                      colors={[Colors.primary, Colors.indigo]}
+                      colors={playColors}
                       style={styles.playButton}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                     >
-                      <Play size={18} color={Colors.white} fill={Colors.white} />
+                      <Play size={18} color={playIconColor} fill={playIconColor} />
                     </LinearGradient>
                   </TouchableOpacity>
-                ))}
+                  );
+                })}
               </View>
             ) : (
               <TouchableOpacity

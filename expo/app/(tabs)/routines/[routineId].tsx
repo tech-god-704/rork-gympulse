@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Plus, Trash2, Search, Check, X } from "lucide-react-native";
+import { ArrowLeft, Plus, Trash2, Search, Check, X, Palette } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -33,6 +33,21 @@ import { generateId } from "@/utils/helpers";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -80;
+
+const ROUTINE_COLORS: { label: string; value: string | null }[] = [
+  { label: "Default", value: null },
+  { label: "Lime", value: "#84CC16" },
+  { label: "Emerald", value: "#10B981" },
+  { label: "Cyan", value: "#06B6D4" },
+  { label: "Violet", value: "#8B5CF6" },
+  { label: "Rose", value: "#F43F5E" },
+  { label: "Amber", value: "#F59E0B" },
+  { label: "Orange", value: "#F97316" },
+  { label: "Pink", value: "#EC4899" },
+  { label: "Teal", value: "#14B8A6" },
+  { label: "Sky", value: "#0EA5E9" },
+  { label: "Red", value: "#EF4444" },
+];
 
 // ─── Swipeable Exercise Row ─────────────────────────────────
 interface SwipeableRowProps {
@@ -675,6 +690,12 @@ export default function RoutineDetailScreen() {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
   }, [routine, routineId, updateRoutine]);
 
+  const handlePickColor = useCallback((color: string | null) => {
+    if (!routineId) return;
+    updateRoutine(routineId, { color: color || undefined });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  }, [routineId, updateRoutine]);
+
   if (!routine) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -735,6 +756,40 @@ export default function RoutineDetailScreen() {
             </TouchableOpacity>
           );
         })}
+      </View>
+
+      {/* Color Picker */}
+      <View style={styles.colorPickerSection}>
+        <View style={styles.colorPickerHeader}>
+          <Palette size={14} color={Colors.textTertiary} />
+          <Text style={styles.colorPickerLabel}>Card Color</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.colorPickerRow}
+        >
+          {ROUTINE_COLORS.map((c) => {
+            const isSelected = c.value === (routine.color ?? null);
+            return (
+              <TouchableOpacity
+                key={c.label}
+                onPress={() => handlePickColor(c.value)}
+                activeOpacity={0.7}
+                style={[
+                  styles.colorSwatch,
+                  { backgroundColor: c.value ?? "#FFFFFF" },
+                  !c.value && styles.colorSwatchDefault,
+                  isSelected && styles.colorSwatchSelected,
+                ]}
+              >
+                {isSelected && (
+                  <Check size={14} color={c.value ? "#fff" : Colors.text} strokeWidth={3} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {/* Hint text */}
@@ -969,6 +1024,47 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700" as const,
     color: "#fff",
+  },
+  colorPickerSection: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  colorPickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  colorPickerLabel: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
+  },
+  colorPickerRow: {
+    gap: 8,
+  },
+  colorSwatch: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorSwatchDefault: {
+    borderWidth: 1.5,
+    borderColor: "rgba(0,0,0,0.1)",
+  },
+  colorSwatchSelected: {
+    borderWidth: 2.5,
+    borderColor: "rgba(0,0,0,0.25)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   hintText: {
     fontSize: 11,
