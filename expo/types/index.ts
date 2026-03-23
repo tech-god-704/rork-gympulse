@@ -64,6 +64,7 @@ export interface Routine {
   name: string;
   exercises: RoutineExercise[];
   scheduledDays?: WeekDay[];
+  color?: string;
   createdAt: string;
 }
 
