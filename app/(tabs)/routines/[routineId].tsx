@@ -614,7 +614,7 @@ export default function RoutineDetailScreen() {
       setCustomReps("10");
       setCustomWeight("0");
     },
-    [routineId, customSets, customReps, customWeight, addExerciseToRoutine]
+    [routineId, routine, customSets, customReps, customWeight, addExerciseToRoutine]
   );
 
   const handleAddCustom = useCallback((nameOverride?: string) => {
@@ -649,7 +649,7 @@ export default function RoutineDetailScreen() {
     setCustomSets("3");
     setCustomReps("10");
     setCustomWeight("0");
-  }, [routineId, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
+  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
 
   const handleRemoveExercise = useCallback(
     (exerciseId: string) => {
