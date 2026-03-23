@@ -268,23 +268,6 @@ export default function ProfileScreen() {
             </View>
           )}
 
-          <View style={styles.settingDivider} />
-
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Notifications</Text>
-            <View style={styles.settingRight}>
-              <Text style={styles.comingSoon}>Coming Soon</Text>
-            </View>
-          </View>
-
-          <View style={styles.settingDivider} />
-
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>Dark Mode</Text>
-            <View style={styles.settingRight}>
-              <Text style={styles.comingSoon}>Coming Soon</Text>
-            </View>
-          </View>
         </View>
 
         {/* Footer */}
@@ -478,13 +461,6 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 12,
     color: Colors.textTertiary,
-  },
-  comingSoon: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: Colors.textTertiary,
-    opacity: 0.6,
-    fontStyle: "italic" as const,
   },
   settingDivider: {
     height: 1,
