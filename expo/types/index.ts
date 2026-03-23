@@ -10,8 +10,6 @@ export interface UserProfile {
   trainingDaysPerWeek: number;
   onboardingComplete: boolean;
   createdAt: string;
-  advancedMode?: boolean; // Show advanced features (plate calc, notes, 1RM, etc.)
-  hasSeenModeBanner?: boolean; // Whether they've seen the mode intro banner
 }
 
 export interface Exercise {
@@ -35,7 +33,6 @@ export interface RoutineExercise {
   reps: number;
   weight: number;
   setConfigs?: RoutineSetConfig[];
-  restSeconds?: number; // Per-exercise rest timer default
 }
 
 export type WeekDay = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -76,7 +73,6 @@ export interface SetData {
   reps: number;
   weight: number;
   completed: boolean;
-  rpe?: number; // Rate of Perceived Exertion (6-10)
 }
 
 export interface WorkoutSessionExercise {
@@ -89,7 +85,6 @@ export interface WorkoutSessionExercise {
   completed: boolean;
   completedAt?: string;
   setDetails?: SetData[];
-  note?: string; // Per-exercise notes
 }
 
 export interface WorkoutSession {
@@ -100,7 +95,6 @@ export interface WorkoutSession {
   startedAt: string;
   completedAt?: string;
   isComplete: boolean;
-  note?: string; // General workout notes
 }
 
 export interface WorkoutHistory {

@@ -8,11 +8,10 @@ import {
   TextInput,
   Platform,
   RefreshControl,
-  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, ChevronRight, Dumbbell, Trophy, Zap } from "lucide-react-native";
+import { Flame, ChevronRight, Dumbbell, Trophy } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
@@ -23,7 +22,7 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, streak, history, saveProfile, refreshData, isAdvancedMode, toggleAdvancedMode } = useGym();
+  const { profile, streak, history, saveProfile, refreshData } = useGym();
 
   const [refreshing, setRefreshing] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -268,32 +267,6 @@ export default function ProfileScreen() {
               ))}
             </View>
           )}
-
-          <View style={styles.settingDivider} />
-
-          {/* Advanced Mode Toggle */}
-          <View style={styles.advancedModeRow}>
-            <View style={styles.advancedModeInfo}>
-              <View style={styles.advancedModeHeader}>
-                <Zap size={16} color={isAdvancedMode ? Colors.amber : Colors.textTertiary} />
-                <Text style={styles.settingLabel}>Advanced Mode</Text>
-              </View>
-              <Text style={styles.advancedModeDesc}>
-                {isAdvancedMode
-                  ? "Plate calculator, workout notes, 1RM tracking, custom rest timers"
-                  : "Turn on for plate calculator, notes, 1RM, and more"}
-              </Text>
-            </View>
-            <Switch
-              value={isAdvancedMode}
-              onValueChange={() => {
-                toggleAdvancedMode();
-                if (Platform.OS !== "web") void Haptics.selectionAsync();
-              }}
-              trackColor={{ false: "rgba(0,0,0,0.08)", true: "rgba(99,102,241,0.3)" }}
-              thumbColor={isAdvancedMode ? Colors.indigo : "#f4f4f4"}
-            />
-          </View>
 
           <View style={styles.settingDivider} />
 
@@ -573,29 +546,6 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: Colors.primary,
-  },
-  advancedModeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  advancedModeInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  advancedModeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 2,
-  },
-  advancedModeDesc: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    lineHeight: 16,
-    marginLeft: 22,
   },
   footer: {
     alignItems: "center",

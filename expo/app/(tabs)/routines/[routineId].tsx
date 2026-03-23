@@ -151,12 +151,10 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap }: SwipeableRow
                 {exercise.setConfigs.map((s, i) =>
                   `${s.weight > 0 ? s.weight + "lbs" : "BW"} × ${s.reps}`
                 ).join("  ·  ")}
-                {exercise.restSeconds ? `  ·  ${exercise.restSeconds >= 60 ? `${Math.floor(exercise.restSeconds / 60)}m rest` : `${exercise.restSeconds}s rest`}` : ""}
               </Text>
             ) : (
               <Text style={swStyles.exerciseDetail}>
                 {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
-                {exercise.restSeconds ? ` · ${exercise.restSeconds >= 60 ? `${Math.floor(exercise.restSeconds / 60)}m rest` : `${exercise.restSeconds}s rest`}` : ""}
               </Text>
             )}
           </View>
@@ -255,24 +253,12 @@ interface SetRow {
 interface EditModalProps {
   visible: boolean;
   exercise: RoutineExercise | null;
-  onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], restSeconds?: number) => void;
+  onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[]) => void;
   onClose: () => void;
-  showAdvanced?: boolean;
 }
 
-const REST_OPTIONS = [
-  { label: "None", value: 0 },
-  { label: "30s", value: 30 },
-  { label: "60s", value: 60 },
-  { label: "90s", value: 90 },
-  { label: "2m", value: 120 },
-  { label: "3m", value: 180 },
-  { label: "5m", value: 300 },
-];
-
-function EditExerciseModal({ visible, exercise, onSave, onClose, showAdvanced = true }: EditModalProps) {
+function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProps) {
   const [setRows, setSetRows] = useState<SetRow[]>([]);
-  const [restTime, setRestTime] = useState(0);
 
   React.useEffect(() => {
     if (exercise) {
@@ -284,7 +270,6 @@ function EditExerciseModal({ visible, exercise, onSave, onClose, showAdvanced = 
         });
       }
       setSetRows(rows);
-      setRestTime(exercise.restSeconds ?? 0);
     }
   }, [exercise]);
 
@@ -310,7 +295,7 @@ function EditExerciseModal({ visible, exercise, onSave, onClose, showAdvanced = 
     }));
     const firstReps = configs[0]?.reps ?? 10;
     const firstWeight = configs[0]?.weight ?? 0;
-    onSave(exercise.id, setRows.length, firstReps, firstWeight, configs, restTime || undefined);
+    onSave(exercise.id, setRows.length, firstReps, firstWeight, configs);
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -376,24 +361,6 @@ function EditExerciseModal({ visible, exercise, onSave, onClose, showAdvanced = 
             <Plus size={14} color={Colors.primary} />
             <Text style={editStyles.addSetText}>Add Set</Text>
           </TouchableOpacity>
-
-          {/* Rest timer per exercise (advanced only) */}
-          {showAdvanced && <View style={editStyles.restSection}>
-            <Text style={editStyles.restLabel}>REST BETWEEN SETS</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={editStyles.restRow}>
-              {REST_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[editStyles.restPill, restTime === opt.value && editStyles.restPillActive]}
-                  onPress={() => setRestTime(opt.value)}
-                >
-                  <Text style={[editStyles.restPillText, restTime === opt.value && editStyles.restPillTextActive]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>}
 
           <View style={editStyles.buttons}>
             <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
@@ -562,39 +529,6 @@ const editStyles = StyleSheet.create({
     fontWeight: "600" as const,
     color: "#fff",
   },
-  restSection: {
-    marginBottom: 16,
-  },
-  restLabel: {
-    fontSize: 10,
-    fontWeight: "700" as const,
-    color: Colors.textTertiary,
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  restRow: {
-    gap: 6,
-  },
-  restPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.03)",
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-  },
-  restPillActive: {
-    backgroundColor: "rgba(59,130,246,0.1)",
-    borderColor: Colors.primary,
-  },
-  restPillText: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: Colors.textSecondary,
-  },
-  restPillTextActive: {
-    color: Colors.primary,
-  },
 });
 
 // ═══ MAIN SCREEN ════════════════════════════════════════════
@@ -610,7 +544,6 @@ export default function RoutineDetailScreen() {
     deleteRoutine,
     addCustomExercise,
     updateRoutine,
-    isAdvancedMode,
   } = useGym();
 
   const routine = useMemo(() => routines.find((r) => r.id === routineId), [routines, routineId]);
@@ -713,10 +646,10 @@ export default function RoutineDetailScreen() {
   );
 
   const handleEditSave = useCallback(
-    (exerciseId: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], restSeconds?: number) => {
+    (exerciseId: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[]) => {
       if (!routine || !routineId) return;
       const updatedExercises = routine.exercises.map((e) =>
-        e.id === exerciseId ? { ...e, sets, reps, weight, setConfigs, restSeconds } : e
+        e.id === exerciseId ? { ...e, sets, reps, weight, setConfigs } : e
       );
       updateRoutine(routineId, { exercises: updatedExercises });
       setEditingExercise(null);
@@ -902,7 +835,6 @@ export default function RoutineDetailScreen() {
         exercise={editingExercise}
         onSave={handleEditSave}
         onClose={() => setEditingExercise(null)}
-        showAdvanced={isAdvancedMode}
       />
 
       {/* Add Exercise Modal */}
