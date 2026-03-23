@@ -88,7 +88,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -120,7 +120,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
             />
           </Animated.View>
 
-          {!isRunning && (timeLeft === 0 || timeLeft === seconds) && (
+          {!isRunning && (
             <View style={styles.presetsRow}>
               {PRESETS.map((p) => (
                 <TouchableOpacity
@@ -166,9 +166,16 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
           )}
 
           {!isRunning && timeLeft > 0 && timeLeft < seconds && (
-            <TouchableOpacity style={styles.pauseButton} onPress={togglePause} activeOpacity={0.8}>
-              <Play size={20} color={Colors.white} />
-              <Text style={styles.pauseText}>Resume</Text>
+            <TouchableOpacity onPress={togglePause} activeOpacity={0.8}>
+              <LinearGradient
+                colors={[Colors.primary, Colors.indigo]}
+                style={styles.startButton}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Play size={20} color={Colors.white} />
+                <Text style={styles.startText}>Resume</Text>
+              </LinearGradient>
             </TouchableOpacity>
           )}
 
@@ -325,12 +332,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   adjustButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     borderRadius: 14,
     backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1,
     borderColor: "rgba(99,102,241,0.10)",
+    minHeight: 48,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
   },
   adjustText: {
     fontSize: 15,
