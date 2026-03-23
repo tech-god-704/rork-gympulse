@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, TrendingUp, TrendingDown, Minus, Trophy, Clock, Dumbbell, Calendar, Target, ChevronDown, ChevronUp } from "lucide-react-native";
+import { Flame, TrendingUp, Minus, Trophy, Clock, Dumbbell, Calendar, Target, ChevronDown, ChevronUp } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { getMonthCalendarDates, getToday } from "@/utils/helpers";

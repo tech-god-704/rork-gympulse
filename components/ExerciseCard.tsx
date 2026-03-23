@@ -262,8 +262,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               ) : (
                 <TouchableOpacity
                   style={styles.weightButton}
-                  onPress={(e) => {
-                    e.stopPropagation();
+                  onPress={() => {
                     setEditingSet(set.setNumber);
                     setEditWeight(set.weight.toString());
                   }}
