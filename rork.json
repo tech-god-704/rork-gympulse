@@ -1,7 +1,8 @@
 {
+  "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "GymPulse",
+      "name": "GymPulse AI",
       "path": ".",
       "framework": "react-native"
     }
