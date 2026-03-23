@@ -55,9 +55,10 @@ interface SwipeableRowProps {
   index: number;
   onDelete: () => void;
   onTap: () => void;
+  weightUnit: string;
 }
 
-function SwipeableExerciseRow({ exercise, index, onDelete, onTap }: SwipeableRowProps) {
+function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit }: SwipeableRowProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
 
@@ -145,18 +146,31 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap }: SwipeableRow
             <Text style={swStyles.exerciseNumberText}>{index + 1}</Text>
           </View>
           <View style={swStyles.exerciseInfo}>
-            <Text style={swStyles.exerciseName}>{exercise.exerciseName}</Text>
-            {exercise.setConfigs && exercise.setConfigs.length > 0 ? (
-              <Text style={swStyles.exerciseDetail}>
-                {exercise.setConfigs.map((s, i) =>
-                  `${s.weight > 0 ? s.weight + "lbs" : "BW"} × ${s.reps}`
-                ).join("  ·  ")}
-              </Text>
-            ) : (
-              <Text style={swStyles.exerciseDetail}>
-                {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
-              </Text>
-            )}
+            <Text style={swStyles.exerciseName} numberOfLines={1}>{exercise.exerciseName}</Text>
+            <Text style={swStyles.exerciseDetail} numberOfLines={1}>
+              {(() => {
+                const configs = exercise.setConfigs;
+                if (!configs || configs.length === 0) {
+                  return `${exercise.sets}×${exercise.reps}${exercise.weight > 0 ? ` @ ${exercise.weight} ${weightUnit}` : ""}`;
+                }
+                // Check if all sets are identical
+                const allSame = configs.every(
+                  (s) => s.weight === configs[0].weight && s.reps === configs[0].reps
+                );
+                if (allSame) {
+                  const w = configs[0].weight;
+                  return `${configs.length} sets · ${w > 0 ? w + " " + weightUnit : "BW"} × ${configs[0].reps} reps`;
+                }
+                // Mixed sets: show compact summary
+                const weights = [...new Set(configs.map((s) => s.weight))];
+                const reps = [...new Set(configs.map((s) => s.reps))];
+                const wStr = weights.length === 1
+                  ? (weights[0] > 0 ? `${weights[0]} ${weightUnit}` : "BW")
+                  : `${Math.min(...weights)}-${Math.max(...weights)} ${weightUnit}`;
+                const rStr = reps.length === 1 ? `${reps[0]}` : `${Math.min(...reps)}-${Math.max(...reps)}`;
+                return `${configs.length} sets · ${wStr} × ${rStr} reps`;
+              })()}
+            </Text>
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -241,6 +255,7 @@ const swStyles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
     color: Colors.textTertiary,
+    marginTop: 2,
   },
 });
 
@@ -291,7 +306,7 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
     if (!exercise) return;
     const configs: RoutineSetConfig[] = setRows.map((r) => ({
       reps: parseInt(r.reps, 10) || 1,
-      weight: parseInt(r.weight, 10) || 0,
+      weight: parseFloat(r.weight) || 0,
     }));
     const firstReps = configs[0]?.reps ?? 10;
     const firstWeight = configs[0]?.weight ?? 0;
@@ -544,8 +559,10 @@ export default function RoutineDetailScreen() {
     deleteRoutine,
     addCustomExercise,
     updateRoutine,
+    settings,
   } = useGym();
 
+  const wu = settings.weightUnit;
   const routine = useMemo(() => routines.find((r) => r.id === routineId), [routines, routineId]);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -576,7 +593,7 @@ export default function RoutineDetailScreen() {
       }
       const numSets = parseInt(customSets, 10) || 3;
       const numReps = parseInt(customReps, 10) || 10;
-      const numWeight = parseInt(customWeight, 10) || 0;
+      const numWeight = parseFloat(customWeight) || 0;
       const routineExercise: RoutineExercise = {
         id: generateId(),
         exerciseId: exercise.id,
@@ -597,7 +614,7 @@ export default function RoutineDetailScreen() {
       setCustomReps("10");
       setCustomWeight("0");
     },
-    [routineId, customSets, customReps, customWeight, addExerciseToRoutine]
+    [routineId, routine, customSets, customReps, customWeight, addExerciseToRoutine]
   );
 
   const handleAddCustom = useCallback((nameOverride?: string) => {
@@ -632,7 +649,7 @@ export default function RoutineDetailScreen() {
     setCustomSets("3");
     setCustomReps("10");
     setCustomWeight("0");
-  }, [routineId, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
+  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
 
   const handleRemoveExercise = useCallback(
     (exerciseId: string) => {
@@ -815,6 +832,7 @@ export default function RoutineDetailScreen() {
               index={index}
               onDelete={() => handleRemoveExercise(exercise.id)}
               onTap={() => setEditingExercise(exercise)}
+              weightUnit={wu}
             />
           ))
         )}

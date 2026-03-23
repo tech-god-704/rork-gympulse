@@ -23,7 +23,8 @@ const MUSCLE_COLORS: Record<MuscleGroup, string> = {
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance, settings } = useGym();
+  const wu = settings.weightUnit;
   const [refreshing, setRefreshing] = useState(false);
   const [prExpanded, setPrExpanded] = useState(true);
 
@@ -56,6 +57,29 @@ export default function ProgressScreen() {
       .reduce((sum, h) => sum + h.exerciseCount, 0);
   }, [history]);
 
+  // Total volume lifted all time
+  const totalVolume = useMemo(
+    () => history.reduce((sum, h) => sum + (h.totalVolume ?? 0), 0),
+    [history]
+  );
+
+  // Total PRs set
+  const totalPRs = useMemo(
+    () => Object.keys(personalRecords).length,
+    [personalRecords]
+  );
+
+  // Week volume
+  const weekVolume = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return history
+      .filter((h) => new Date(h.completedAt).getTime() >= startOfWeek.getTime())
+      .reduce((sum, h) => sum + (h.totalVolume ?? 0), 0);
+  }, [history]);
+
   // ─── Computed Stats ─────────────────────────────────────
   const avgDuration = useMemo(() => {
     if (history.length === 0) return 0;
@@ -79,16 +103,40 @@ export default function ProgressScreen() {
     return DAY_NAMES[maxIdx];
   }, [history]);
 
-  // Muscle group distribution from routines
+  // Muscle group distribution from ACTUAL completed workouts (falls back to routines for new users)
   const muscleDistribution = useMemo(() => {
     const counts: Record<string, number> = {};
     let total = 0;
-    routines.forEach((r) => {
-      r.exercises.forEach((e) => {
-        counts[e.muscleGroup] = (counts[e.muscleGroup] || 0) + 1;
-        total++;
+
+    // Use actual workout history if exercises data is available
+    const hasHistoryDetails = history.some((h) => h.exercises && h.exercises.length > 0);
+    if (hasHistoryDetails) {
+      history.forEach((h) => {
+        if (h.exercises) {
+          h.exercises.forEach((e) => {
+            if (e.setsCompleted > 0) {
+              counts[e.muscleGroup] = (counts[e.muscleGroup] || 0) + e.setsCompleted;
+              total += e.setsCompleted;
+            }
+          });
+        } else if (h.muscleGroups) {
+          // Fallback: older entries with muscleGroups but no exercises
+          h.muscleGroups.forEach((mg) => {
+            counts[mg] = (counts[mg] || 0) + 1;
+            total++;
+          });
+        }
       });
-    });
+    } else {
+      // Fallback for users with no enriched history yet: use routines
+      routines.forEach((r) => {
+        r.exercises.forEach((e) => {
+          counts[e.muscleGroup] = (counts[e.muscleGroup] || 0) + 1;
+          total++;
+        });
+      });
+    }
+
     if (total === 0) return [];
     return Object.entries(counts)
       .map(([group, count]) => ({
@@ -97,7 +145,7 @@ export default function ProgressScreen() {
         percentage: Math.round((count / total) * 100),
       }))
       .sort((a, b) => b.count - a.count);
-  }, [routines]);
+  }, [history, routines]);
 
   // Progressive overload tracking from lastPerformance
   const progressTracking = useMemo(() => {
@@ -212,6 +260,17 @@ export default function ProgressScreen() {
                 <Text style={styles.weekSummaryValue}>{weekExerciseCount}</Text>
                 <Text style={styles.weekSummaryLabel}>Exercises</Text>
               </View>
+              {weekVolume > 0 && (
+                <>
+                  <View style={styles.weekSummaryDivider} />
+                  <View style={styles.weekSummaryStat}>
+                    <Text style={styles.weekSummaryValue}>
+                      {weekVolume >= 1000 ? `${(weekVolume / 1000).toFixed(1)}k` : weekVolume}
+                    </Text>
+                    <Text style={styles.weekSummaryLabel}>Volume ({wu})</Text>
+                  </View>
+                </>
+              )}
             </View>
             <View style={styles.weekProgressBg}>
               <LinearGradient
@@ -296,9 +355,9 @@ export default function ProgressScreen() {
                       <Text style={styles.overloadDate}>{item.date}</Text>
                     </View>
                     <View style={styles.overloadValues}>
-                      <Text style={styles.overloadWeight}>{item.currentWeight} lbs</Text>
+                      <Text style={styles.overloadWeight}>{item.currentWeight} {wu}</Text>
                       {item.pr1RM > 0 && (
-                        <Text style={styles.overload1RM}>est. 1RM: {item.pr1RM}</Text>
+                        <Text style={styles.overload1RM}>est. 1RM: {item.pr1RM} {wu}</Text>
                       )}
                     </View>
                     <View style={[styles.overloadBadge, atPR ? styles.overloadBadgePR : styles.overloadBadgeNormal]}>
@@ -393,14 +452,6 @@ export default function ProgressScreen() {
                 <Text style={styles.statsValue}>{avgExercisesPerWorkout}</Text>
                 <Text style={styles.statsLabel}>Avg Exercises</Text>
               </View>
-              <View style={styles.statsItem}>
-                <Text style={styles.statsValue}>{favoriteDayName}</Text>
-                <Text style={styles.statsLabel}>Top Day</Text>
-              </View>
-              <View style={styles.statsItem}>
-                <Text style={styles.statsValue}>{totalWorkouts}</Text>
-                <Text style={styles.statsLabel}>Total</Text>
-              </View>
             </View>
             <View style={styles.statsDivider} />
             <View style={styles.statsGrid}>
@@ -417,12 +468,37 @@ export default function ProgressScreen() {
                 <Text style={styles.statsLabel}>Total Time</Text>
               </View>
               <View style={styles.statsItem}>
+                <Text style={styles.statsValue}>
+                  {totalVolume >= 1000000
+                    ? `${(totalVolume / 1000000).toFixed(1)}M`
+                    : totalVolume >= 1000
+                    ? `${(totalVolume / 1000).toFixed(1)}k`
+                    : totalVolume}
+                </Text>
+                <Text style={styles.statsLabel}>Volume ({wu})</Text>
+              </View>
+              <View style={styles.statsItem}>
+                <Text style={styles.statsValue}>{totalPRs}</Text>
+                <Text style={styles.statsLabel}>PRs Set</Text>
+              </View>
+            </View>
+            <View style={styles.statsDivider} />
+            <View style={styles.statsGrid}>
+              <View style={styles.statsItem}>
                 <Text style={styles.statsValue} numberOfLines={1}>{bestMonth}</Text>
                 <Text style={styles.statsLabel}>Best Month</Text>
               </View>
               <View style={styles.statsItem}>
                 <Text style={styles.statsValue}>{streak.longestStreak}</Text>
                 <Text style={styles.statsLabel}>Best Streak</Text>
+              </View>
+              <View style={styles.statsItem}>
+                <Text style={styles.statsValue}>{favoriteDayName}</Text>
+                <Text style={styles.statsLabel}>Top Day</Text>
+              </View>
+              <View style={styles.statsItem}>
+                <Text style={styles.statsValue}>{totalWorkouts}</Text>
+                <Text style={styles.statsLabel}>Total</Text>
               </View>
             </View>
           </View>
@@ -467,12 +543,12 @@ export default function ProgressScreen() {
                         <Text style={styles.prDate}>{pr.date}</Text>
                       </View>
                       <View style={styles.prValues}>
-                        <Text style={styles.prWeight}>{pr.weight} lbs</Text>
+                        <Text style={styles.prWeight}>{pr.weight} {wu}</Text>
                         <Text style={styles.prReps}>× {pr.reps}</Text>
                       </View>
                       <View style={styles.pr1RMBadge}>
                         <Text style={styles.pr1RMText}>{Math.round(pr.estimated1RM)}</Text>
-                        <Text style={styles.pr1RMLabel}>1RM</Text>
+                        <Text style={styles.pr1RMLabel}>1RM ({wu})</Text>
                       </View>
                     </View>
                   );
@@ -492,13 +568,22 @@ export default function ProgressScreen() {
               {history.slice(0, 10).map((h) => {
                 const d = new Date(h.completedAt);
                 const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                const vol = h.totalVolume ?? 0;
+                const volStr = vol >= 1000 ? `${(vol / 1000).toFixed(1)}k ${wu}` : vol > 0 ? `${vol} ${wu}` : "";
                 return (
                   <View key={h.id} style={styles.historyRow}>
                     <View style={styles.historyDot} />
                     <View style={styles.historyInfo}>
-                      <Text style={styles.historyName}>{h.routineName}</Text>
+                      <View style={styles.historyNameRow}>
+                        <Text style={styles.historyName}>{h.routineName}</Text>
+                        {(h.newPRs ?? 0) > 0 && (
+                          <View style={styles.historyPrBadge}>
+                            <Text style={styles.historyPrText}>{h.newPRs} PR{(h.newPRs ?? 0) > 1 ? "s" : ""}</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.historyMeta}>
-                        {h.exerciseCount} exercises · {h.duration} min
+                        {h.exerciseCount} exercises · {h.duration} min{volStr ? ` · ${volStr}` : ""}
                       </Text>
                     </View>
                     <Text style={styles.historyDate}>{dateStr}</Text>
@@ -998,6 +1083,23 @@ const styles = StyleSheet.create({
   },
   historyInfo: {
     flex: 1,
+  },
+  historyNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  historyPrBadge: {
+    backgroundColor: "rgba(245,158,11,0.15)",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  historyPrText: {
+    fontSize: 8,
+    fontWeight: "800" as const,
+    color: "#92400E",
+    letterSpacing: 0.3,
   },
   historyName: {
     fontSize: 14,

@@ -11,18 +11,18 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, ChevronRight, Dumbbell, Trophy } from "lucide-react-native";
+import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
-import { FitnessGoal, ExperienceLevel, GOAL_LABELS, LEVEL_LABELS } from "@/types";
+import { FitnessGoal, ExperienceLevel, GOAL_LABELS, LEVEL_LABELS, WeightUnit, AppTheme } from "@/types";
 
 const GOALS: FitnessGoal[] = ["build_muscle", "lose_weight", "stay_active", "get_stronger"];
 const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, streak, history, saveProfile, refreshData } = useGym();
+  const { profile, streak, history, saveProfile, refreshData, settings, updateSettings } = useGym();
 
   const [refreshing, setRefreshing] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -40,6 +40,10 @@ export default function ProfileScreen() {
     : "GP";
 
   const totalWorkouts = history.length;
+
+  const totalVolume = history.reduce((sum, h) => sum + (h.totalVolume ?? 0), 0);
+  const totalDuration = history.reduce((sum, h) => sum + h.duration, 0);
+  const avgDuration = totalWorkouts > 0 ? Math.round(totalDuration / totalWorkouts) : 0;
 
   const handleSaveName = useCallback(() => {
     if (profile && nameValue.trim()) {
@@ -167,6 +171,41 @@ export default function ProfileScreen() {
           ))}
         </View>
 
+        {/* Extended Stats */}
+        {totalWorkouts > 0 && (
+          <View style={styles.extendedStats}>
+            <View style={styles.extendedStatsRow}>
+              <View style={styles.extendedStatItem}>
+                <TrendingUp size={14} color={Colors.indigo} />
+                <Text style={styles.extendedStatValue}>
+                  {totalVolume >= 1000000
+                    ? `${(totalVolume / 1000000).toFixed(1)}M`
+                    : totalVolume >= 1000
+                    ? `${(totalVolume / 1000).toFixed(1)}k`
+                    : totalVolume} {settings.weightUnit}
+                </Text>
+                <Text style={styles.extendedStatLabel}>Total Volume</Text>
+              </View>
+              <View style={styles.extendedStatDivider} />
+              <View style={styles.extendedStatItem}>
+                <Clock size={14} color={Colors.indigo} />
+                <Text style={styles.extendedStatValue}>{avgDuration}m</Text>
+                <Text style={styles.extendedStatLabel}>Avg Duration</Text>
+              </View>
+              <View style={styles.extendedStatDivider} />
+              <View style={styles.extendedStatItem}>
+                <Clock size={14} color={Colors.indigo} />
+                <Text style={styles.extendedStatValue}>
+                  {totalDuration >= 60
+                    ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
+                    : `${totalDuration}m`}
+                </Text>
+                <Text style={styles.extendedStatLabel}>Total Time</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Settings List */}
         <View style={styles.settingsList}>
           <TouchableOpacity
@@ -268,6 +307,144 @@ export default function ProfileScreen() {
             </View>
           )}
 
+        </View>
+
+        {/* App Settings */}
+        <View style={styles.settingsList}>
+          {/* Weight Unit */}
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Weight Unit</Text>
+            <View style={styles.segmentedControl}>
+              {(["lbs", "kg"] as WeightUnit[]).map((unit) => (
+                <TouchableOpacity
+                  key={unit}
+                  onPress={() => {
+                    updateSettings({ weightUnit: unit });
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                >
+                  {settings.weightUnit === unit ? (
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={styles.segmentActive}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.segmentTextActive}>{unit.toUpperCase()}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.segmentInactive}>
+                      <Text style={styles.segmentText}>{unit.toUpperCase()}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          {/* Default Rest Timer */}
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Rest Timer</Text>
+            <View style={styles.segmentedControl}>
+              {[30, 60, 90, 120].map((sec) => (
+                <TouchableOpacity
+                  key={sec}
+                  onPress={() => {
+                    updateSettings({ defaultRestTimer: sec });
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                >
+                  {settings.defaultRestTimer === sec ? (
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={styles.segmentActive}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.segmentTextActive}>{sec}s</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.segmentInactive}>
+                      <Text style={styles.segmentText}>{sec}s</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          {/* Theme */}
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Theme</Text>
+            <View style={styles.segmentedControl}>
+              {([
+                { key: "light" as AppTheme, label: "Light" },
+                { key: "dark" as AppTheme, label: "Dark" },
+                { key: "system" as AppTheme, label: "Auto" },
+              ]).map((t) => (
+                <TouchableOpacity
+                  key={t.key}
+                  onPress={() => {
+                    updateSettings({ theme: t.key });
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                >
+                  {settings.theme === t.key ? (
+                    <LinearGradient
+                      colors={[Colors.primary, Colors.indigo]}
+                      style={styles.segmentActive}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.segmentTextActive}>{t.label}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.segmentInactive}>
+                      <Text style={styles.segmentText}>{t.label}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.settingDivider} />
+
+          {/* Confetti Toggle */}
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => {
+              updateSettings({ showConfetti: !settings.showConfetti });
+              if (Platform.OS !== "web") void Haptics.selectionAsync();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.settingLabel}>Celebration Effects</Text>
+            <View style={[styles.toggleTrack, settings.showConfetti && styles.toggleTrackOn]}>
+              <View style={[styles.toggleThumb, settings.showConfetti && styles.toggleThumbOn]} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.settingDivider} />
+
+          {/* Auto Rest Timer Toggle */}
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => {
+              updateSettings({ autoStartRestTimer: !settings.autoStartRestTimer });
+              if (Platform.OS !== "web") void Haptics.selectionAsync();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.settingLabel}>Auto-Start Rest Timer</Text>
+            <View style={[styles.toggleTrack, settings.autoStartRestTimer && styles.toggleTrackOn]}>
+              <View style={[styles.toggleThumb, settings.autoStartRestTimer && styles.toggleThumbOn]} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Footer */}
@@ -428,6 +605,44 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     marginTop: 3,
   },
+  extendedStats: {
+    backgroundColor: "rgba(255,255,255,0.88)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.10)",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  extendedStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  extendedStatItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  extendedStatValue: {
+    fontSize: 16,
+    fontWeight: "800" as const,
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
+  extendedStatLabel: {
+    fontSize: 9,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
+  },
+  extendedStatDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
   settingsList: {
     backgroundColor: "rgba(255,255,255,0.88)",
     borderRadius: 20,
@@ -522,6 +737,62 @@ const styles = StyleSheet.create({
   },
   optionTextActive: {
     color: Colors.primary,
+  },
+  segmentedControl: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  segmentActive: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    minWidth: 44,
+    alignItems: "center",
+  },
+  segmentInactive: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(99,102,241,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.10)",
+    minWidth: 44,
+    alignItems: "center",
+  },
+  segmentTextActive: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  toggleTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  toggleTrackOn: {
+    backgroundColor: Colors.emerald,
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  toggleThumbOn: {
+    alignSelf: "flex-end",
   },
   footer: {
     alignItems: "center",

@@ -121,11 +121,15 @@ export default function OnboardingScreen() {
       <Text style={styles.tagline}>
         Track it. Check it. <Text style={styles.taglineBold}>Crush it.</Text>
       </Text>
-      <View style={styles.welcomeStats}>
-        {[{ n: "156", l: "Workouts" }, { n: "12", l: "Streak" }, { n: "847", l: "Exercises" }].map((s) => (
-          <View key={s.l} style={styles.welcomeStat}>
-            <Text style={styles.welcomeStatValue}>{s.n}</Text>
-            <Text style={styles.welcomeStatLabel}>{s.l}</Text>
+      <View style={styles.welcomeFeatures}>
+        {[
+          { emoji: "📊", label: "Track Progress" },
+          { emoji: "🏋️", label: "Log Workouts" },
+          { emoji: "🏆", label: "Crush PRs" },
+        ].map((f) => (
+          <View key={f.label} style={styles.welcomeFeature}>
+            <Text style={styles.welcomeFeatureEmoji}>{f.emoji}</Text>
+            <Text style={styles.welcomeFeatureLabel}>{f.label}</Text>
           </View>
         ))}
       </View>
@@ -395,25 +399,30 @@ const styles = StyleSheet.create({
     fontWeight: "700" as const,
     color: Colors.text,
   },
-  welcomeStats: {
+  welcomeFeatures: {
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
     marginTop: 36,
     marginBottom: 36,
   },
-  welcomeStat: {
+  welcomeFeature: {
     alignItems: "center",
+    backgroundColor: "rgba(99,102,241,0.06)",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.10)",
   },
-  welcomeStatValue: {
-    fontSize: 22,
-    fontWeight: "800" as const,
+  welcomeFeatureEmoji: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  welcomeFeatureLabel: {
+    fontSize: 11,
+    fontWeight: "700" as const,
     color: Colors.text,
-  },
-  welcomeStatLabel: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase" as const,
+    letterSpacing: -0.2,
   },
   nameInput: {
     width: "100%",

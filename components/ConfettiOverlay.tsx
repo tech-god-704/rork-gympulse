@@ -13,10 +13,13 @@ interface Props {
   exerciseCount: number;
   duration: number;
   streak: number;
+  totalVolume?: number;
+  newPRs?: number;
+  weightUnit?: string;
   onDismiss: () => void;
 }
 
-export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, onDismiss }: Props) {
+export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, weightUnit = "lbs", onDismiss }: Props) {
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const [celebrationEmoji, setCelebrationEmoji] = useState("🎉");
@@ -118,7 +121,9 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
       <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
         <Text style={styles.emoji}>{celebrationEmoji}</Text>
         <Text style={styles.title}>Workout{"\n"}Complete!</Text>
-        <Text style={styles.subtitle}>Keep the streak alive!</Text>
+        <Text style={styles.subtitle}>
+          {newPRs > 0 ? `${newPRs} new PR${newPRs > 1 ? "s" : ""}! Keep crushing it!` : "Keep the streak alive!"}
+        </Text>
 
         <View style={styles.statsRow}>
           {[
@@ -132,6 +137,15 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
             </View>
           ))}
         </View>
+
+        {totalVolume > 0 && (
+          <View style={styles.volumeRow}>
+            <Text style={styles.volumeValue}>
+              {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} {weightUnit}
+            </Text>
+            <Text style={styles.volumeLabel}>total volume</Text>
+          </View>
+        )}
 
         <TouchableOpacity onPress={onDismiss} activeOpacity={0.8}>
           <LinearGradient
@@ -201,6 +215,27 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 4,
+  },
+  volumeRow: {
+    alignItems: "center",
+    marginBottom: 24,
+    backgroundColor: "rgba(99,102,241,0.06)",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  volumeValue: {
+    fontSize: 20,
+    fontWeight: "900" as const,
+    color: Colors.indigo,
+    letterSpacing: -0.5,
+  },
+  volumeLabel: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+    marginTop: 2,
   },
   doneButton: {
     paddingVertical: 16,

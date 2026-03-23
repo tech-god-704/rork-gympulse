@@ -13,9 +13,13 @@ interface Props {
   onToggleSet?: (setNumber: number) => void;
   onUpdateSetWeight?: (setNumber: number, weight: number) => void;
   previousPerformance?: { sets: { weight: number; reps: number }[] };
+  personalRecord?: { weight: number; reps: number; estimated1RM: number };
+  weightUnit?: string;
+  defaultRestTimer?: number;
+  autoStartRestTimer?: boolean;
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
@@ -25,6 +29,16 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
 
   const completedSets = (exercise.setDetails || []).filter((s) => s.completed).length;
   const totalSets = exercise.setDetails?.length || exercise.sets;
+
+  // PR detection: check if any completed set in this exercise beats the existing PR
+  const isPRBeaten = (() => {
+    if (!personalRecord || !exercise.setDetails) return false;
+    return exercise.setDetails.some((s) => {
+      if (!s.completed || s.weight <= 0) return false;
+      const estimated1RM = s.weight * (1 + s.reps / 30);
+      return estimated1RM > personalRecord.estimated1RM;
+    });
+  })();
 
   useEffect(() => {
     Animated.timing(checkAnim, {
@@ -70,11 +84,11 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
       if (Platform.OS !== "web") {
         void Haptics.impactAsync(wasCompleted ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
       }
-      if (!wasCompleted) {
-        onRestTimer(60);
+      if (!wasCompleted && autoStartRestTimer) {
+        onRestTimer(defaultRestTimer);
       }
     }
-  }, [onToggleSet, onRestTimer]);
+  }, [onToggleSet, onRestTimer, autoStartRestTimer, defaultRestTimer]);
 
   const handleWeightSave = useCallback((setNumber: number) => {
     if (onUpdateSetWeight && editWeight.trim()) {
@@ -161,21 +175,26 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               <Text style={styles.detail}>
                 {(() => {
                   const sets = exercise.setDetails || [];
-                  if (sets.length === 0) return exercise.weight > 0 ? `${exercise.weight} lbs` : "BW";
+                  if (sets.length === 0) return exercise.weight > 0 ? `${exercise.weight} ${weightUnit}` : "BW";
                   const weights = [...new Set(sets.map((s) => s.weight))];
-                  if (weights.length === 1) return weights[0] > 0 ? `${weights[0]} lbs` : "BW";
-                  return `${Math.min(...weights)}-${Math.max(...weights)} lbs`;
+                  if (weights.length === 1) return weights[0] > 0 ? `${weights[0]} ${weightUnit}` : "BW";
+                  return `${Math.min(...weights)}-${Math.max(...weights)} ${weightUnit}`;
                 })()}
               </Text>
               <View style={styles.muscleTag}>
                 <Text style={styles.muscleTagText}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>
               </View>
+              {isPRBeaten && (
+                <View style={styles.prBadge}>
+                  <Text style={styles.prBadgeText}>PR!</Text>
+                </View>
+              )}
             </View>
           </View>
         </TouchableOpacity>
         {!exercise.completed && (
           <View style={styles.restButtons}>
-            {[60, 90].map((s) => (
+            {[...new Set([defaultRestTimer, 60, 90])].sort((a, b) => a - b).map((s) => (
               <TouchableOpacity
                 key={s}
                 style={styles.restButton}
@@ -257,7 +276,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                   >
                     <Plus size={14} color={Colors.primary} />
                   </TouchableOpacity>
-                  <Text style={styles.editWeightUnit}>lbs</Text>
+                  <Text style={styles.editWeightUnit}>{weightUnit}</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -269,13 +288,13 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                   hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
                 >
                   <Text style={[styles.setWeight, set.completed && styles.setWeightCompleted]}>
-                    {set.weight > 0 ? `${set.weight} lbs` : "BW"}
+                    {set.weight > 0 ? `${set.weight} ${weightUnit}` : "BW"}
                   </Text>
                 </TouchableOpacity>
               )}
               {previousPerformance?.sets?.[set.setNumber - 1] != null && !set.completed && (
                 <Text style={styles.prevHint}>
-                  Last: {previousPerformance.sets[set.setNumber - 1].weight}×{previousPerformance.sets[set.setNumber - 1].reps}
+                  Last: {previousPerformance.sets[set.setNumber - 1].weight}{weightUnit}×{previousPerformance.sets[set.setNumber - 1].reps}
                 </Text>
               )}
             </TouchableOpacity>
@@ -370,6 +389,20 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
+  },
+  prBadge: {
+    backgroundColor: "rgba(245,158,11,0.18)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.3)",
+  },
+  prBadgeText: {
+    fontSize: 10,
+    fontWeight: "900" as const,
+    color: "#92400E",
+    letterSpacing: 0.5,
   },
   restButtons: {
     flexDirection: "row",
