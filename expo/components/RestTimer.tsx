@@ -30,13 +30,15 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
     []
   );
 
-  // Reset timer when opened with a new duration
+  // Reset timer when opened (pick up latest initialDuration)
+  const prevVisible = useRef(false);
   useEffect(() => {
-    if (visible) {
+    if (visible && !prevVisible.current) {
       setSeconds(initialDuration);
       setTimeLeft(initialDuration);
       setIsRunning(false);
     }
+    prevVisible.current = visible;
   }, [visible, initialDuration]);
 
   useEffect(() => {

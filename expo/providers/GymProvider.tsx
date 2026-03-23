@@ -554,8 +554,9 @@ function useGymState() {
     if (completingRef.current) return;
     completingRef.current = true;
 
+    try {
     const session = sessionRef.current;
-    if (!session) { completingRef.current = false; return; }
+    if (!session) return;
 
     const startTime = new Date(session.startedAt).getTime();
     const endTime = Date.now();
@@ -642,7 +643,9 @@ function useGymState() {
     saveStreakMutation.mutate(updatedStreak);
 
     saveSession(null);
-    completingRef.current = false;
+    } finally {
+      completingRef.current = false;
+    }
   }, [saveHistoryMutation, saveStreakMutation, saveSession]);
 
   const cancelWorkout = useCallback(() => {

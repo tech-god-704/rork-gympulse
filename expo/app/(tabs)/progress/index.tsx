@@ -133,7 +133,7 @@ export default function ProgressScreen() {
         </View>
 
         {/* This Week Summary */}
-        <View style={styles.card}>
+        {history.length > 0 && <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>This Week</Text>
           </View>
@@ -166,10 +166,10 @@ export default function ProgressScreen() {
               end={{ x: 1, y: 0 }}
             />
           </View>
-        </View>
+        </View>}
 
         {/* Weekly Workouts Bar Chart */}
-        <View style={styles.card}>
+        {history.length > 0 && <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
             <Text style={styles.cardTitle}>Weekly Workouts</Text>
           </View>
@@ -201,10 +201,10 @@ export default function ProgressScreen() {
               );
             })}
           </View>
-        </View>
+        </View>}
 
         {/* Lifetime Stats */}
-        <View style={styles.lifetimeRow}>
+        {history.length > 0 && <View style={styles.lifetimeRow}>
           <View style={styles.lifetimeCard}>
             <View style={[styles.lifetimeIcon, { backgroundColor: "#EEF2FF" }]}>
               <Text style={{ fontSize: 16 }}>🏋️</Text>
@@ -230,7 +230,7 @@ export default function ProgressScreen() {
             </Text>
             <Text style={styles.lifetimeLabel}>TOTAL TIME</Text>
           </View>
-        </View>
+        </View>}
 
         {/* Recent Workouts */}
         {history.length > 0 && (
