@@ -33,6 +33,7 @@ export interface RoutineExercise {
   reps: number;
   weight: number;
   setConfigs?: RoutineSetConfig[];
+  restSeconds?: number; // Per-exercise rest timer default
 }
 
 export type WeekDay = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
@@ -73,6 +74,7 @@ export interface SetData {
   reps: number;
   weight: number;
   completed: boolean;
+  rpe?: number; // Rate of Perceived Exertion (6-10)
 }
 
 export interface WorkoutSessionExercise {
@@ -85,6 +87,7 @@ export interface WorkoutSessionExercise {
   completed: boolean;
   completedAt?: string;
   setDetails?: SetData[];
+  note?: string; // Per-exercise notes
 }
 
 export interface WorkoutSession {
@@ -95,6 +98,7 @@ export interface WorkoutSession {
   startedAt: string;
   completedAt?: string;
   isComplete: boolean;
+  note?: string; // General workout notes
 }
 
 export interface WorkoutHistory {

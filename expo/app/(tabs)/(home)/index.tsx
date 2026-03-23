@@ -8,10 +8,11 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, Target, Play, X, Clock } from "lucide-react-native";
+import { Flame, Target, Play, X, Clock, FileText } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -56,6 +57,9 @@ export default function TodayScreen() {
     refreshData,
     history,
     lastPerformance,
+    exerciseNotes,
+    updateExerciseNote,
+    updateSessionNote,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -64,6 +68,8 @@ export default function TodayScreen() {
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSessionNote, setShowSessionNote] = useState(false);
+  const [sessionNoteText, setSessionNoteText] = useState("");
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
   const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
@@ -300,6 +306,40 @@ export default function TodayScreen() {
               </View>
             </LinearGradient>
 
+            {/* Session Notes */}
+            <View style={styles.sessionNoteSection}>
+              {showSessionNote ? (
+                <View style={styles.sessionNoteInputContainer}>
+                  <TextInput
+                    style={styles.sessionNoteInput}
+                    value={sessionNoteText}
+                    onChangeText={setSessionNoteText}
+                    placeholder="How are you feeling today?"
+                    placeholderTextColor={Colors.textTertiary}
+                    multiline
+                    autoFocus
+                    onBlur={() => {
+                      updateSessionNote(sessionNoteText);
+                      setShowSessionNote(false);
+                    }}
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.sessionNoteButton}
+                  onPress={() => {
+                    setSessionNoteText(currentSession.note || "");
+                    setShowSessionNote(true);
+                  }}
+                >
+                  <FileText size={14} color={Colors.textTertiary} />
+                  <Text style={styles.sessionNoteButtonText}>
+                    {currentSession.note || "Add workout notes..."}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Exercises */}
             <View style={styles.exerciseSection}>
               <View style={styles.exerciseHeader}>
@@ -307,21 +347,31 @@ export default function TodayScreen() {
                 <Text style={styles.exerciseCount}>{completedCount} of {totalCount}</Text>
               </View>
               <View style={styles.exerciseList}>
-                {currentSession.exercises.map((exercise, index) => (
-                  <ExerciseCard
-                    key={exercise.routineExerciseId}
-                    exercise={exercise}
-                    index={index}
-                    onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
-                    onRestTimer={(seconds) => {
-                      setRestTimerDuration(seconds ?? 60);
-                      setShowRestTimer(true);
-                    }}
-                    onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
-                    onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
-                    previousPerformance={lastPerformance[exercise.exerciseName]}
-                  />
-                ))}
+                {currentSession.exercises.map((exercise, index) => {
+                  // Find the routine exercise to get restSeconds
+                  const currentRoutine = routines.find((r) => r.id === currentSession.routineId);
+                  const routineExercise = currentRoutine?.exercises.find(
+                    (re) => re.id === exercise.routineExerciseId
+                  );
+                  return (
+                    <ExerciseCard
+                      key={exercise.routineExerciseId}
+                      exercise={exercise}
+                      index={index}
+                      onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
+                      onRestTimer={(seconds) => {
+                        setRestTimerDuration(seconds ?? 60);
+                        setShowRestTimer(true);
+                      }}
+                      onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
+                      onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
+                      previousPerformance={lastPerformance[exercise.exerciseName]}
+                      onUpdateNote={(note) => updateExerciseNote(exercise.routineExerciseId, note)}
+                      restSeconds={routineExercise?.restSeconds}
+                      lastNote={exerciseNotes[exercise.exerciseName]}
+                    />
+                  );
+                })}
               </View>
             </View>
 
@@ -827,5 +877,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600" as const,
     color: Colors.primary,
+  },
+  // Session notes
+  sessionNoteSection: {
+    marginBottom: 12,
+  },
+  sessionNoteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "rgba(255,255,255,0.5)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.04)",
+  },
+  sessionNoteButtonText: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    flex: 1,
+  },
+  sessionNoteInputContainer: {
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(59,130,246,0.15)",
+    overflow: "hidden",
+  },
+  sessionNoteInput: {
+    fontSize: 13,
+    color: Colors.text,
+    padding: 12,
+    minHeight: 40,
+    maxHeight: 80,
   },
 });
