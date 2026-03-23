@@ -594,6 +594,7 @@ export default function RoutineDetailScreen() {
       return;
     }
     const exercise = addCustomExercise(exerciseName, selectedMuscle);
+    if (!exercise) return;
     const numSets = parseInt(customSets, 10) || 3;
     const numReps = parseInt(customReps, 10) || 10;
     const numWeight = parseInt(customWeight, 10) || 0;

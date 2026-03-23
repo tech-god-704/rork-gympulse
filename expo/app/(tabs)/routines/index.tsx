@@ -40,6 +40,7 @@ export default function RoutinesScreen() {
   const handleCreate = useCallback(() => {
     if (newName.trim().length === 0) return;
     const routine = addRoutine(newName.trim());
+    if (!routine) return;
     setNewName("");
     setShowCreate(false);
     if (Platform.OS !== "web") {
