@@ -32,7 +32,7 @@ import {
 import { generateId } from "@/utils/helpers";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
-const SWIPE_THRESHOLD = -80;
+const SWIPE_THRESHOLD = -56;
 
 const ROUTINE_COLORS: { label: string; value: string | null }[] = [
   { label: "Default", value: null },
@@ -69,15 +69,15 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit }: 
       },
       onPanResponderMove: (_, gestureState) => {
         if (gestureState.dx < 0) {
-          translateX.setValue(Math.max(gestureState.dx, -100));
+          translateX.setValue(Math.max(gestureState.dx, -72));
         } else if (isOpen.current) {
-          translateX.setValue(Math.min(gestureState.dx - 80, 0));
+          translateX.setValue(Math.min(gestureState.dx - 56, 0));
         }
       },
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < SWIPE_THRESHOLD) {
           Animated.spring(translateX, {
-            toValue: -80,
+            toValue: -56,
             useNativeDriver: true,
             friction: 8,
           }).start();
@@ -121,8 +121,7 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit }: 
       {/* Delete action behind */}
       <View style={swStyles.deleteAction}>
         <TouchableOpacity style={swStyles.deleteButton} onPress={handleDelete} activeOpacity={0.7}>
-          <Trash2 size={20} color="#fff" />
-          <Text style={swStyles.deleteText}>Delete</Text>
+          <Trash2 size={18} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -189,25 +188,20 @@ const swStyles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: 80,
+    width: 56,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.error,
+    backgroundColor: "#FF3B30",
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
   },
   deleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
-    gap: 2,
-    width: 80,
-    height: "100%",
-  },
-  deleteText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "600" as const,
-    marginTop: 2,
   },
   foreground: {
     backgroundColor: "rgba(255,255,255,0.88)",
