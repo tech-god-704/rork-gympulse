@@ -56,12 +56,13 @@ export default function TodayScreen() {
     refreshData,
     history,
     lastPerformance,
+    personalRecords,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restTimerDuration, setRestTimerDuration] = useState(60);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0 });
+  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -129,10 +130,32 @@ export default function TodayScreen() {
       } else {
         expectedStreak = 1;
       }
+      // Calculate volume and PR count for this workout
+      let sessionVolume = 0;
+      let sessionPRs = 0;
+      if (currentSession) {
+        currentSession.exercises.forEach((ex) => {
+          const sets = ex.setDetails || [];
+          sets.forEach((s) => {
+            if (s.completed) {
+              sessionVolume += s.weight * s.reps;
+              if (s.weight > 0) {
+                const est1RM = s.weight * (1 + s.reps / 30);
+                const existing = personalRecords[ex.exerciseName];
+                if (!existing || est1RM > existing.estimated1RM) {
+                  sessionPRs++;
+                }
+              }
+            }
+          });
+        });
+      }
       setCompletionStats({
         exercises: totalCount,
         duration: Math.max(duration, 1),
         expectedStreak,
+        totalVolume: sessionVolume,
+        newPRs: sessionPRs,
       });
       setTimeout(() => {
         setShowConfetti(true);
@@ -141,7 +164,7 @@ export default function TodayScreen() {
         }
       }, 400);
     }
-  }, [currentSession, totalCount, streak]);
+  }, [currentSession, totalCount, streak, personalRecords]);
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
@@ -320,6 +343,7 @@ export default function TodayScreen() {
                     onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
                     onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
                     previousPerformance={lastPerformance[exercise.exerciseName]}
+                    personalRecord={personalRecords[exercise.exerciseName]}
                   />
                 ))}
               </View>
@@ -337,20 +361,25 @@ export default function TodayScreen() {
         ) : (
           <View>
             {/* Last Workout Summary */}
-            {history.length > 0 && (
+            {history.length > 0 && (() => {
+              const last = history[0];
+              const lastVol = last.totalVolume ?? 0;
+              const lastVolStr = lastVol >= 1000 ? `${(lastVol / 1000).toFixed(1)}k lbs` : lastVol > 0 ? `${lastVol} lbs` : "";
+              return (
               <View style={styles.lastWorkoutCard}>
                 <Text style={styles.lastWorkoutLabel}>LAST WORKOUT</Text>
-                <Text style={styles.lastWorkoutName}>{history[0].routineName}</Text>
+                <Text style={styles.lastWorkoutName}>{last.routineName}</Text>
                 <View style={styles.lastWorkoutMeta}>
                   <Text style={styles.lastWorkoutDetail}>
-                    {history[0].exerciseCount} exercises · {history[0].duration}min
+                    {last.exerciseCount} exercises · {last.duration}min{lastVolStr ? ` · ${lastVolStr}` : ""}
                   </Text>
                   <Text style={styles.lastWorkoutDate}>
-                    {new Date(history[0].completedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {new Date(last.completedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                   </Text>
                 </View>
               </View>
-            )}
+              );
+            })()}
 
             {/* Today's Scheduled Routine */}
             {todaysRoutine && todaysRoutine.exercises.length > 0 ? (() => {
@@ -456,6 +485,8 @@ export default function TodayScreen() {
         exerciseCount={completionStats.exercises}
         duration={completionStats.duration}
         streak={completionStats.expectedStreak || streak.currentStreak}
+        totalVolume={completionStats.totalVolume}
+        newPRs={completionStats.newPRs}
         onDismiss={handleDismissConfetti}
       />
     </View>

@@ -13,9 +13,10 @@ interface Props {
   onToggleSet?: (setNumber: number) => void;
   onUpdateSetWeight?: (setNumber: number, weight: number) => void;
   previousPerformance?: { sets: { weight: number; reps: number }[] };
+  personalRecord?: { weight: number; reps: number; estimated1RM: number };
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
@@ -25,6 +26,16 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
 
   const completedSets = (exercise.setDetails || []).filter((s) => s.completed).length;
   const totalSets = exercise.setDetails?.length || exercise.sets;
+
+  // PR detection: check if any completed set in this exercise beats the existing PR
+  const isPRBeaten = (() => {
+    if (!personalRecord || !exercise.setDetails) return false;
+    return exercise.setDetails.some((s) => {
+      if (!s.completed || s.weight <= 0) return false;
+      const estimated1RM = s.weight * (1 + s.reps / 30);
+      return estimated1RM > personalRecord.estimated1RM;
+    });
+  })();
 
   useEffect(() => {
     Animated.timing(checkAnim, {
@@ -170,6 +181,11 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               <View style={styles.muscleTag}>
                 <Text style={styles.muscleTagText}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>
               </View>
+              {isPRBeaten && (
+                <View style={styles.prBadge}>
+                  <Text style={styles.prBadgeText}>PR!</Text>
+                </View>
+              )}
             </View>
           </View>
         </TouchableOpacity>
@@ -370,6 +386,20 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
+  },
+  prBadge: {
+    backgroundColor: "rgba(245,158,11,0.18)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(245,158,11,0.3)",
+  },
+  prBadgeText: {
+    fontSize: 10,
+    fontWeight: "900" as const,
+    color: "#92400E",
+    letterSpacing: 0.5,
   },
   restButtons: {
     flexDirection: "row",

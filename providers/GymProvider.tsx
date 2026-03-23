@@ -9,6 +9,7 @@ import {
   Exercise,
   WorkoutSession,
   WorkoutHistory,
+  WorkoutHistoryExercise,
   StreakData,
   MuscleGroup,
   SetData,
@@ -562,37 +563,44 @@ function useGymState() {
     const endTime = Date.now();
     const duration = Math.round((endTime - startTime) / 60000);
 
-    const historyEntry: WorkoutHistory = {
-      id: generateId(),
-      routineId: session.routineId,
-      routineName: session.routineName,
-      completedAt: new Date().toISOString(),
-      exerciseCount: session.exercises.length,
-      duration,
-    };
-
     // Use refs for latest values (avoids stale closure)
     const currentHistory = historyRef.current;
     const currentStreak = streakRef.current;
     const currentPerf = lastPerformanceRef.current;
     const currentPRs = personalRecordsRef.current;
 
-    const updatedHistory = [historyEntry, ...currentHistory];
-    saveHistoryMutation.mutate(updatedHistory);
-
     // Save per-exercise performance for auto-fill next time
     const updatedPerf = { ...currentPerf };
     const updatedPRs = { ...currentPRs };
     const today = getToday();
 
+    // Build enriched per-exercise data
+    const exerciseDetails: WorkoutHistoryExercise[] = [];
+    let totalVolume = 0;
+    let newPRCount = 0;
+    const muscleGroupsSet = new Set<MuscleGroup>();
+
     session.exercises.forEach((ex) => {
       const sets = ensureSetDetails(ex);
       const completedSets = sets.filter((s) => s.completed);
+      muscleGroupsSet.add(ex.muscleGroup);
+
+      let exVolume = 0;
+      let bestSet = { weight: 0, reps: 0 };
+
       if (completedSets.length > 0) {
+        completedSets.forEach((s) => {
+          exVolume += s.weight * s.reps;
+          if (s.weight > bestSet.weight || (s.weight === bestSet.weight && s.reps > bestSet.reps)) {
+            bestSet = { weight: s.weight, reps: s.reps };
+          }
+        });
+
         updatedPerf[ex.exerciseName] = {
           sets: completedSets.map((s) => ({ weight: s.weight, reps: s.reps })),
           date: today,
         };
+
         // Check for PR (Epley formula: 1RM = weight * (1 + reps/30))
         completedSets.forEach((s) => {
           if (s.weight > 0) {
@@ -605,11 +613,38 @@ function useGymState() {
                 estimated1RM,
                 date: today,
               };
+              newPRCount++;
             }
           }
         });
       }
+
+      totalVolume += exVolume;
+      exerciseDetails.push({
+        exerciseName: ex.exerciseName,
+        muscleGroup: ex.muscleGroup,
+        setsCompleted: completedSets.length,
+        totalSets: sets.length,
+        volume: exVolume,
+        bestSet,
+      });
     });
+
+    const historyEntry: WorkoutHistory = {
+      id: generateId(),
+      routineId: session.routineId,
+      routineName: session.routineName,
+      completedAt: new Date().toISOString(),
+      exerciseCount: session.exercises.length,
+      duration,
+      totalVolume,
+      muscleGroups: [...muscleGroupsSet],
+      exercises: exerciseDetails,
+      newPRs: newPRCount,
+    };
+
+    const updatedHistory = [historyEntry, ...currentHistory];
+    saveHistoryMutation.mutate(updatedHistory);
 
     setLastPerformance(updatedPerf);
     setPersonalRecords(updatedPRs);

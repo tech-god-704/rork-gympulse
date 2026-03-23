@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, ChevronRight, Dumbbell, Trophy } from "lucide-react-native";
+import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
@@ -40,6 +40,10 @@ export default function ProfileScreen() {
     : "GP";
 
   const totalWorkouts = history.length;
+
+  const totalVolume = history.reduce((sum, h) => sum + (h.totalVolume ?? 0), 0);
+  const totalDuration = history.reduce((sum, h) => sum + h.duration, 0);
+  const avgDuration = totalWorkouts > 0 ? Math.round(totalDuration / totalWorkouts) : 0;
 
   const handleSaveName = useCallback(() => {
     if (profile && nameValue.trim()) {
@@ -166,6 +170,41 @@ export default function ProfileScreen() {
             </View>
           ))}
         </View>
+
+        {/* Extended Stats */}
+        {totalWorkouts > 0 && (
+          <View style={styles.extendedStats}>
+            <View style={styles.extendedStatsRow}>
+              <View style={styles.extendedStatItem}>
+                <TrendingUp size={14} color={Colors.indigo} />
+                <Text style={styles.extendedStatValue}>
+                  {totalVolume >= 1000000
+                    ? `${(totalVolume / 1000000).toFixed(1)}M`
+                    : totalVolume >= 1000
+                    ? `${(totalVolume / 1000).toFixed(1)}k`
+                    : totalVolume} lbs
+                </Text>
+                <Text style={styles.extendedStatLabel}>Total Volume</Text>
+              </View>
+              <View style={styles.extendedStatDivider} />
+              <View style={styles.extendedStatItem}>
+                <Clock size={14} color={Colors.indigo} />
+                <Text style={styles.extendedStatValue}>{avgDuration}m</Text>
+                <Text style={styles.extendedStatLabel}>Avg Duration</Text>
+              </View>
+              <View style={styles.extendedStatDivider} />
+              <View style={styles.extendedStatItem}>
+                <Clock size={14} color={Colors.indigo} />
+                <Text style={styles.extendedStatValue}>
+                  {totalDuration >= 60
+                    ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
+                    : `${totalDuration}m`}
+                </Text>
+                <Text style={styles.extendedStatLabel}>Total Time</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Settings List */}
         <View style={styles.settingsList}>
@@ -427,6 +466,44 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 3,
+  },
+  extendedStats: {
+    backgroundColor: "rgba(255,255,255,0.88)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.10)",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  extendedStatsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  extendedStatItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 4,
+  },
+  extendedStatValue: {
+    fontSize: 16,
+    fontWeight: "800" as const,
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
+  extendedStatLabel: {
+    fontSize: 9,
+    color: Colors.textTertiary,
+    letterSpacing: 0.3,
+    textTransform: "uppercase" as const,
+  },
+  extendedStatDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   settingsList: {
     backgroundColor: "rgba(255,255,255,0.88)",

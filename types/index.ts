@@ -97,6 +97,15 @@ export interface WorkoutSession {
   isComplete: boolean;
 }
 
+export interface WorkoutHistoryExercise {
+  exerciseName: string;
+  muscleGroup: MuscleGroup;
+  setsCompleted: number;
+  totalSets: number;
+  volume: number; // weight × reps summed across completed sets
+  bestSet: { weight: number; reps: number };
+}
+
 export interface WorkoutHistory {
   id: string;
   routineId: string;
@@ -104,6 +113,10 @@ export interface WorkoutHistory {
   completedAt: string;
   exerciseCount: number;
   duration: number;
+  totalVolume?: number; // total lbs lifted in this workout
+  muscleGroups?: MuscleGroup[]; // unique muscle groups hit
+  exercises?: WorkoutHistoryExercise[]; // per-exercise breakdown
+  newPRs?: number; // count of new PRs set in this workout
 }
 
 export interface StreakData {
