@@ -11,7 +11,7 @@ const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, isAdvancedMode } = useGym();
   const [refreshing, setRefreshing] = useState(false);
 
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
@@ -36,6 +36,16 @@ export default function ProgressScreen() {
     [history]
   );
 
+  const goalMotivation = useMemo(() => {
+    switch (profile?.fitnessGoal) {
+      case "build_muscle": return "Track your volume and watch those muscles grow";
+      case "get_stronger": return "Every PR brings you closer to your strongest self";
+      case "lose_weight": return "Consistency is everything — keep that streak alive";
+      case "stay_active": return "Showing up is what matters most";
+      default: return "Keep pushing forward";
+    }
+  }, [profile?.fitnessGoal]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     refreshData();
@@ -44,7 +54,10 @@ export default function ProgressScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>Progress</Text>
+      <View style={styles.titleSection}>
+        <Text style={styles.title}>Progress</Text>
+        <Text style={styles.titleSubtext}>{goalMotivation}</Text>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -270,8 +283,8 @@ export default function ProgressScreen() {
               <Text style={styles.prCount}>{Object.keys(personalRecords).length} records</Text>
             </View>
 
-            {/* Top 4 Big Lifts highlighted */}
-            {(() => {
+            {/* Top 4 Big Lifts highlighted (advanced only) */}
+            {isAdvancedMode && (() => {
               const bigLifts = ["Bench Press", "Squat", "Deadlift", "Overhead Press"];
               const topPRs = bigLifts
                 .filter((name) => personalRecords[name])
@@ -307,10 +320,12 @@ export default function ProgressScreen() {
                       <Text style={styles.prWeight}>{pr.weight} lbs</Text>
                       <Text style={styles.prReps}>x {pr.reps}</Text>
                     </View>
-                    <View style={styles.pr1RMBadge}>
-                      <TrendingUp size={10} color={Colors.indigo} />
-                      <Text style={styles.pr1RMText}>{Math.round(pr.estimated1RM)}</Text>
-                    </View>
+                    {isAdvancedMode && (
+                      <View style={styles.pr1RMBadge}>
+                        <TrendingUp size={10} color={Colors.indigo} />
+                        <Text style={styles.pr1RMText}>{Math.round(pr.estimated1RM)}</Text>
+                      </View>
+                    )}
                   </View>
                 ))}
             </View>
@@ -326,14 +341,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  titleSection: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
   title: {
     fontSize: 28,
     fontWeight: "800" as const,
     color: Colors.text,
     letterSpacing: -1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
+  },
+  titleSubtext: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    marginTop: 2,
   },
   scrollView: {
     flex: 1,

@@ -708,6 +708,25 @@ function useGymState() {
     saveSession(null);
   }, [saveSession]);
 
+  // ─── Mode ───────────────────────────────────────────────
+  // Advanced mode: auto-set from experience level, or manually toggled
+  const isAdvancedMode = useMemo(() => {
+    if (profile?.advancedMode !== undefined) return profile.advancedMode;
+    // Default: intermediate and advanced get advanced mode
+    return profile?.experienceLevel !== "beginner";
+  }, [profile?.advancedMode, profile?.experienceLevel]);
+
+  const toggleAdvancedMode = useCallback(() => {
+    if (!profile) return;
+    const newMode = !isAdvancedMode;
+    saveProfile({ ...profile, advancedMode: newMode });
+  }, [profile, isAdvancedMode, saveProfile]);
+
+  const dismissModeBanner = useCallback(() => {
+    if (!profile) return;
+    saveProfile({ ...profile, hasSeenModeBanner: true });
+  }, [profile, saveProfile]);
+
   // ─── Computed Data ────────────────────────────────────────
   const getWorkoutsThisWeek = useCallback(() => {
     const startOfWeek = getStartOfWeek(new Date());
@@ -777,5 +796,8 @@ function useGymState() {
     exerciseNotes,
     updateExerciseNote,
     updateSessionNote,
+    isAdvancedMode,
+    toggleAdvancedMode,
+    dismissModeBanner,
   };
 }

@@ -257,6 +257,7 @@ interface EditModalProps {
   exercise: RoutineExercise | null;
   onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], restSeconds?: number) => void;
   onClose: () => void;
+  showAdvanced?: boolean;
 }
 
 const REST_OPTIONS = [
@@ -269,7 +270,7 @@ const REST_OPTIONS = [
   { label: "5m", value: 300 },
 ];
 
-function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProps) {
+function EditExerciseModal({ visible, exercise, onSave, onClose, showAdvanced = true }: EditModalProps) {
   const [setRows, setSetRows] = useState<SetRow[]>([]);
   const [restTime, setRestTime] = useState(0);
 
@@ -376,8 +377,8 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
             <Text style={editStyles.addSetText}>Add Set</Text>
           </TouchableOpacity>
 
-          {/* Rest timer per exercise */}
-          <View style={editStyles.restSection}>
+          {/* Rest timer per exercise (advanced only) */}
+          {showAdvanced && <View style={editStyles.restSection}>
             <Text style={editStyles.restLabel}>REST BETWEEN SETS</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={editStyles.restRow}>
               {REST_OPTIONS.map((opt) => (
@@ -392,7 +393,7 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          </View>
+          </View>}
 
           <View style={editStyles.buttons}>
             <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
@@ -609,6 +610,7 @@ export default function RoutineDetailScreen() {
     deleteRoutine,
     addCustomExercise,
     updateRoutine,
+    isAdvancedMode,
   } = useGym();
 
   const routine = useMemo(() => routines.find((r) => r.id === routineId), [routines, routineId]);
@@ -900,6 +902,7 @@ export default function RoutineDetailScreen() {
         exercise={editingExercise}
         onSave={handleEditSave}
         onClose={() => setEditingExercise(null)}
+        showAdvanced={isAdvancedMode}
       />
 
       {/* Add Exercise Modal */}

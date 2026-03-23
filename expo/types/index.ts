@@ -10,6 +10,8 @@ export interface UserProfile {
   trainingDaysPerWeek: number;
   onboardingComplete: boolean;
   createdAt: string;
+  advancedMode?: boolean; // Show advanced features (plate calc, notes, 1RM, etc.)
+  hasSeenModeBanner?: boolean; // Whether they've seen the mode intro banner
 }
 
 export interface Exercise {

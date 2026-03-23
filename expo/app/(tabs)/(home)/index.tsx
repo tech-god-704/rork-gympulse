@@ -9,10 +9,11 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, Target, Play, X, Clock, FileText } from "lucide-react-native";
+import { Flame, Target, Play, X, Clock, FileText, Zap } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -60,6 +61,9 @@ export default function TodayScreen() {
     exerciseNotes,
     updateExerciseNote,
     updateSessionNote,
+    isAdvancedMode,
+    toggleAdvancedMode,
+    dismissModeBanner,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
@@ -72,6 +76,15 @@ export default function TodayScreen() {
   const [sessionNoteText, setSessionNoteText] = useState("");
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
+  const goalGreeting = useMemo(() => {
+    switch (profile?.fitnessGoal) {
+      case "build_muscle": return "Time to grow";
+      case "get_stronger": return "Let's get stronger";
+      case "lose_weight": return "Let's burn it";
+      case "stay_active": return "Stay moving";
+      default: return "Let's go";
+    }
+  }, [profile?.fitnessGoal]);
   const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
 
@@ -229,8 +242,57 @@ export default function TodayScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.dateLabel}>{dayName}, {monthDay}</Text>
-          <Text style={styles.greeting}>Let's go, {firstName} 💪</Text>
+          <Text style={styles.greeting}>{goalGreeting}, {firstName} 💪</Text>
         </View>
+
+        {/* Mode Welcome Banner - shows once */}
+        {profile && !profile.hasSeenModeBanner && (
+          <View style={styles.modeBanner}>
+            <View style={styles.modeBannerContent}>
+              <View style={styles.modeBannerIcon}>
+                <Zap size={20} color={Colors.amber} />
+              </View>
+              <View style={styles.modeBannerText}>
+                <Text style={styles.modeBannerTitle}>
+                  {isAdvancedMode ? "Advanced Mode is ON" : "You're in Simple Mode"}
+                </Text>
+                <Text style={styles.modeBannerDesc}>
+                  {isAdvancedMode
+                    ? "You have access to plate calculator, workout notes, 1RM tracking, and custom rest timers. Switch to Simple Mode anytime for a cleaner look."
+                    : "We've kept things clean and simple for you. Want plate calculators, workout notes, and 1RM tracking? Switch to Advanced Mode!"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.modeBannerActions}>
+              <View style={styles.modeBannerToggle}>
+                <Text style={styles.modeBannerToggleLabel}>
+                  {isAdvancedMode ? "Advanced" : "Simple"}
+                </Text>
+                <Switch
+                  value={isAdvancedMode}
+                  onValueChange={() => {
+                    toggleAdvancedMode();
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                  trackColor={{ false: "rgba(0,0,0,0.08)", true: "rgba(99,102,241,0.3)" }}
+                  thumbColor={isAdvancedMode ? Colors.indigo : "#f4f4f4"}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.modeBannerDismiss}
+                onPress={() => {
+                  dismissModeBanner();
+                  if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <Text style={styles.modeBannerDismissText}>Got it!</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.modeBannerHint}>
+              You can always change this in Profile &gt; Advanced Mode
+            </Text>
+          </View>
+        )}
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
@@ -306,39 +368,41 @@ export default function TodayScreen() {
               </View>
             </LinearGradient>
 
-            {/* Session Notes */}
-            <View style={styles.sessionNoteSection}>
-              {showSessionNote ? (
-                <View style={styles.sessionNoteInputContainer}>
-                  <TextInput
-                    style={styles.sessionNoteInput}
-                    value={sessionNoteText}
-                    onChangeText={setSessionNoteText}
-                    placeholder="How are you feeling today?"
-                    placeholderTextColor={Colors.textTertiary}
-                    multiline
-                    autoFocus
-                    onBlur={() => {
-                      updateSessionNote(sessionNoteText);
-                      setShowSessionNote(false);
+            {/* Session Notes (Advanced Mode only) */}
+            {isAdvancedMode && (
+              <View style={styles.sessionNoteSection}>
+                {showSessionNote ? (
+                  <View style={styles.sessionNoteInputContainer}>
+                    <TextInput
+                      style={styles.sessionNoteInput}
+                      value={sessionNoteText}
+                      onChangeText={setSessionNoteText}
+                      placeholder="How are you feeling today?"
+                      placeholderTextColor={Colors.textTertiary}
+                      multiline
+                      autoFocus
+                      onBlur={() => {
+                        updateSessionNote(sessionNoteText);
+                        setShowSessionNote(false);
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.sessionNoteButton}
+                    onPress={() => {
+                      setSessionNoteText(currentSession.note || "");
+                      setShowSessionNote(true);
                     }}
-                  />
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.sessionNoteButton}
-                  onPress={() => {
-                    setSessionNoteText(currentSession.note || "");
-                    setShowSessionNote(true);
-                  }}
-                >
-                  <FileText size={14} color={Colors.textTertiary} />
-                  <Text style={styles.sessionNoteButtonText}>
-                    {currentSession.note || "Add workout notes..."}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                  >
+                    <FileText size={14} color={Colors.textTertiary} />
+                    <Text style={styles.sessionNoteButtonText}>
+                      {currentSession.note || "Add workout notes..."}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
 
             {/* Exercises */}
             <View style={styles.exerciseSection}>
@@ -366,9 +430,10 @@ export default function TodayScreen() {
                       onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
                       onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
                       previousPerformance={lastPerformance[exercise.exerciseName]}
-                      onUpdateNote={(note) => updateExerciseNote(exercise.routineExerciseId, note)}
+                      onUpdateNote={isAdvancedMode ? (note) => updateExerciseNote(exercise.routineExerciseId, note) : undefined}
                       restSeconds={routineExercise?.restSeconds}
-                      lastNote={exerciseNotes[exercise.exerciseName]}
+                      lastNote={isAdvancedMode ? exerciseNotes[exercise.exerciseName] : undefined}
+                      showAdvanced={isAdvancedMode}
                     />
                   );
                 })}
@@ -877,6 +942,85 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600" as const,
     color: Colors.primary,
+  },
+  // Mode banner
+  modeBanner: {
+    backgroundColor: "rgba(255,255,255,0.8)",
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: "rgba(99,102,241,0.15)",
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  modeBannerContent: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 14,
+  },
+  modeBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(245,158,11,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modeBannerText: {
+    flex: 1,
+  },
+  modeBannerTitle: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  modeBannerDesc: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  modeBannerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  modeBannerToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  modeBannerToggleLabel: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.text,
+  },
+  modeBannerDismiss: {
+    backgroundColor: Colors.indigo,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: Colors.indigo,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  modeBannerDismissText: {
+    fontSize: 14,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  modeBannerHint: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    textAlign: "center",
   },
   // Session notes
   sessionNoteSection: {

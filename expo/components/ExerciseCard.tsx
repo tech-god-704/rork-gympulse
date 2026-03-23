@@ -17,6 +17,7 @@ interface Props {
   onUpdateNote?: (note: string) => void;
   restSeconds?: number; // Per-exercise rest time
   lastNote?: string; // Note from last time this exercise was done
+  showAdvanced?: boolean; // Whether to show advanced features (plate calc, notes, overload arrows)
 }
 
 function ExerciseCard({
@@ -30,6 +31,7 @@ function ExerciseCard({
   onUpdateNote,
   restSeconds,
   lastNote,
+  showAdvanced = true,
 }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -164,8 +166,8 @@ function ExerciseCard({
               <Text style={[styles.exerciseName, exercise.completed && styles.exerciseNameCompleted]}>
                 {exercise.exerciseName}
               </Text>
-              {/* Progressive overload indicator */}
-              {overloadComparison && exercise.completed && (
+              {/* Progressive overload indicator (advanced only) */}
+              {showAdvanced && overloadComparison && exercise.completed && (
                 <View style={styles.overloadBadge}>
                   {overloadComparison.isUp ? (
                     <TrendingUp size={12} color={Colors.emerald} />
@@ -233,8 +235,8 @@ function ExerciseCard({
         </View>
       </View>
 
-      {/* Last note from previous session */}
-      {lastNote && !exercise.note && !showNoteInput && (
+      {/* Last note from previous session (advanced only) */}
+      {showAdvanced && lastNote && !exercise.note && !showNoteInput && (
         <View style={styles.lastNoteContainer}>
           <Text style={styles.lastNoteText}>Previous note: {lastNote}</Text>
         </View>
@@ -283,8 +285,8 @@ function ExerciseCard({
                   </Text>
                 </TouchableOpacity>
               )}
-              {/* Plate calculator button */}
-              {set.weight >= 45 && !set.completed && (
+              {/* Plate calculator button (advanced only) */}
+              {showAdvanced && set.weight >= 45 && !set.completed && (
                 <TouchableOpacity
                   style={styles.plateCalcButton}
                   onPress={() => {
@@ -305,8 +307,8 @@ function ExerciseCard({
             </View>
           ))}
 
-          {/* Note section */}
-          <View style={styles.noteSection}>
+          {/* Note section (advanced only) */}
+          {showAdvanced && <View style={styles.noteSection}>
             {showNoteInput ? (
               <View style={styles.noteInputContainer}>
                 <TextInput
@@ -337,7 +339,7 @@ function ExerciseCard({
                 </Text>
               </TouchableOpacity>
             )}
-          </View>
+          </View>}
         </View>
       )}
 
