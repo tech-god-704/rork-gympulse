@@ -357,7 +357,7 @@ export default function ProgressScreen() {
                     <View style={styles.overloadValues}>
                       <Text style={styles.overloadWeight}>{item.currentWeight} {wu}</Text>
                       {item.pr1RM > 0 && (
-                        <Text style={styles.overload1RM}>est. 1RM: {item.pr1RM}</Text>
+                        <Text style={styles.overload1RM}>est. 1RM: {item.pr1RM} {wu}</Text>
                       )}
                     </View>
                     <View style={[styles.overloadBadge, atPR ? styles.overloadBadgePR : styles.overloadBadgeNormal]}>
@@ -548,7 +548,7 @@ export default function ProgressScreen() {
                       </View>
                       <View style={styles.pr1RMBadge}>
                         <Text style={styles.pr1RMText}>{Math.round(pr.estimated1RM)}</Text>
-                        <Text style={styles.pr1RMLabel}>1RM</Text>
+                        <Text style={styles.pr1RMLabel}>1RM ({wu})</Text>
                       </View>
                     </View>
                   );

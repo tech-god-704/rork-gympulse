@@ -306,7 +306,7 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
     if (!exercise) return;
     const configs: RoutineSetConfig[] = setRows.map((r) => ({
       reps: parseInt(r.reps, 10) || 1,
-      weight: parseInt(r.weight, 10) || 0,
+      weight: parseFloat(r.weight) || 0,
     }));
     const firstReps = configs[0]?.reps ?? 10;
     const firstWeight = configs[0]?.weight ?? 0;
@@ -593,7 +593,7 @@ export default function RoutineDetailScreen() {
       }
       const numSets = parseInt(customSets, 10) || 3;
       const numReps = parseInt(customReps, 10) || 10;
-      const numWeight = parseInt(customWeight, 10) || 0;
+      const numWeight = parseFloat(customWeight) || 0;
       const routineExercise: RoutineExercise = {
         id: generateId(),
         exerciseId: exercise.id,

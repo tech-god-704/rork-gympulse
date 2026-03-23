@@ -121,6 +121,7 @@ function useGymState() {
   const streakRef = useRef<StreakData>(createDefaultStreak());
   const lastPerformanceRef = useRef<PerformanceMap>({});
   const personalRecordsRef = useRef<PRMap>({});
+  const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS);
   const completingRef = useRef(false);
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
@@ -128,6 +129,7 @@ function useGymState() {
   useEffect(() => { streakRef.current = streak; }, [streak]);
   useEffect(() => { lastPerformanceRef.current = lastPerformance; }, [lastPerformance]);
   useEffect(() => { personalRecordsRef.current = personalRecords; }, [personalRecords]);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -361,10 +363,13 @@ function useGymState() {
   // ─── Actions ──────────────────────────────────────────────
   const updateSettings = useCallback(
     (updates: Partial<AppSettings>) => {
-      const updated = { ...settings, ...updates };
+      const current = settingsRef.current;
+      const updated = { ...current, ...updates };
+      setSettings(updated);
+      settingsRef.current = updated;
       saveSettingsMutation.mutate(updated);
     },
-    [settings, saveSettingsMutation]
+    [saveSettingsMutation]
   );
 
   const saveProfile = useCallback(

@@ -351,6 +351,8 @@ export default function TodayScreen() {
                     previousPerformance={lastPerformance[exercise.exerciseName]}
                     personalRecord={personalRecords[exercise.exerciseName]}
                     weightUnit={settings.weightUnit}
+                    defaultRestTimer={settings.defaultRestTimer}
+                    autoStartRestTimer={settings.autoStartRestTimer}
                   />
                 ))}
               </View>

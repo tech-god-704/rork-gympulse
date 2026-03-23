@@ -15,9 +15,11 @@ interface Props {
   previousPerformance?: { sets: { weight: number; reps: number }[] };
   personalRecord?: { weight: number; reps: number; estimated1RM: number };
   weightUnit?: string;
+  defaultRestTimer?: number;
+  autoStartRestTimer?: boolean;
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord, weightUnit = "lbs" }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
@@ -82,11 +84,11 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
       if (Platform.OS !== "web") {
         void Haptics.impactAsync(wasCompleted ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
       }
-      if (!wasCompleted) {
-        onRestTimer(60);
+      if (!wasCompleted && autoStartRestTimer) {
+        onRestTimer(defaultRestTimer);
       }
     }
-  }, [onToggleSet, onRestTimer]);
+  }, [onToggleSet, onRestTimer, autoStartRestTimer, defaultRestTimer]);
 
   const handleWeightSave = useCallback((setNumber: number) => {
     if (onUpdateSetWeight && editWeight.trim()) {
@@ -192,7 +194,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
         </TouchableOpacity>
         {!exercise.completed && (
           <View style={styles.restButtons}>
-            {[60, 90].map((s) => (
+            {[...new Set([defaultRestTimer, 60, 90])].sort((a, b) => a - b).map((s) => (
               <TouchableOpacity
                 key={s}
                 style={styles.restButton}
@@ -292,7 +294,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               )}
               {previousPerformance?.sets?.[set.setNumber - 1] != null && !set.completed && (
                 <Text style={styles.prevHint}>
-                  Last: {previousPerformance.sets[set.setNumber - 1].weight}×{previousPerformance.sets[set.setNumber - 1].reps}
+                  Last: {previousPerformance.sets[set.setNumber - 1].weight}{weightUnit}×{previousPerformance.sets[set.setNumber - 1].reps}
                 </Text>
               )}
             </TouchableOpacity>
