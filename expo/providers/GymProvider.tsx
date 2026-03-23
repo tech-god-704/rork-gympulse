@@ -109,11 +109,18 @@ function useGymState() {
   const [personalRecords, setPersonalRecords] = useState<PRMap>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Use ref for currentSession to avoid stale closure in rapid toggles
+  // Use refs for values accessed in rapid-fire callbacks to avoid stale closures
   const sessionRef = useRef<WorkoutSession | null>(null);
-  useEffect(() => {
-    sessionRef.current = currentSession;
-  }, [currentSession]);
+  const historyRef = useRef<WorkoutHistory[]>([]);
+  const streakRef = useRef<StreakData>(createDefaultStreak());
+  const lastPerformanceRef = useRef<PerformanceMap>({});
+  const personalRecordsRef = useRef<PRMap>({});
+
+  useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
+  useEffect(() => { historyRef.current = history; }, [history]);
+  useEffect(() => { streakRef.current = streak; }, [streak]);
+  useEffect(() => { lastPerformanceRef.current = lastPerformance; }, [lastPerformance]);
+  useEffect(() => { personalRecordsRef.current = personalRecords; }, [personalRecords]);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -330,6 +337,7 @@ function useGymState() {
           sets: e.sets,
           reps: e.reps,
           weight: e.weight,
+          setConfigs: Array.from({ length: e.sets }, () => ({ reps: e.reps, weight: e.weight })),
         })),
         createdAt: new Date().toISOString(),
       }));
@@ -422,8 +430,8 @@ function useGymState() {
             completed: false,
             setDetails: Array.from({ length: e.sets }, (_, i) => ({
               setNumber: i + 1,
-              reps: prev?.sets[i]?.reps ?? e.reps,
-              weight: prev?.sets[i]?.weight ?? e.weight,
+              reps: prev?.sets[i]?.reps ?? e.setConfigs?.[i]?.reps ?? e.reps,
+              weight: prev?.sets[i]?.weight ?? e.setConfigs?.[i]?.weight ?? e.weight,
               completed: false,
             })),
           };
@@ -541,12 +549,18 @@ function useGymState() {
       duration,
     };
 
-    const updatedHistory = [historyEntry, ...history];
+    // Use refs for latest values (avoids stale closure)
+    const currentHistory = historyRef.current;
+    const currentStreak = streakRef.current;
+    const currentPerf = lastPerformanceRef.current;
+    const currentPRs = personalRecordsRef.current;
+
+    const updatedHistory = [historyEntry, ...currentHistory];
     saveHistoryMutation.mutate(updatedHistory);
 
     // Save per-exercise performance for auto-fill next time
-    const updatedPerf = { ...lastPerformance };
-    const updatedPRs = { ...personalRecords };
+    const updatedPerf = { ...currentPerf };
+    const updatedPRs = { ...currentPRs };
     const today = getToday();
 
     session.exercises.forEach((ex) => {
@@ -581,22 +595,22 @@ function useGymState() {
     void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(updatedPRs));
 
     // Update streak
-    const updatedDates = streak.completedDates.includes(today)
-      ? streak.completedDates
-      : [...streak.completedDates, today];
+    const updatedDates = currentStreak.completedDates.includes(today)
+      ? currentStreak.completedDates
+      : [...currentStreak.completedDates, today];
 
-    let newStreak = streak.currentStreak;
+    let newStreak = currentStreak.currentStreak;
     const yesterday = formatDate(new Date(Date.now() - 86400000));
 
-    if (streak.lastWorkoutDate === today) {
+    if (currentStreak.lastWorkoutDate === today) {
       // already counted today
-    } else if (streak.lastWorkoutDate === yesterday || streak.lastWorkoutDate === null) {
-      newStreak = streak.currentStreak + 1;
+    } else if (currentStreak.lastWorkoutDate === yesterday || currentStreak.lastWorkoutDate === null) {
+      newStreak = currentStreak.currentStreak + 1;
     } else {
       newStreak = 1;
     }
 
-    const newLongest = Math.max(streak.longestStreak, newStreak);
+    const newLongest = Math.max(currentStreak.longestStreak, newStreak);
     const updatedStreak: StreakData = {
       currentStreak: newStreak,
       longestStreak: newLongest,
@@ -606,7 +620,7 @@ function useGymState() {
     saveStreakMutation.mutate(updatedStreak);
 
     saveSession(null);
-  }, [history, streak, lastPerformance, personalRecords, saveHistoryMutation, saveStreakMutation, saveSession]);
+  }, [saveHistoryMutation, saveStreakMutation, saveSession]);
 
   const cancelWorkout = useCallback(() => {
     saveSession(null);

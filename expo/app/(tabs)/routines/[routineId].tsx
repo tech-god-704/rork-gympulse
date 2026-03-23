@@ -24,6 +24,7 @@ import {
   MUSCLE_GROUP_LABELS,
   Exercise,
   RoutineExercise,
+  RoutineSetConfig,
   WeekDay,
   WEEKDAY_SHORT,
   ALL_WEEKDAYS,
@@ -123,9 +124,17 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap }: SwipeableRow
           </View>
           <View style={swStyles.exerciseInfo}>
             <Text style={swStyles.exerciseName}>{exercise.exerciseName}</Text>
-            <Text style={swStyles.exerciseDetail}>
-              {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
-            </Text>
+            {exercise.setConfigs && exercise.setConfigs.length > 0 ? (
+              <Text style={swStyles.exerciseDetail}>
+                {exercise.setConfigs.map((s, i) =>
+                  `${s.weight > 0 ? s.weight + "lbs" : "BW"} × ${s.reps}`
+                ).join("  ·  ")}
+              </Text>
+            ) : (
+              <Text style={swStyles.exerciseDetail}>
+                {exercise.sets} sets × {exercise.reps} reps{exercise.weight > 0 ? ` · ${exercise.weight} lbs` : ""}
+              </Text>
+            )}
           </View>
         </TouchableOpacity>
       </Animated.View>
@@ -214,34 +223,57 @@ const swStyles = StyleSheet.create({
 });
 
 // ─── Edit Modal ─────────────────────────────────────────────
+interface SetRow {
+  reps: string;
+  weight: string;
+}
+
 interface EditModalProps {
   visible: boolean;
   exercise: RoutineExercise | null;
-  onSave: (id: string, sets: number, reps: number, weight: number) => void;
+  onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[]) => void;
   onClose: () => void;
 }
 
 function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProps) {
-  const [sets, setSets] = useState("");
-  const [reps, setReps] = useState("");
-  const [weight, setWeight] = useState("");
+  const [setRows, setSetRows] = useState<SetRow[]>([]);
 
   React.useEffect(() => {
     if (exercise) {
-      setSets(exercise.sets.toString());
-      setReps(exercise.reps.toString());
-      setWeight(exercise.weight.toString());
+      const rows: SetRow[] = [];
+      for (let i = 0; i < exercise.sets; i++) {
+        rows.push({
+          reps: (exercise.setConfigs?.[i]?.reps ?? exercise.reps).toString(),
+          weight: (exercise.setConfigs?.[i]?.weight ?? exercise.weight).toString(),
+        });
+      }
+      setSetRows(rows);
     }
   }, [exercise]);
 
+  const handleAddSet = () => {
+    const lastRow = setRows[setRows.length - 1];
+    setSetRows([...setRows, { reps: lastRow?.reps ?? "10", weight: lastRow?.weight ?? "0" }]);
+  };
+
+  const handleRemoveSet = (index: number) => {
+    if (setRows.length <= 1) return;
+    setSetRows(setRows.filter((_, i) => i !== index));
+  };
+
+  const updateRow = (index: number, field: "reps" | "weight", value: string) => {
+    setSetRows(setRows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  };
+
   const handleSave = () => {
     if (!exercise) return;
-    onSave(
-      exercise.id,
-      parseInt(sets, 10) || 1,
-      parseInt(reps, 10) || 1,
-      parseInt(weight, 10) || 0,
-    );
+    const configs: RoutineSetConfig[] = setRows.map((r) => ({
+      reps: parseInt(r.reps, 10) || 1,
+      weight: parseInt(r.weight, 10) || 0,
+    }));
+    const firstReps = configs[0]?.reps ?? 10;
+    const firstWeight = configs[0]?.weight ?? 0;
+    onSave(exercise.id, setRows.length, firstReps, firstWeight, configs);
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
@@ -258,40 +290,55 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
             </TouchableOpacity>
           </View>
 
-          <View style={editStyles.fieldsRow}>
-            <View style={editStyles.field}>
-              <Text style={editStyles.fieldLabel}>SETS</Text>
-              <TextInput
-                style={editStyles.fieldInput}
-                value={sets}
-                onChangeText={setSets}
-                keyboardType="number-pad"
-                selectTextOnFocus
-              />
-            </View>
-            <View style={editStyles.field}>
-              <Text style={editStyles.fieldLabel}>REPS</Text>
-              <TextInput
-                style={editStyles.fieldInput}
-                value={reps}
-                onChangeText={setReps}
-                keyboardType="number-pad"
-                selectTextOnFocus
-              />
-            </View>
-            <View style={editStyles.field}>
-              <Text style={editStyles.fieldLabel}>WEIGHT</Text>
-              <TextInput
-                style={editStyles.fieldInput}
-                value={weight}
-                onChangeText={setWeight}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor={Colors.textTertiary}
-                selectTextOnFocus
-              />
-            </View>
+          {/* Column headers */}
+          <View style={editStyles.columnHeaders}>
+            <Text style={[editStyles.columnLabel, { width: 36 }]}>SET</Text>
+            <Text style={[editStyles.columnLabel, { flex: 1 }]}>REPS</Text>
+            <Text style={[editStyles.columnLabel, { flex: 1 }]}>WEIGHT</Text>
+            <View style={{ width: 28 }} />
           </View>
+
+          {/* Set rows */}
+          <ScrollView style={editStyles.setList} showsVerticalScrollIndicator={false}>
+            {setRows.map((row, index) => (
+              <View key={index} style={editStyles.setRow}>
+                <View style={editStyles.setNumber}>
+                  <Text style={editStyles.setNumberText}>{index + 1}</Text>
+                </View>
+                <TextInput
+                  style={editStyles.setInput}
+                  value={row.reps}
+                  onChangeText={(v) => updateRow(index, "reps", v)}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  placeholder="10"
+                  placeholderTextColor={Colors.textTertiary}
+                />
+                <TextInput
+                  style={editStyles.setInput}
+                  value={row.weight}
+                  onChangeText={(v) => updateRow(index, "weight", v)}
+                  keyboardType="number-pad"
+                  selectTextOnFocus
+                  placeholder="0"
+                  placeholderTextColor={Colors.textTertiary}
+                />
+                <TouchableOpacity
+                  onPress={() => handleRemoveSet(index)}
+                  style={editStyles.removeSetBtn}
+                  disabled={setRows.length <= 1}
+                >
+                  <X size={14} color={setRows.length <= 1 ? "rgba(0,0,0,0.1)" : Colors.error} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+
+          {/* Add set button */}
+          <TouchableOpacity style={editStyles.addSetBtn} onPress={handleAddSet} activeOpacity={0.7}>
+            <Plus size={14} color={Colors.primary} />
+            <Text style={editStyles.addSetText}>Add Set</Text>
+          </TouchableOpacity>
 
           <View style={editStyles.buttons}>
             <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
@@ -326,7 +373,8 @@ const editStyles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 24,
     padding: 24,
-    width: "85%",
+    width: "90%",
+    maxHeight: "80%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
@@ -337,7 +385,7 @@ const editStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   title: {
     fontSize: 18,
@@ -349,31 +397,79 @@ const editStyles = StyleSheet.create({
   closeBtn: {
     padding: 4,
   },
-  fieldsRow: {
+  columnHeaders: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 24,
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 2,
+    marginBottom: 8,
   },
-  field: {
-    flex: 1,
-  },
-  fieldLabel: {
-    fontSize: 11,
+  columnLabel: {
+    fontSize: 10,
     fontWeight: "700" as const,
     color: Colors.textTertiary,
     letterSpacing: 0.8,
-    marginBottom: 6,
+    textAlign: "center" as const,
   },
-  fieldInput: {
+  setList: {
+    maxHeight: 240,
+    marginBottom: 12,
+  },
+  setRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  setNumber: {
+    width: 36,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(99,102,241,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  setNumberText: {
+    fontSize: 14,
+    fontWeight: "800" as const,
+    color: Colors.indigo,
+  },
+  setInput: {
+    flex: 1,
     backgroundColor: "rgba(0,0,0,0.03)",
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 20,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 18,
     fontWeight: "700" as const,
     color: Colors.text,
     textAlign: "center" as const,
     borderWidth: 1.5,
     borderColor: "rgba(0,0,0,0.06)",
+  },
+  removeSetBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  addSetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(59,130,246,0.15)",
+    backgroundColor: "rgba(59,130,246,0.04)",
+    marginBottom: 16,
+  },
+  addSetText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.primary,
   },
   buttons: {
     flexDirection: "row",
@@ -451,14 +547,23 @@ export default function RoutineDetailScreen() {
   const handleAddExercise = useCallback(
     (exercise: Exercise) => {
       if (!routineId) return;
+      // Guard: prevent adding duplicate exercise
+      if (routine?.exercises.some((e) => e.exerciseName === exercise.name)) {
+        Alert.alert("Already Added", `${exercise.name} is already in this routine.`);
+        return;
+      }
+      const numSets = parseInt(customSets, 10) || 3;
+      const numReps = parseInt(customReps, 10) || 10;
+      const numWeight = parseInt(customWeight, 10) || 0;
       const routineExercise: RoutineExercise = {
         id: generateId(),
         exerciseId: exercise.id,
         exerciseName: exercise.name,
         muscleGroup: exercise.muscleGroup,
-        sets: parseInt(customSets, 10) || 3,
-        reps: parseInt(customReps, 10) || 10,
-        weight: parseInt(customWeight, 10) || 0,
+        sets: numSets,
+        reps: numReps,
+        weight: numWeight,
+        setConfigs: Array.from({ length: numSets }, () => ({ reps: numReps, weight: numWeight })),
       };
       addExerciseToRoutine(routineId, routineExercise);
       if (Platform.OS !== "web") {
@@ -474,17 +579,26 @@ export default function RoutineDetailScreen() {
   );
 
   const handleAddCustom = useCallback((nameOverride?: string) => {
-    const exerciseName = nameOverride || "";
+    const exerciseName = nameOverride?.trim() || "";
     if (!exerciseName || !routineId) return;
+    // Guard: prevent adding duplicate exercise
+    if (routine?.exercises.some((e) => e.exerciseName.toLowerCase() === exerciseName.toLowerCase())) {
+      Alert.alert("Already Added", `${exerciseName} is already in this routine.`);
+      return;
+    }
     const exercise = addCustomExercise(exerciseName, selectedMuscle);
+    const numSets = parseInt(customSets, 10) || 3;
+    const numReps = parseInt(customReps, 10) || 10;
+    const numWeight = parseInt(customWeight, 10) || 0;
     const routineExercise: RoutineExercise = {
       id: generateId(),
       exerciseId: exercise.id,
       exerciseName: exercise.name,
       muscleGroup: exercise.muscleGroup,
-      sets: parseInt(customSets, 10) || 3,
-      reps: parseInt(customReps, 10) || 10,
-      weight: parseInt(customWeight, 10) || 0,
+      sets: numSets,
+      reps: numReps,
+      weight: numWeight,
+      setConfigs: Array.from({ length: numSets }, () => ({ reps: numReps, weight: numWeight })),
     };
     addExerciseToRoutine(routineId, routineExercise);
     if (Platform.OS !== "web") {
@@ -509,10 +623,10 @@ export default function RoutineDetailScreen() {
   );
 
   const handleEditSave = useCallback(
-    (exerciseId: string, sets: number, reps: number, weight: number) => {
+    (exerciseId: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[]) => {
       if (!routine || !routineId) return;
       const updatedExercises = routine.exercises.map((e) =>
-        e.id === exerciseId ? { ...e, sets, reps, weight } : e
+        e.id === exerciseId ? { ...e, sets, reps, weight, setConfigs } : e
       );
       updateRoutine(routineId, { exercises: updatedExercises });
       setEditingExercise(null);

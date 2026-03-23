@@ -34,28 +34,6 @@ export function estimateRoutineDuration(exerciseCount: number): number {
   return exerciseCount * 5;
 }
 
-export function getWeekNumber(date: Date): number {
-  const start = new Date(date.getFullYear(), 0, 1);
-  const diff = date.getTime() - start.getTime();
-  const oneWeek = 604800000;
-  return Math.floor(diff / oneWeek);
-}
-
-export function getLastNWeeksDates(n: number): string[][] {
-  const weeks: string[][] = [];
-  const today = new Date();
-  for (let w = n - 1; w >= 0; w--) {
-    const week: string[] = [];
-    for (let d = 6; d >= 0; d--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - (w * 7 + d));
-      week.push(formatDate(date));
-    }
-    weeks.push(week);
-  }
-  return weeks;
-}
-
 export function getMonthCalendarDates(): { date: string; dayOfMonth: number; isCurrentMonth: boolean }[] {
   const today = new Date();
   const year = today.getFullYear();

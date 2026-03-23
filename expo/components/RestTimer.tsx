@@ -10,12 +10,13 @@ const PRESETS = [30, 60, 90, 120];
 interface Props {
   visible: boolean;
   onClose: () => void;
+  initialDuration?: number;
 }
 
-export default function RestTimer({ visible, onClose }: Props) {
-  const [seconds, setSeconds] = useState(60);
+export default function RestTimer({ visible, onClose, initialDuration = 60 }: Props) {
+  const [seconds, setSeconds] = useState(initialDuration);
   const [isRunning, setIsRunning] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(initialDuration);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -28,6 +29,15 @@ export default function RestTimer({ visible, onClose }: Props) {
     },
     []
   );
+
+  // Reset timer when opened with a new duration
+  useEffect(() => {
+    if (visible) {
+      setSeconds(initialDuration);
+      setTimeLeft(initialDuration);
+      setIsRunning(false);
+    }
+  }, [visible, initialDuration]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -108,7 +118,7 @@ export default function RestTimer({ visible, onClose }: Props) {
             />
           </Animated.View>
 
-          {!isRunning && timeLeft > 0 && timeLeft === seconds && (
+          {!isRunning && (timeLeft === 0 || timeLeft === seconds) && (
             <View style={styles.presetsRow}>
               {PRESETS.map((p) => (
                 <TouchableOpacity

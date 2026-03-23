@@ -215,10 +215,41 @@ export default function ProgressScreen() {
             <View style={[styles.lifetimeIcon, { backgroundColor: "#ECFDF5" }]}>
               <Text style={{ fontSize: 16 }}>⏱️</Text>
             </View>
-            <Text style={styles.lifetimeValue}>{totalDuration > 60 ? `${Math.round(totalDuration / 60)}h` : `${totalDuration}m`}</Text>
+            <Text style={styles.lifetimeValue}>
+              {totalDuration >= 60
+                ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
+                : `${totalDuration}m`}
+            </Text>
             <Text style={styles.lifetimeLabel}>TOTAL TIME</Text>
           </View>
         </View>
+
+        {/* Recent Workouts */}
+        {history.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.cardTitle}>Recent Workouts</Text>
+            </View>
+            <View style={styles.historyList}>
+              {history.slice(0, 10).map((h) => {
+                const d = new Date(h.completedAt);
+                const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+                return (
+                  <View key={h.id} style={styles.historyRow}>
+                    <View style={styles.historyDot} />
+                    <View style={styles.historyInfo}>
+                      <Text style={styles.historyName}>{h.routineName}</Text>
+                      <Text style={styles.historyMeta}>
+                        {h.exerciseCount} exercises · {h.duration} min
+                      </Text>
+                    </View>
+                    <Text style={styles.historyDate}>{dateStr}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Personal Records */}
         {Object.keys(personalRecords).length > 0 && (
@@ -342,11 +373,11 @@ const styles = StyleSheet.create({
   },
   weekdayRow: {
     flexDirection: "row",
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     marginBottom: 2,
   },
   weekdayCell: {
-    flex: 1,
+    width: "14.28%",
     alignItems: "center",
   },
   weekdayText: {
@@ -514,6 +545,43 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 2,
+  },
+  historyList: {
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.04)",
+  },
+  historyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.indigo,
+    marginRight: 12,
+  },
+  historyInfo: {
+    flex: 1,
+  },
+  historyName: {
+    fontSize: 14,
+    fontWeight: "600" as const,
+    color: Colors.text,
+    letterSpacing: -0.2,
+  },
+  historyMeta: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    marginTop: 1,
+  },
+  historyDate: {
+    fontSize: 11,
+    fontWeight: "500" as const,
+    color: Colors.textTertiary,
   },
   prList: {
     paddingHorizontal: 16,

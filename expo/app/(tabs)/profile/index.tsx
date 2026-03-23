@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,8 +22,9 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { profile, streak, history, saveProfile } = useGym();
+  const { profile, streak, history, saveProfile, refreshData } = useGym();
 
+  const [refreshing, setRefreshing] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(profile?.name ?? "");
   const [editingGoal, setEditingGoal] = useState(false);
@@ -89,6 +91,17 @@ export default function ProfileScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              refreshData();
+              setTimeout(() => setRefreshing(false), 600);
+            }}
+            tintColor={Colors.indigo}
+          />
+        }
       >
         {/* Avatar Card */}
         <View style={styles.avatarCard}>
@@ -260,8 +273,7 @@ export default function ProfileScreen() {
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>Notifications</Text>
             <View style={styles.settingRight}>
-              <Text style={styles.settingValue}>On</Text>
-              <ChevronRight size={14} color={Colors.textTertiary} />
+              <Text style={styles.comingSoon}>Coming Soon</Text>
             </View>
           </View>
 
@@ -270,8 +282,7 @@ export default function ProfileScreen() {
           <View style={styles.settingRow}>
             <Text style={styles.settingLabel}>Dark Mode</Text>
             <View style={styles.settingRight}>
-              <Text style={styles.settingValue}>Off</Text>
-              <ChevronRight size={14} color={Colors.textTertiary} />
+              <Text style={styles.comingSoon}>Coming Soon</Text>
             </View>
           </View>
         </View>
@@ -467,6 +478,13 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 12,
     color: Colors.textTertiary,
+  },
+  comingSoon: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.textTertiary,
+    opacity: 0.6,
+    fontStyle: "italic" as const,
   },
   settingDivider: {
     height: 1,

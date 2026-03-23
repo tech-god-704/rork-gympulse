@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,7 +16,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
-import { getTodayWeekDay } from "@/utils/helpers";
+import { getTodayWeekDay, getToday, formatDate } from "@/utils/helpers";
 import { WeekDay } from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
 import ProgressRing from "@/components/ProgressRing";
@@ -43,6 +44,7 @@ export default function TodayScreen() {
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [restTimerDuration, setRestTimerDuration] = useState(60);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -101,8 +103,8 @@ export default function TodayScreen() {
       const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
       const duration = Math.round((Date.now() - startTime) / 60000);
       // Calculate expected streak after this workout completes
-      const today = new Date().toISOString().split("T")[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const today = getToday();
+      const yesterday = formatDate(new Date(Date.now() - 86400000));
       let expectedStreak = streak.currentStreak;
       if (streak.lastWorkoutDate === today) {
         // already counted today
@@ -167,10 +169,23 @@ export default function TodayScreen() {
   );
 
   const handleCancelWorkout = useCallback(() => {
-    cancelWorkout();
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    Alert.alert(
+      "Cancel Workout",
+      "Are you sure? All progress for this session will be lost.",
+      [
+        { text: "Keep Going", style: "cancel" },
+        {
+          text: "Cancel Workout",
+          style: "destructive",
+          onPress: () => {
+            cancelWorkout();
+            if (Platform.OS !== "web") {
+              void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+          },
+        },
+      ]
+    );
   }, [cancelWorkout]);
 
   const onRefresh = useCallback(() => {
@@ -264,11 +279,7 @@ export default function TodayScreen() {
                   </View>
                 </View>
                 <View style={styles.heroRingContainer}>
-                  <ProgressRing
-                    progress={progress}
-                    completed={completedCount}
-                    total={totalCount}
-                  />
+                  <ProgressRing progress={progress} />
                 </View>
               </View>
             </LinearGradient>
@@ -286,7 +297,10 @@ export default function TodayScreen() {
                     exercise={exercise}
                     index={index}
                     onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
-                    onRestTimer={() => setShowRestTimer(true)}
+                    onRestTimer={(seconds) => {
+                      setRestTimerDuration(seconds ?? 60);
+                      setShowRestTimer(true);
+                    }}
                     onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
                     onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
                     previousPerformance={lastPerformance[exercise.exerciseName]}
@@ -356,7 +370,7 @@ export default function TodayScreen() {
 
             {routines.length > 0 ? (
               <View style={styles.routinesList}>
-                {routines.filter((r) => r.id !== todaysRoutine?.id).map((routine) => (
+                {routines.filter((r) => r.id !== todaysRoutine?.id && r.exercises.length > 0).map((routine) => (
                   <TouchableOpacity
                     key={routine.id}
                     style={styles.routineCard}
@@ -393,7 +407,7 @@ export default function TodayScreen() {
         )}
       </ScrollView>
 
-      <RestTimer visible={showRestTimer} onClose={() => setShowRestTimer(false)} />
+      <RestTimer visible={showRestTimer} onClose={() => setShowRestTimer(false)} initialDuration={restTimerDuration} />
 
       <ConfettiOverlay
         visible={showConfetti}
