@@ -14,20 +14,20 @@ const Colors = {
   rose: "#F43F5E",
 
   // Background & surfaces
-  background: "#F6F8FC",
-  cardBackground: "rgba(255,255,255,0.6)",
-  cardBorder: "rgba(255,255,255,0.7)",
-  surface: "#EEF2F7",
+  background: "#EAECF5",
+  cardBackground: "rgba(255,255,255,0.88)",
+  cardBorder: "rgba(99,102,241,0.10)",
+  surface: "#E2E5F0",
 
   // Glass effect
-  glass: "rgba(255,255,255,0.5)",
-  glassBorder: "rgba(255,255,255,0.7)",
+  glass: "rgba(255,255,255,0.75)",
+  glassBorder: "rgba(99,102,241,0.10)",
 
   // Text
   text: "#0C1222",
   textSecondary: "#4B5675",
-  textTertiary: "#8896AB",
-  textMuted: "#8896AB",
+  textTertiary: "#7181A0",
+  textMuted: "#7181A0",
 
   // Status
   success: "#10B981",
@@ -38,7 +38,7 @@ const Colors = {
   // Basics
   white: "#FFFFFF",
   black: "#000000",
-  border: "rgba(0,0,0,0.04)",
+  border: "rgba(0,0,0,0.06)",
   shadow: "#000000",
   overlay: "rgba(0,0,0,0.5)",
   dark: "#0C1222",
@@ -47,8 +47,8 @@ const Colors = {
   streakFlame: "#F59E0B",
 
   // Completed states
-  completedCard: "rgba(16,185,129,0.06)",
-  completedBorder: "rgba(16,185,129,0.2)",
+  completedCard: "rgba(16,185,129,0.08)",
+  completedBorder: "rgba(16,185,129,0.25)",
 
   // Muscle group colors
   muscleChest: "#EF4444",

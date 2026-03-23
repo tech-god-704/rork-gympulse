@@ -196,13 +196,13 @@ const swStyles = StyleSheet.create({
     marginTop: 2,
   },
   foreground: {
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: "rgba(255,255,255,0.88)",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.7)",
+    borderColor: "rgba(99,102,241,0.10)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.08,
     shadowRadius: 20,
     elevation: 2,
   },
@@ -458,7 +458,7 @@ const editStyles = StyleSheet.create({
   },
   setInput: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -501,7 +501,7 @@ const editStyles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     alignItems: "center",
   },
   cancelText: {
@@ -1011,9 +1011,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dayChipInactive: {
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   dayChipText: {
     fontSize: 11,
@@ -1129,7 +1129,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.04)",
+    borderBottomColor: "rgba(0,0,0,0.06)",
   },
   modalClose: {
     fontSize: 16,
@@ -1161,7 +1161,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   setsRepsInput: {
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
@@ -1169,7 +1169,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: "center" as const,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   muscleScroll: {
     maxHeight: 48,
@@ -1185,9 +1185,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   musclePillInactive: {
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   musclePillText: {
     fontSize: 14,
@@ -1202,13 +1202,13 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderRadius: 14,
     paddingHorizontal: 14,
     marginHorizontal: 20,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   searchInput: {
     flex: 1,
@@ -1247,7 +1247,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.04)",
+    borderBottomColor: "rgba(0,0,0,0.06)",
   },
   exerciseListName: {
     fontSize: 16,

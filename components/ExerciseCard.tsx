@@ -75,12 +75,12 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
 
   const backgroundColor = checkAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["rgba(255,255,255,0.5)", "rgba(16,185,129,0.06)"],
+    outputRange: ["rgba(255,255,255,0.88)", "rgba(16,185,129,0.06)"],
   });
 
   const borderColor = checkAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["rgba(255,255,255,0.7)", "rgba(16,185,129,0.2)"],
+    outputRange: ["rgba(99,102,241,0.10)", "rgba(16,185,129,0.2)"],
   });
 
   return (
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.08,
     shadowRadius: 20,
     elevation: 2,
     overflow: "hidden",
@@ -327,9 +327,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 4,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   restButtonText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   // ─── Set details ───
   setsContainer: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.04)",
+    borderTopColor: "rgba(0,0,0,0.06)",
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
     borderColor: "rgba(0,0,0,0.1)",
-    backgroundColor: "rgba(0,0,0,0.02)",
+    backgroundColor: "rgba(99,102,241,0.04)",
     justifyContent: "center",
     alignItems: "center",
   },

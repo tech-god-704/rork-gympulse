@@ -284,9 +284,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.05)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   presetPillActive: {
     backgroundColor: "rgba(59,130,246,0.08)",
@@ -328,9 +328,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 24,
     borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: "rgba(99,102,241,0.10)",
   },
   adjustText: {
     fontSize: 15,
