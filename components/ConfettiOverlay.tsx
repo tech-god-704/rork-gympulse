@@ -15,10 +15,11 @@ interface Props {
   streak: number;
   totalVolume?: number;
   newPRs?: number;
+  weightUnit?: string;
   onDismiss: () => void;
 }
 
-export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, onDismiss }: Props) {
+export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, weightUnit = "lbs", onDismiss }: Props) {
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const [celebrationEmoji, setCelebrationEmoji] = useState("🎉");
@@ -140,7 +141,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         {totalVolume > 0 && (
           <View style={styles.volumeRow}>
             <Text style={styles.volumeValue}>
-              {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} lbs
+              {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} {weightUnit}
             </Text>
             <Text style={styles.volumeLabel}>total volume</Text>
           </View>

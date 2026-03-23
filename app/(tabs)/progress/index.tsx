@@ -23,7 +23,8 @@ const MUSCLE_COLORS: Record<MuscleGroup, string> = {
 
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance, settings } = useGym();
+  const wu = settings.weightUnit;
   const [refreshing, setRefreshing] = useState(false);
   const [prExpanded, setPrExpanded] = useState(true);
 
@@ -266,7 +267,7 @@ export default function ProgressScreen() {
                     <Text style={styles.weekSummaryValue}>
                       {weekVolume >= 1000 ? `${(weekVolume / 1000).toFixed(1)}k` : weekVolume}
                     </Text>
-                    <Text style={styles.weekSummaryLabel}>Volume (lbs)</Text>
+                    <Text style={styles.weekSummaryLabel}>Volume ({wu})</Text>
                   </View>
                 </>
               )}
@@ -354,7 +355,7 @@ export default function ProgressScreen() {
                       <Text style={styles.overloadDate}>{item.date}</Text>
                     </View>
                     <View style={styles.overloadValues}>
-                      <Text style={styles.overloadWeight}>{item.currentWeight} lbs</Text>
+                      <Text style={styles.overloadWeight}>{item.currentWeight} {wu}</Text>
                       {item.pr1RM > 0 && (
                         <Text style={styles.overload1RM}>est. 1RM: {item.pr1RM}</Text>
                       )}
@@ -474,7 +475,7 @@ export default function ProgressScreen() {
                     ? `${(totalVolume / 1000).toFixed(1)}k`
                     : totalVolume}
                 </Text>
-                <Text style={styles.statsLabel}>Volume (lbs)</Text>
+                <Text style={styles.statsLabel}>Volume ({wu})</Text>
               </View>
               <View style={styles.statsItem}>
                 <Text style={styles.statsValue}>{totalPRs}</Text>
@@ -542,7 +543,7 @@ export default function ProgressScreen() {
                         <Text style={styles.prDate}>{pr.date}</Text>
                       </View>
                       <View style={styles.prValues}>
-                        <Text style={styles.prWeight}>{pr.weight} lbs</Text>
+                        <Text style={styles.prWeight}>{pr.weight} {wu}</Text>
                         <Text style={styles.prReps}>× {pr.reps}</Text>
                       </View>
                       <View style={styles.pr1RMBadge}>
@@ -568,7 +569,7 @@ export default function ProgressScreen() {
                 const d = new Date(h.completedAt);
                 const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
                 const vol = h.totalVolume ?? 0;
-                const volStr = vol >= 1000 ? `${(vol / 1000).toFixed(1)}k lbs` : vol > 0 ? `${vol} lbs` : "";
+                const volStr = vol >= 1000 ? `${(vol / 1000).toFixed(1)}k ${wu}` : vol > 0 ? `${vol} ${wu}` : "";
                 return (
                   <View key={h.id} style={styles.historyRow}>
                     <View style={styles.historyDot} />

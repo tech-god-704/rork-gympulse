@@ -126,6 +126,25 @@ export interface StreakData {
   completedDates: string[];
 }
 
+export type WeightUnit = "lbs" | "kg";
+export type AppTheme = "light" | "dark" | "system";
+
+export interface AppSettings {
+  weightUnit: WeightUnit;
+  defaultRestTimer: number; // seconds
+  theme: AppTheme;
+  showConfetti: boolean;
+  autoStartRestTimer: boolean;
+}
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  weightUnit: "lbs",
+  defaultRestTimer: 60,
+  theme: "light",
+  showConfetti: true,
+  autoStartRestTimer: true,
+};
+
 export const GOAL_LABELS: Record<FitnessGoal, string> = {
   build_muscle: "Build Muscle",
   lose_weight: "Lose Weight",

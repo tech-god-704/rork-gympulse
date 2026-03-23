@@ -13,6 +13,8 @@ import {
   StreakData,
   MuscleGroup,
   SetData,
+  AppSettings,
+  DEFAULT_SETTINGS,
 } from "@/types";
 import { BUILT_IN_EXERCISES, STARTER_ROUTINES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
@@ -26,6 +28,7 @@ const STORAGE_KEYS = {
   STREAK: "gympulse_streak",
   LAST_PERFORMANCE: "gympulse_last_performance",
   PERSONAL_RECORDS: "gympulse_personal_records",
+  SETTINGS: "gympulse_settings",
 };
 
 // Per-exercise last performance data
@@ -109,6 +112,7 @@ function useGymState() {
   const [streak, setStreak] = useState<StreakData>(createDefaultStreak());
   const [lastPerformance, setLastPerformance] = useState<PerformanceMap>({});
   const [personalRecords, setPersonalRecords] = useState<PRMap>({});
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(true);
 
   // Use refs for values accessed in rapid-fire callbacks to avoid stale closures
@@ -208,6 +212,15 @@ function useGymState() {
     },
   });
 
+  const settingsQuery = useQuery({
+    queryKey: ["settings"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (!stored) return DEFAULT_SETTINGS;
+      try { return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } as AppSettings; } catch { return DEFAULT_SETTINGS; }
+    },
+  });
+
   useEffect(() => {
     if (profileQuery.data !== undefined) setProfile(profileQuery.data);
   }, [profileQuery.data]);
@@ -241,6 +254,10 @@ function useGymState() {
   }, [prQuery.data]);
 
   useEffect(() => {
+    if (settingsQuery.data !== undefined) setSettings(settingsQuery.data);
+  }, [settingsQuery.data]);
+
+  useEffect(() => {
     const allDone =
       !profileQuery.isLoading &&
       !routinesQuery.isLoading &&
@@ -249,7 +266,8 @@ function useGymState() {
       !historyQuery.isLoading &&
       !streakQuery.isLoading &&
       !perfQuery.isLoading &&
-      !prQuery.isLoading;
+      !prQuery.isLoading &&
+      !settingsQuery.isLoading;
     if (allDone) setIsLoading(false);
   }, [
     profileQuery.isLoading,
@@ -260,6 +278,7 @@ function useGymState() {
     streakQuery.isLoading,
     perfQuery.isLoading,
     prQuery.isLoading,
+    settingsQuery.isLoading,
   ]);
 
   // ─── Mutations ────────────────────────────────────────────
@@ -329,7 +348,25 @@ function useGymState() {
     },
   });
 
+  const saveSettingsMutation = useMutation({
+    mutationFn: async (s: AppSettings) => {
+      await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(s));
+      return s;
+    },
+    onSuccess: (s) => {
+      setSettings(s);
+    },
+  });
+
   // ─── Actions ──────────────────────────────────────────────
+  const updateSettings = useCallback(
+    (updates: Partial<AppSettings>) => {
+      const updated = { ...settings, ...updates };
+      saveSettingsMutation.mutate(updated);
+    },
+    [settings, saveSettingsMutation]
+  );
+
   const saveProfile = useCallback(
     (p: UserProfile) => {
       saveProfileMutation.mutate(p);
@@ -753,5 +790,7 @@ function useGymState() {
     refreshData,
     lastPerformance,
     personalRecords,
+    settings,
+    updateSettings,
   };
 }

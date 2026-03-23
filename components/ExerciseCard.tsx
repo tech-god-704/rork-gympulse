@@ -14,9 +14,10 @@ interface Props {
   onUpdateSetWeight?: (setNumber: number, weight: number) => void;
   previousPerformance?: { sets: { weight: number; reps: number }[] };
   personalRecord?: { weight: number; reps: number; estimated1RM: number };
+  weightUnit?: string;
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord, weightUnit = "lbs" }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
@@ -172,10 +173,10 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               <Text style={styles.detail}>
                 {(() => {
                   const sets = exercise.setDetails || [];
-                  if (sets.length === 0) return exercise.weight > 0 ? `${exercise.weight} lbs` : "BW";
+                  if (sets.length === 0) return exercise.weight > 0 ? `${exercise.weight} ${weightUnit}` : "BW";
                   const weights = [...new Set(sets.map((s) => s.weight))];
-                  if (weights.length === 1) return weights[0] > 0 ? `${weights[0]} lbs` : "BW";
-                  return `${Math.min(...weights)}-${Math.max(...weights)} lbs`;
+                  if (weights.length === 1) return weights[0] > 0 ? `${weights[0]} ${weightUnit}` : "BW";
+                  return `${Math.min(...weights)}-${Math.max(...weights)} ${weightUnit}`;
                 })()}
               </Text>
               <View style={styles.muscleTag}>
@@ -273,7 +274,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                   >
                     <Plus size={14} color={Colors.primary} />
                   </TouchableOpacity>
-                  <Text style={styles.editWeightUnit}>lbs</Text>
+                  <Text style={styles.editWeightUnit}>{weightUnit}</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -285,7 +286,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                   hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
                 >
                   <Text style={[styles.setWeight, set.completed && styles.setWeightCompleted]}>
-                    {set.weight > 0 ? `${set.weight} lbs` : "BW"}
+                    {set.weight > 0 ? `${set.weight} ${weightUnit}` : "BW"}
                   </Text>
                 </TouchableOpacity>
               )}

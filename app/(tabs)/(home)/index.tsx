@@ -57,10 +57,11 @@ export default function TodayScreen() {
     history,
     lastPerformance,
     personalRecords,
+    settings,
   } = useGym();
 
   const [showRestTimer, setShowRestTimer] = useState(false);
-  const [restTimerDuration, setRestTimerDuration] = useState(60);
+  const [restTimerDuration, setRestTimerDuration] = useState(settings.defaultRestTimer);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -158,13 +159,18 @@ export default function TodayScreen() {
         newPRs: sessionPRs,
       });
       setTimeout(() => {
-        setShowConfetti(true);
+        if (settings.showConfetti) {
+          setShowConfetti(true);
+        } else {
+          // Skip confetti, go straight to completing
+          completeWorkout();
+        }
         if (Platform.OS !== "web") {
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       }, 400);
     }
-  }, [currentSession, totalCount, streak, personalRecords]);
+  }, [currentSession, totalCount, streak, personalRecords, settings.showConfetti, completeWorkout]);
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
@@ -312,7 +318,7 @@ export default function TodayScreen() {
                     )}
                     {totalVolume > 0 && (
                       <Text style={styles.heroTimerText}>
-                        {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} lbs
+                        {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} {settings.weightUnit}
                       </Text>
                     )}
                   </View>
@@ -344,6 +350,7 @@ export default function TodayScreen() {
                     onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
                     previousPerformance={lastPerformance[exercise.exerciseName]}
                     personalRecord={personalRecords[exercise.exerciseName]}
+                    weightUnit={settings.weightUnit}
                   />
                 ))}
               </View>
@@ -364,7 +371,7 @@ export default function TodayScreen() {
             {history.length > 0 && (() => {
               const last = history[0];
               const lastVol = last.totalVolume ?? 0;
-              const lastVolStr = lastVol >= 1000 ? `${(lastVol / 1000).toFixed(1)}k lbs` : lastVol > 0 ? `${lastVol} lbs` : "";
+              const lastVolStr = lastVol >= 1000 ? `${(lastVol / 1000).toFixed(1)}k ${settings.weightUnit}` : lastVol > 0 ? `${lastVol} ${settings.weightUnit}` : "";
               return (
               <View style={styles.lastWorkoutCard}>
                 <Text style={styles.lastWorkoutLabel}>LAST WORKOUT</Text>
@@ -487,6 +494,7 @@ export default function TodayScreen() {
         streak={completionStats.expectedStreak || streak.currentStreak}
         totalVolume={completionStats.totalVolume}
         newPRs={completionStats.newPRs}
+        weightUnit={settings.weightUnit}
         onDismiss={handleDismissConfetti}
       />
     </View>
