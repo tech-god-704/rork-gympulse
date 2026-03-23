@@ -2,7 +2,7 @@
   "apps": [
     {
       "name": "GymPulse",
-      "path": "expo",
+      "path": ".",
       "framework": "react-native"
     }
   ]
