@@ -73,10 +73,10 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
 
   const handleClose = useCallback(() => {
     setIsRunning(false);
-    setTimeLeft(60);
+    setTimeLeft(initialDuration);
     if (intervalRef.current) clearInterval(intervalRef.current);
     onClose();
-  }, [onClose]);
+  }, [onClose, initialDuration]);
 
   const togglePause = useCallback(() => {
     setIsRunning((prev) => !prev);
