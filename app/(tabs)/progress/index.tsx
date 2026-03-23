@@ -151,7 +151,7 @@ export default function ProgressScreen() {
                     const startOfWeek = new Date(now);
                     startOfWeek.setDate(now.getDate() - now.getDay());
                     startOfWeek.setHours(0, 0, 0, 0);
-                    return new Date(h.completedAt) >= startOfWeek;
+                    return new Date(h.completedAt).getTime() >= startOfWeek.getTime();
                   })
                   .reduce((sum, h) => sum + h.exerciseCount, 0)}
               </Text>

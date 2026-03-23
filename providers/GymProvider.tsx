@@ -655,7 +655,7 @@ function useGymState() {
   // ─── Computed Data ────────────────────────────────────────
   const getWorkoutsThisWeek = useCallback(() => {
     const startOfWeek = getStartOfWeek(new Date());
-    return history.filter((h) => new Date(h.completedAt) >= startOfWeek).length;
+    return history.filter((h) => new Date(h.completedAt).getTime() >= startOfWeek.getTime()).length;
   }, [history]);
 
   // Calendar-week aligned weekly counts
@@ -672,7 +672,7 @@ function useGymState() {
 
         const count = history.filter((h) => {
           const d = new Date(h.completedAt);
-          return d >= weekStart && d < weekEnd;
+          return d.getTime() >= weekStart.getTime() && d.getTime() < weekEnd.getTime();
         }).length;
         counts.push(count);
       }
