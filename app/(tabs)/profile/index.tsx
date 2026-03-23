@@ -36,7 +36,7 @@ export default function ProfileScreen() {
     : "Today";
 
   const initials = profile?.name
-    ? profile.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
+    ? profile.name.split(" ").filter(Boolean).map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "GP";
 
   const totalWorkouts = history.length;

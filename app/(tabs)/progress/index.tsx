@@ -46,6 +46,16 @@ export default function ProgressScreen() {
     [history]
   );
 
+  const weekExerciseCount = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    return history
+      .filter((h) => new Date(h.completedAt).getTime() >= startOfWeek.getTime())
+      .reduce((sum, h) => sum + h.exerciseCount, 0);
+  }, [history]);
+
   // ─── Computed Stats ─────────────────────────────────────
   const avgDuration = useMemo(() => {
     if (history.length === 0) return 0;
@@ -199,17 +209,7 @@ export default function ProgressScreen() {
               </View>
               <View style={styles.weekSummaryDivider} />
               <View style={styles.weekSummaryStat}>
-                <Text style={styles.weekSummaryValue}>
-                  {history
-                    .filter((h) => {
-                      const now = new Date();
-                      const startOfWeek = new Date(now);
-                      startOfWeek.setDate(now.getDate() - now.getDay());
-                      startOfWeek.setHours(0, 0, 0, 0);
-                      return new Date(h.completedAt).getTime() >= startOfWeek.getTime();
-                    })
-                    .reduce((sum, h) => sum + h.exerciseCount, 0)}
-                </Text>
+                <Text style={styles.weekSummaryValue}>{weekExerciseCount}</Text>
                 <Text style={styles.weekSummaryLabel}>Exercises</Text>
               </View>
             </View>

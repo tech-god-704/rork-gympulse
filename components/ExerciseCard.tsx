@@ -273,7 +273,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
                   </Text>
                 </TouchableOpacity>
               )}
-              {previousPerformance?.sets[set.setNumber - 1] && !set.completed && (
+              {previousPerformance?.sets?.[set.setNumber - 1] != null && !set.completed && (
                 <Text style={styles.prevHint}>
                   Last: {previousPerformance.sets[set.setNumber - 1].weight}×{previousPerformance.sets[set.setNumber - 1].reps}
                 </Text>

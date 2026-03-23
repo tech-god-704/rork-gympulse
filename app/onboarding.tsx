@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Dimensions,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
@@ -19,8 +18,6 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
   { key: "build_muscle", label: "Build Muscle", emoji: "💪", desc: "Hypertrophy focused", color: Colors.primary },
