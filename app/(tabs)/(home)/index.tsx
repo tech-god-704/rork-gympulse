@@ -407,7 +407,7 @@ export default function TodayScreen() {
                   const playColors: [string, string] = useAltPlay
                     ? ["#FFFFFF", "#F0F0F0"]
                     : [Colors.primary, Colors.indigo];
-                  const playIconColor = useAltPlay ? bg : Colors.white;
+                  const playIconColor = useAltPlay ? (bg ?? Colors.white) : Colors.white;
                   return (
                   <TouchableOpacity
                     key={routine.id}
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   heroProgressText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 12,
-    color: "rgba(99,102,241,0.10)",
+    color: "rgba(255,255,255,0.8)",
     fontWeight: "600" as const,
   },
   heroMetaRow: {

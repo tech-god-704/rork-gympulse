@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Dimensions,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
@@ -19,8 +18,6 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
   { key: "build_muscle", label: "Build Muscle", emoji: "💪", desc: "Hypertrophy focused", color: Colors.primary },
@@ -161,16 +158,16 @@ export default function OnboardingScreen() {
               key={g.key}
               style={[
                 styles.optionCard,
-                selected && { borderColor: g.color, borderWidth: 2, backgroundColor: `${g.color}08` },
+                selected && { borderColor: g.color, borderWidth: 2, backgroundColor: `${g.color}18` },
               ]}
               onPress={() => {
                 setGoal(g.key);
-                if (Platform.OS !== "web") void Haptics.selectionAsync();
+                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               activeOpacity={0.7}
               testID={`goal-${g.key}`}
             >
-              <View style={[styles.optionEmoji, selected && { backgroundColor: `${g.color}12` }]}>
+              <View style={[styles.optionEmoji, selected && { backgroundColor: `${g.color}20` }]}>
                 <Text style={{ fontSize: 26 }}>{g.emoji}</Text>
               </View>
               <View style={styles.optionInfo}>
@@ -211,16 +208,16 @@ export default function OnboardingScreen() {
               style={[
                 styles.optionCard,
                 styles.optionCardLarge,
-                selected && { borderColor: x.color, borderWidth: 2, backgroundColor: `${x.color}08` },
+                selected && { borderColor: x.color, borderWidth: 2, backgroundColor: `${x.color}18` },
               ]}
               onPress={() => {
                 setLevel(x.key);
-                if (Platform.OS !== "web") void Haptics.selectionAsync();
+                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               }}
               activeOpacity={0.7}
               testID={`level-${x.key}`}
             >
-              <View style={[styles.optionEmojiLg, selected && { backgroundColor: `${x.color}12` }]}>
+              <View style={[styles.optionEmojiLg, selected && { backgroundColor: `${x.color}20` }]}>
                 <Text style={{ fontSize: 30 }}>{x.emoji}</Text>
               </View>
               <View style={styles.optionInfo}>
