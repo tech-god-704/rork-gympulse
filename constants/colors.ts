@@ -14,43 +14,43 @@ const Colors = {
   rose: "#F43F5E",
 
   // Background & surfaces
-  background: "#EAECF5",
-  cardBackground: "rgba(255,255,255,0.95)",
-  cardBorder: "rgba(99,102,241,0.10)",
-  surface: "#E2E5F0",
+  background: "#F2F2F7",
+  cardBackground: "#FFFFFF",
+  cardBorder: "#E5E5EA",
+  surface: "#E5E5EA",
 
-  // Glass effect
-  glass: "rgba(255,255,255,0.75)",
-  glassBorder: "rgba(99,102,241,0.10)",
+  // Glass effect (kept for modals/overlays only)
+  glass: "rgba(255,255,255,0.92)",
+  glassBorder: "rgba(0,0,0,0.06)",
 
   // Text
-  text: "#0C1222",
-  textSecondary: "#4B5675",
-  textTertiary: "#7181A0",
-  textMuted: "#7181A0",
+  text: "#000000",
+  textSecondary: "#3C3C43",
+  textTertiary: "#8E8E93",
+  textMuted: "#8E8E93",
 
   // Status
-  success: "#10B981",
+  success: "#34C759",
   successLight: "#D1FAE5",
-  warning: "#F59E0B",
-  error: "#EF4444",
+  warning: "#FF9500",
+  error: "#FF3B30",
 
   // Basics
   white: "#FFFFFF",
   black: "#000000",
-  border: "rgba(0,0,0,0.06)",
+  border: "#E5E5EA",
   shadow: "#000000",
   overlay: "rgba(0,0,0,0.5)",
-  dark: "#0C1222",
+  dark: "#000000",
 
   // Streak
-  streakFlame: "#F59E0B",
+  streakFlame: "#FF9500",
 
   // Completed states
-  completedCard: "rgba(16,185,129,0.08)",
-  completedBorder: "rgba(16,185,129,0.25)",
+  completedCard: "rgba(52,199,89,0.08)",
+  completedBorder: "rgba(52,199,89,0.25)",
 
-  // Muscle group colors
+  // Muscle group colors (desaturated for professional look)
   muscleChest: "#EF4444",
   muscleBack: "#8B5CF6",
   muscleShoulders: "#F59E0B",

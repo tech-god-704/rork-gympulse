@@ -645,10 +645,10 @@ const styles = StyleSheet.create({
   },
   // ─── Card ───
   card: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: Colors.cardBackground,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -716,13 +716,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.04)",
+    backgroundColor: "rgba(0,0,0,0.02)",
     borderWidth: 1,
     borderColor: "transparent",
   },
   calendarDayCompleted: {
-    backgroundColor: "rgba(99,102,241,0.15)",
-    borderColor: "rgba(99,102,241,0.15)",
+    backgroundColor: "rgba(0,0,0,0.08)",
+    borderColor: "rgba(0,0,0,0.08)",
   },
   calendarDayOtherMonth: {
     opacity: 0.3,
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   weekProgressBg: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(99,102,241,0.10)",
+    backgroundColor: "rgba(0,0,0,0.06)",
     marginHorizontal: 16,
     marginBottom: 16,
     overflow: "hidden",
@@ -868,7 +868,7 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   barInactive: {
-    backgroundColor: "rgba(99,102,241,0.15)",
+    backgroundColor: "rgba(0,0,0,0.08)",
   },
   barLabel: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
@@ -1019,7 +1019,7 @@ const styles = StyleSheet.create({
   },
   pr1RMBadge: {
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.08)",
+    backgroundColor: "rgba(0,0,0,0.04)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,

@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   volumeRow: {
     alignItems: "center",
     marginBottom: 24,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 14,

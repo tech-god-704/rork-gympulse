@@ -30,7 +30,6 @@ import {
   RestTimerAlert,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
-import { ROUTINE_EMOJI_OPTIONS } from "@/mocks/exercises";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
@@ -223,7 +222,7 @@ const swStyles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.88)",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -510,7 +509,7 @@ const editStyles = StyleSheet.create({
     width: 36,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(99,102,241,0.08)",
+    backgroundColor: "rgba(0,0,0,0.04)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -521,7 +520,7 @@ const editStyles = StyleSheet.create({
   },
   setInput: {
     flex: 1,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -615,7 +614,7 @@ const editStyles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     alignItems: "center",
   },
   cancelText: {
@@ -805,18 +804,6 @@ export default function RoutineDetailScreen() {
     updateRoutine(routineId, { scheduledDays: updated });
     if (Platform.OS !== "web") void Haptics.selectionAsync();
   }, [routine, routineId, updateRoutine]);
-
-  const handlePickColor = useCallback((color: string | null) => {
-    if (!routineId) return;
-    updateRoutine(routineId, { color: color || undefined });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, updateRoutine]);
-
-  const handlePickEmoji = useCallback((emoji: string) => {
-    if (!routineId) return;
-    updateRoutine(routineId, { emoji });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, updateRoutine]);
 
   const handleToggleRestTimer = useCallback(() => {
     if (!routineId || !routine) return;
@@ -1052,16 +1039,11 @@ export default function RoutineDetailScreen() {
                 onPress={() => setSelectedMuscle(mg)}
               >
                 {selectedMuscle === mg ? (
-                  <LinearGradient
-                    colors={[Colors.primary, Colors.indigo]}
-                    style={styles.musclePill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
+                  <View style={[styles.musclePill, { backgroundColor: Colors.primary }]}>
                     <Text style={styles.musclePillTextActive}>
                       {MUSCLE_GROUP_LABELS[mg]}
                     </Text>
-                  </LinearGradient>
+                  </View>
                 ) : (
                   <View style={[styles.musclePill, styles.musclePillInactive]}>
                     <Text style={styles.musclePillText}>
@@ -1176,9 +1158,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dayChipInactive: {
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   dayChipText: {
     fontSize: 11,
@@ -1237,12 +1219,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   emojiSwatchSelected: {
     borderWidth: 2,
     borderColor: Colors.primary,
-    backgroundColor: "rgba(99,102,241,0.12)",
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   emojiSwatchText: {
     fontSize: 18,
@@ -1283,9 +1265,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   restDurPillActive: {
     backgroundColor: "rgba(59,130,246,0.10)",
@@ -1315,7 +1297,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   restAlertChipActive: {
     backgroundColor: "rgba(59,130,246,0.10)",
@@ -1364,7 +1346,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: Colors.primary,
     borderStyle: "dashed" as const,
@@ -1424,7 +1406,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   setsRepsInput: {
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
@@ -1432,7 +1414,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: "center" as const,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   muscleScroll: {
     maxHeight: 48,
@@ -1445,12 +1427,12 @@ const styles = StyleSheet.create({
   musclePill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 8,
   },
   musclePillInactive: {
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   musclePillText: {
     fontSize: 14,
@@ -1465,13 +1447,13 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.06)",
-    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 8,
     paddingHorizontal: 14,
     marginHorizontal: 20,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   searchInput: {
     flex: 1,
@@ -1494,7 +1476,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     backgroundColor: "rgba(59,130,246,0.06)",
-    borderRadius: 14,
+    borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: "rgba(59,130,246,0.15)",
