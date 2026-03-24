@@ -45,8 +45,16 @@ const LightColors = {
   overlay: "rgba(0,0,0,0.5)",
   dark: "#000000",
 
-  // Streak
+  // Streak / amber tints
   streakFlame: "#FF9500",
+  amberLight: "#FEF3C7",
+  amberBorder: "#FDE68A",
+  amberDark: "#92400E",
+  amberTint: "rgba(245,158,11,0.18)",
+
+  // Error tints
+  errorLight: "#FEF2F2",
+  errorBorder: "#FEE2E2",
 
   // Completed states
   completedCard: "rgba(52,199,89,0.08)",
@@ -107,8 +115,16 @@ const DarkColors: ColorScheme = {
   overlay: "rgba(0,0,0,0.6)",
   dark: "#000000",
 
-  // Streak
+  // Streak / amber tints
   streakFlame: "#FF9F0A",
+  amberLight: "#422006",
+  amberBorder: "#78350F",
+  amberDark: "#FDE68A",
+  amberTint: "rgba(251,191,36,0.18)",
+
+  // Error tints
+  errorLight: "rgba(255,69,58,0.12)",
+  errorBorder: "rgba(255,69,58,0.25)",
 
   // Completed states
   completedCard: "rgba(48,209,88,0.12)",

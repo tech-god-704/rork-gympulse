@@ -300,9 +300,9 @@ export default function TodayScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <View
-              style={[styles.statIconBg, { backgroundColor: "#FFFBEB" }]}
+              style={[styles.statIconBg, { backgroundColor: colors.amberLight }]}
             >
-              <Flame size={22} color="#F59E0B" />
+              <Flame size={22} color={colors.amber} />
             </View>
             <View>
               <Text style={styles.statValue}>{streak.currentStreak}</Text>
@@ -311,7 +311,7 @@ export default function TodayScreen() {
           </View>
           <View style={styles.statCard}>
             <View
-              style={[styles.statIconBg, { backgroundColor: "#EEF2FF" }]}
+              style={[styles.statIconBg, { backgroundColor: colors.primaryUltraLight }]}
             >
               <Target size={22} color={colors.indigo} />
             </View>
@@ -722,8 +722,8 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#FEE2E2",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.errorBorder,
+    backgroundColor: colors.errorLight,
   },
   cancelText: {
     fontSize: 15,
@@ -736,7 +736,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: colors.glassBorder,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,

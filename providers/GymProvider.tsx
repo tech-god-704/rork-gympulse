@@ -655,13 +655,9 @@ function useGymState() {
     if (completingRef.current) return;
     completingRef.current = true;
 
-    const session = sessionRef.current;
-    if (!session) {
-      completingRef.current = false;
-      return;
-    }
-
     try {
+    const session = sessionRef.current;
+    if (!session) return;
     const startTime = new Date(session.startedAt).getTime();
     const endTime = Date.now();
     const rawDuration = Math.round((endTime - startTime) / 60000);

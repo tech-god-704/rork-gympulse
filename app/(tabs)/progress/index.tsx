@@ -233,7 +233,7 @@ export default function ProgressScreen() {
         {/* ─── Streak Hero ─── */}
         <View style={styles.streakHero}>
           <View style={styles.streakContent}>
-            <Flame size={36} color="#F59E0B" />
+            <Flame size={36} color={colors.amber} />
             <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
             <Text style={styles.streakLabel}>Day Streak</Text>
             <Text style={styles.streakBest}>Best: {streak.longestStreak} days</Text>
@@ -500,7 +500,7 @@ export default function ProgressScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.cardHeaderLeft}>
-                <Trophy size={16} color="#F59E0B" />
+                <Trophy size={16} color={colors.amber} />
                 <Text style={styles.cardTitle}>Personal Records</Text>
                 <View style={styles.prCountBadge}>
                   <Text style={styles.prCountText}>{prEntries.length}</Text>
@@ -610,13 +610,13 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   // ─── Streak Hero ───
   streakHero: {
-    backgroundColor: "#FEF3C7",
+    backgroundColor: colors.amberLight,
     borderRadius: 12,
     padding: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#FDE68A",
-    shadowColor: "#F59E0B",
+    borderColor: colors.amberBorder,
+    shadowColor: colors.amber,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -636,7 +636,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   streakLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#92400E",
+    color: colors.amberDark,
     marginTop: 4,
     letterSpacing: -0.2,
   },
@@ -741,7 +741,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     fontWeight: "700" as const,
   },
   calendarDayTextToday: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontWeight: "700" as const,
   },
   calendarDayTextOther: {
@@ -950,7 +950,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   // ─── Personal Records ───
   prCountBadge: {
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: colors.amberTint,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -958,7 +958,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   prCountText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: "#92400E",
+    color: colors.amberDark,
   },
   prList: {
     paddingHorizontal: 16,
@@ -996,7 +996,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   newPrText: {
     fontSize: 8,
     fontWeight: "800" as const,
-    color: "#92400E",
+    color: colors.amberDark,
     letterSpacing: 0.5,
   },
   prDate: {
@@ -1077,7 +1077,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   historyPrText: {
     fontSize: 8,
     fontWeight: "800" as const,
-    color: "#92400E",
+    color: colors.amberDark,
     letterSpacing: 0.3,
   },
   historyName: {

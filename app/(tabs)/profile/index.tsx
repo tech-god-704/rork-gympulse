@@ -156,9 +156,9 @@ export default function ProfileScreen() {
         {/* Stat Cards Grid */}
         <View style={styles.statGrid}>
           {[
-            { v: streak.currentStreak.toString(), l: "STREAK", icon: <Flame size={18} color="#F59E0B" />, bg: [isDark ? "#2D2006" : "#FFFBEB", isDark ? "#3D2B08" : "#FEF3C7"] as [string, string] },
-            { v: totalWorkouts.toString(), l: "WORKOUTS", icon: <Dumbbell size={18} color={colors.indigo} />, bg: [isDark ? "#1E1B4B" : "#EEF2FF", isDark ? "#252262" : "#E0E7FF"] as [string, string] },
-            { v: streak.longestStreak.toString(), l: "BEST", icon: <Trophy size={18} color={colors.emerald} />, bg: [isDark ? "#052E1C" : "#ECFDF5", isDark ? "#073D25" : "#D1FAE5"] as [string, string] },
+            { v: streak.currentStreak.toString(), l: "STREAK", icon: <Flame size={18} color={colors.amber} />, bg: [colors.amberLight, colors.amberBorder] as [string, string] },
+            { v: totalWorkouts.toString(), l: "WORKOUTS", icon: <Dumbbell size={18} color={colors.indigo} />, bg: [colors.primaryUltraLight, colors.primaryLight] as [string, string] },
+            { v: streak.longestStreak.toString(), l: "BEST", icon: <Trophy size={18} color={colors.emerald} />, bg: [colors.successLight, colors.completedBorder] as [string, string] },
           ].map((s) => (
             <View key={s.l} style={styles.statGridCard}>
               <LinearGradient
@@ -510,7 +510,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: colors.glassBorder,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -599,7 +599,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: colors.glassBorder,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -632,7 +632,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.glassBorder,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -669,7 +669,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.glassBorder,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
@@ -806,7 +806,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     height: 24,
     borderRadius: 12,
     backgroundColor: colors.cardBackground,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,

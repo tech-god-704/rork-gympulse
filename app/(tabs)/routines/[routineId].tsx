@@ -209,7 +209,7 @@ const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
     width: 56,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#E53535",
+    backgroundColor: colors.error,
     borderTopRightRadius: 10,
     borderBottomRightRadius: 10,
   },
@@ -217,7 +217,7 @@ const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.15)",
+    backgroundColor: colors.overlay,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -241,9 +241,9 @@ const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 8,
-    backgroundColor: "rgba(59,130,246,0.08)",
+    backgroundColor: `${colors.primary}14`,
     borderWidth: 1.5,
-    borderColor: "rgba(59,130,246,0.15)",
+    borderColor: `${colors.primary}26`,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
@@ -383,11 +383,11 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                   onPress={() => handleRemoveSet(index)}
                   style={[
                     editStyles.removeSetBtn,
-                    setRows.length > 1 && { backgroundColor: "#E53535" },
+                    setRows.length > 1 && { backgroundColor: colors.error },
                   ]}
                   disabled={setRows.length <= 1}
                 >
-                  <Trash2 size={12} color={setRows.length <= 1 ? "rgba(0,0,0,0.15)" : "#fff"} />
+                  <Trash2 size={12} color={setRows.length <= 1 ? colors.textTertiary : colors.white} />
                 </TouchableOpacity>
               </View>
             ))}
