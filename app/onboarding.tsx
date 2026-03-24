@@ -9,10 +9,11 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Zap, Check } from "lucide-react-native";
+import { Zap, Check, ChevronLeft } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -63,7 +64,18 @@ export default function OnboardingScreen() {
     [fadeAnim, slideAnim]
   );
 
+  const handleBack = useCallback(() => {
+    if (step > 0) {
+      Keyboard.dismiss();
+      if (Platform.OS !== "web") {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      animateTransition(step - 1);
+    }
+  }, [step, animateTransition]);
+
   const handleNext = useCallback(() => {
+    Keyboard.dismiss();
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
@@ -84,7 +96,7 @@ export default function OnboardingScreen() {
   }, [step, name, goal, level, trainingDays, animateTransition, completeOnboarding, router]);
 
   const canProceed =
-    step === 0 ||
+    (step === 0 && name.trim().length > 0) ||
     (step === 1 && goal !== null) ||
     (step === 2 && level !== null) ||
     step === 3;
@@ -134,13 +146,15 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
+      <Text style={styles.nameLabel}>What should we call you?</Text>
       <TextInput
         style={styles.nameInput}
         value={name}
         onChangeText={setName}
-        placeholder="Enter your name"
+        placeholder="Your first name"
         placeholderTextColor={Colors.textTertiary}
         autoCapitalize="words"
+        autoFocus
         testID="name-input"
       />
     </View>
@@ -286,7 +300,17 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-      {step > 0 && <ProgressDots />}
+      {step > 0 && (
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
+            <ChevronLeft size={20} color={Colors.text} />
+          </TouchableOpacity>
+          <View style={styles.progressRowWrap}>
+            <ProgressDots />
+          </View>
+          <View style={{ width: 36 }} />
+        </View>
+      )}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -337,10 +361,26 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     paddingHorizontal: 24,
   },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 28,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: "rgba(99,102,241,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  progressRowWrap: {
+    flex: 1,
+  },
   progressRow: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 28,
   },
   progressDot: {
     height: 4,
@@ -422,6 +462,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700" as const,
     color: Colors.text,
+    letterSpacing: -0.2,
+  },
+  nameLabel: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+    marginBottom: 10,
     letterSpacing: -0.2,
   },
   nameInput: {
