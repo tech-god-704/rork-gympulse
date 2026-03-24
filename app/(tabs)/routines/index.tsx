@@ -527,7 +527,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   // ─── Create modal ────────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: colors.overlay,
     justifyContent: "center",
     alignItems: "center",
   },
