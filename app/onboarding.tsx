@@ -84,7 +84,7 @@ export default function OnboardingScreen() {
   }, [step, name, goal, level, trainingDays, animateTransition, completeOnboarding, router]);
 
   const canProceed =
-    step === 0 ||
+    (step === 0 && name.trim().length > 0) ||
     (step === 1 && goal !== null) ||
     (step === 2 && level !== null) ||
     step === 3;
@@ -134,13 +134,15 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
+      <Text style={styles.nameLabel}>What should we call you?</Text>
       <TextInput
         style={styles.nameInput}
         value={name}
         onChangeText={setName}
-        placeholder="Enter your name"
+        placeholder="Your first name"
         placeholderTextColor={Colors.textTertiary}
         autoCapitalize="words"
+        autoFocus
         testID="name-input"
       />
     </View>
@@ -422,6 +424,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700" as const,
     color: Colors.text,
+    letterSpacing: -0.2,
+  },
+  nameLabel: {
+    fontSize: 15,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+    marginBottom: 10,
     letterSpacing: -0.2,
   },
   nameInput: {
