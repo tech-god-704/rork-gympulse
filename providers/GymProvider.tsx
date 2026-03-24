@@ -18,6 +18,12 @@ import {
 } from "@/types";
 import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
+import {
+  sendWorkoutCompleteNotification,
+  sendStreakMilestoneNotification,
+  setupNotifications,
+  disableAllNotifications,
+} from "@/utils/notifications";
 
 const STORAGE_KEYS = {
   PROFILE: "gympulse_profile",
@@ -270,7 +276,13 @@ function useGymState() {
       !perfQuery.isLoading &&
       !prQuery.isLoading &&
       !settingsQuery.isLoading;
-    if (allDone) setIsLoading(false);
+    if (allDone) {
+      setIsLoading(false);
+      // Set up scheduled notifications on launch if enabled
+      if (settingsRef.current.notificationsEnabled) {
+        void setupNotifications();
+      }
+    }
   }, [
     profileQuery.isLoading,
     routinesQuery.isLoading,
@@ -368,6 +380,15 @@ function useGymState() {
       setSettings(updated);
       settingsRef.current = updated;
       saveSettingsMutation.mutate(updated);
+
+      // Toggle scheduled notifications when the setting changes
+      if (updates.notificationsEnabled !== undefined) {
+        if (updates.notificationsEnabled) {
+          void setupNotifications();
+        } else {
+          void disableAllNotifications();
+        }
+      }
     },
     [saveSettingsMutation]
   );
@@ -759,6 +780,12 @@ function useGymState() {
       completedDates: updatedDates,
     };
     saveStreakMutation.mutate(updatedStreak);
+
+    // Fire notifications if enabled
+    if (settingsRef.current.notificationsEnabled) {
+      void sendWorkoutCompleteNotification(session.exercises.length, duration, newPRCount);
+      void sendStreakMilestoneNotification(newStreak);
+    }
 
     saveSession(null);
     } finally {

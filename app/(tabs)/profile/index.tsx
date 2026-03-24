@@ -449,6 +449,23 @@ export default function ProfileScreen() {
               <View style={[styles.toggleThumb, settings.autoStartRestTimer && styles.toggleThumbOn]} />
             </View>
           </TouchableOpacity>
+
+          <View style={styles.settingDivider} />
+
+          {/* Notifications Toggle */}
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => {
+              updateSettings({ notificationsEnabled: !settings.notificationsEnabled });
+              if (Platform.OS !== "web") void Haptics.selectionAsync();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.settingLabel}>Push Notifications</Text>
+            <View style={[styles.toggleTrack, settings.notificationsEnabled && styles.toggleTrackOn]}>
+              <View style={[styles.toggleThumb, settings.notificationsEnabled && styles.toggleThumbOn]} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Footer */}
