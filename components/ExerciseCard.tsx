@@ -194,10 +194,9 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
         isSkipped && styles.skippedContainer,
         accentColor && !exercise.completed ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
       ]}
-      {...panResponder.panHandlers}
     >
-      {/* Main exercise row */}
-      <View style={styles.content}>
+      {/* Main exercise row — PanResponder here only, not on expand/sets */}
+      <View style={styles.content} {...panResponder.panHandlers}>
         <TouchableOpacity style={styles.toggleArea} onPress={handleToggle} activeOpacity={0.7} testID={`exercise-${exercise.routineExerciseId}`} accessibilityLabel={`${exercise.exerciseName}, ${completedSets} of ${totalSets} sets complete`} accessibilityRole="button">
           <Animated.View
             style={[
