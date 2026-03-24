@@ -650,13 +650,17 @@ function useGymState() {
     if (completingRef.current) return;
     completingRef.current = true;
 
-    try {
     const session = sessionRef.current;
-    if (!session) return;
+    if (!session) {
+      completingRef.current = false;
+      return;
+    }
 
+    try {
     const startTime = new Date(session.startedAt).getTime();
     const endTime = Date.now();
-    const duration = Math.round((endTime - startTime) / 60000);
+    const rawDuration = Math.round((endTime - startTime) / 60000);
+    const duration = Number.isFinite(rawDuration) && rawDuration >= 0 ? rawDuration : 0;
 
     // Use refs for latest values (avoids stale closure)
     const currentHistory = historyRef.current;

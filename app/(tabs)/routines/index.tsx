@@ -198,8 +198,9 @@ export default function RoutinesScreen() {
             <TextInput
               style={styles.modalInput}
               value={newName}
-              onChangeText={setNewName}
+              onChangeText={(t) => setNewName(t.slice(0, 50))}
               placeholder="Routine name (e.g. Push Day)"
+              maxLength={50}
               placeholderTextColor={Colors.textTertiary}
               autoFocus
             />

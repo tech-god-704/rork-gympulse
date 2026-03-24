@@ -73,7 +73,7 @@ export default function TodayScreen() {
   const routineRestAlert = activeRoutine?.restTimerAlert ?? "vibrate";
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0 });
-  const [elapsedMinutes, setElapsedMinutes] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
@@ -111,18 +111,20 @@ export default function TodayScreen() {
   // Live workout timer
   useEffect(() => {
     if (!currentSession) {
-      setElapsedMinutes(0);
+      setElapsedSeconds(0);
       return;
     }
     const updateElapsed = () => {
       const startTime = new Date(currentSession.startedAt).getTime();
-      const elapsed = Math.floor((Date.now() - startTime) / 60000);
-      setElapsedMinutes(elapsed);
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedSeconds(elapsed);
     };
     updateElapsed();
-    const interval = setInterval(updateElapsed, 5000); // update every 5s
+    const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
   }, [currentSession]);
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
   const triggerCompletionCheck = useCallback((allComplete: boolean) => {
     if (allComplete) {
@@ -319,10 +321,12 @@ export default function TodayScreen() {
                     <Text style={styles.heroProgressText}>{completedCount}/{totalCount}</Text>
                   </View>
                   <View style={styles.heroMetaRow}>
-                    {elapsedMinutes > 0 && (
+                    {elapsedSeconds > 0 && (
                       <View style={styles.heroTimerRow}>
                         <Clock size={12} color="rgba(255,255,255,0.5)" />
-                        <Text style={styles.heroTimerText}>{elapsedMinutes} min</Text>
+                        <Text style={styles.heroTimerText}>
+                          {elapsedMinutes > 0 ? `${elapsedMinutes} min` : `${elapsedSeconds}s`}
+                        </Text>
                       </View>
                     )}
                     {totalVolume > 0 && (

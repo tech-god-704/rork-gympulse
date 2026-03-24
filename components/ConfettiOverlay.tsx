@@ -49,6 +49,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 60, useNativeDriver: true }),
       ]).start();
 
+      const animations: Animated.CompositeAnimation[] = [];
       confettiAnims.forEach((anim) => {
         anim.x.setValue(Math.random() * SCREEN_WIDTH);
         anim.y.setValue(-20);
@@ -58,7 +59,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         const fallDuration = 2000 + Math.random() * 2000;
         const delay = Math.random() * 500;
 
-        Animated.parallel([
+        const a = Animated.parallel([
           Animated.timing(anim.y, {
             toValue: SCREEN_HEIGHT + 20,
             duration: fallDuration,
@@ -83,8 +84,14 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
             delay: delay + fallDuration * 0.6,
             useNativeDriver: true,
           }),
-        ]).start();
+        ]);
+        a.start();
+        animations.push(a);
       });
+
+      return () => {
+        animations.forEach((a) => a.stop());
+      };
     }
   }, [visible, overlayAnim, scaleAnim, confettiAnims]);
 
@@ -141,7 +148,9 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         {totalVolume > 0 && (
           <View style={styles.volumeRow}>
             <Text style={styles.volumeValue}>
-              {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} {weightUnit}
+              {totalVolume >= 1000
+                ? `${Number((totalVolume / 1000).toFixed(1))}k`
+                : totalVolume} {weightUnit}
             </Text>
             <Text style={styles.volumeLabel}>total volume</Text>
           </View>
