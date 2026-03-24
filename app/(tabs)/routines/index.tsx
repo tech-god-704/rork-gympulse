@@ -10,7 +10,6 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { Plus, Dumbbell, ChevronRight, Layers, ArrowLeft, Check } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -20,16 +19,14 @@ import { MuscleGroup, MUSCLE_GROUP_LABELS, WEEKDAY_SHORT } from "@/types";
 import { estimateRoutineDuration } from "@/utils/helpers";
 import { WORKOUT_SPLITS, ROUTINE_NAME_SUGGESTIONS, type WorkoutSplit } from "@/mocks/exercises";
 
-const ROUTINE_GRADIENTS: [string, string][] = [
-  [Colors.primary, Colors.indigo],
-  [Colors.indigo, Colors.violet],
-  ["#06B6D4", "#10B981"],
-  ["#F59E0B", "#F43F5E"],
-  [Colors.violet, "#EC4899"],
-  [Colors.primary, "#06B6D4"],
+const ROUTINE_COLORS: string[] = [
+  Colors.primary,
+  Colors.indigo,
+  "#06B6D4",
+  "#F59E0B",
+  "#8B5CF6",
+  "#10B981",
 ];
-
-const FALLBACK_EMOJIS = ["🔥", "💪", "🦵", "⚡", "🏆", "🎯"];
 
 export default function RoutinesScreen() {
   const insets = useSafeAreaInsets();
@@ -83,14 +80,9 @@ export default function RoutinesScreen() {
           onPress={() => setShowCreate(true)}
           activeOpacity={0.8}
         >
-          <LinearGradient
-            colors={[Colors.primary, Colors.indigo]}
-            style={styles.addButton}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          <View style={styles.addButton}>
             <Plus size={20} color={Colors.white} />
-          </LinearGradient>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -110,15 +102,10 @@ export default function RoutinesScreen() {
               onPress={() => setShowCreate(true)}
               activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[Colors.primary, Colors.indigo]}
-                style={styles.emptyButton}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
+              <View style={styles.emptyButton}>
                 <Plus size={18} color={Colors.white} />
                 <Text style={styles.emptyButtonText}>Create Routine</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowTemplates(true)}
@@ -134,12 +121,8 @@ export default function RoutinesScreen() {
             {routines.map((routine, idx) => {
               const muscleGroups = getMuscleGroups(routine);
               const duration = estimateRoutineDuration(routine.exercises.length);
-              const fallbackGradient = ROUTINE_GRADIENTS[idx % ROUTINE_GRADIENTS.length];
-              const routineColor = routine.color;
-              const gradientColors: [string, string] = routineColor
-                ? [routineColor, routineColor]
-                : fallbackGradient;
-              const emoji = routine.emoji || FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
+              const routineColor = routine.color || ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
+              const initial = routine.name ? routine.name.charAt(0).toUpperCase() : "R";
               return (
                 <TouchableOpacity
                   key={routine.id}
@@ -147,14 +130,11 @@ export default function RoutinesScreen() {
                   onPress={() => router.push(`/(tabs)/routines/${routine.id}`)}
                   activeOpacity={0.7}
                 >
-                  <LinearGradient
-                    colors={gradientColors}
-                    style={styles.routineIcon}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                  <View
+                    style={[styles.routineIcon, { backgroundColor: routineColor }]}
                   >
-                    <Text style={styles.routineEmoji}>{emoji}</Text>
-                  </LinearGradient>
+                    <Text style={styles.routineInitial}>{initial}</Text>
+                  </View>
                   <View style={styles.routineInfo}>
                     <Text style={styles.routineName}>{routine.name}</Text>
                     <Text style={styles.routineDetail}>
@@ -303,7 +283,9 @@ export default function RoutinesScreen() {
                   <View style={styles.splitRoutinePreview}>
                     {split.routines.map((r, i) => (
                       <View key={i} style={styles.splitRoutineChip}>
-                        <Text style={styles.splitRoutineChipEmoji}>{r.emoji || "🏋️"}</Text>
+                        <Text style={styles.splitRoutineChipInitial}>
+                          {r.name ? r.name.charAt(0).toUpperCase() : "R"}
+                        </Text>
                         <Text style={styles.splitRoutineChipText}>{r.name}</Text>
                       </View>
                     ))}
@@ -319,7 +301,9 @@ export default function RoutinesScreen() {
               {selectedSplit.routines.map((routine, rIdx) => (
                 <View key={rIdx} style={styles.previewRoutineCard}>
                   <View style={styles.previewRoutineHeader}>
-                    <Text style={styles.previewRoutineEmoji}>{routine.emoji || "🏋️"}</Text>
+                    <Text style={styles.previewRoutineInitial}>
+                      {routine.name ? routine.name.charAt(0).toUpperCase() : "R"}
+                    </Text>
                     <Text style={styles.previewRoutineName}>{routine.name}</Text>
                     <Text style={styles.previewRoutineCount}>
                       {routine.exercises.length} exercises
@@ -342,17 +326,12 @@ export default function RoutinesScreen() {
                 activeOpacity={0.8}
                 style={styles.confirmSplitButton}
               >
-                <LinearGradient
-                  colors={[Colors.primary, Colors.indigo]}
-                  style={styles.confirmSplitGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
+                <View style={styles.confirmSplitGradient}>
                   <Check size={18} color={Colors.white} />
                   <Text style={styles.confirmSplitText}>
                     Add {selectedSplit.routines.length} Routine{selectedSplit.routines.length > 1 ? "s" : ""}
                   </Text>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             </ScrollView>
           )}
@@ -384,12 +363,13 @@ const styles = StyleSheet.create({
   addButton: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: Colors.primary,
     shadowColor: Colors.indigo,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -427,7 +407,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 16,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
   },
   emptyButtonText: {
     color: Colors.white,
@@ -441,10 +422,10 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingVertical: 12,
     paddingHorizontal: 20,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: "rgba(99,102,241,0.2)",
-    backgroundColor: "rgba(99,102,241,0.06)",
+    borderColor: "rgba(0,0,0,0.10)",
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   templateButtonText: {
     fontSize: 15,
@@ -457,31 +438,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 20,
+    borderRadius: 10,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
     gap: 14,
   },
   routineIcon: {
     width: 54,
     height: 54,
-    borderRadius: 18,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
     elevation: 4,
   },
-  routineEmoji: {
-    fontSize: 26,
+  routineInitial: {
+    fontSize: 22,
+    fontWeight: "700" as const,
+    color: Colors.white,
   },
   routineInfo: {
     flex: 1,
@@ -508,7 +491,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   muscleTagText: {
     fontSize: 10,
@@ -525,9 +508,9 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 18,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.12)",
+    borderColor: "rgba(0,0,0,0.06)",
     borderStyle: "dashed",
   },
   browseSplitsText: {
@@ -546,13 +529,13 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: Colors.white,
-    borderRadius: 24,
+    borderRadius: 12,
     padding: 24,
     width: "85%",
     shadowColor: Colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowRadius: 8,
     elevation: 10,
   },
   modalTitle: {
@@ -563,12 +546,12 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1.5,
-    borderColor: "rgba(99,102,241,0.10)",
-    borderRadius: 14,
+    borderColor: "rgba(0,0,0,0.06)",
+    borderRadius: 8,
     padding: 14,
     fontSize: 16,
     color: Colors.text,
-    backgroundColor: "rgba(99,102,241,0.04)",
+    backgroundColor: "rgba(0,0,0,0.02)",
     marginBottom: 12,
   },
   suggestionsWrap: {
@@ -580,13 +563,13 @@ const styles = StyleSheet.create({
   suggestionBubble: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   suggestionBubbleActive: {
-    backgroundColor: "rgba(99,102,241,0.15)",
+    backgroundColor: "rgba(0,0,0,0.08)",
     borderColor: Colors.primary,
   },
   suggestionText: {
@@ -605,8 +588,8 @@ const styles = StyleSheet.create({
   modalCancel: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
     alignItems: "center",
   },
   modalCancelText: {
@@ -617,7 +600,7 @@ const styles = StyleSheet.create({
   modalCreate: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 8,
     backgroundColor: Colors.primary,
     alignItems: "center",
   },
@@ -646,7 +629,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "rgba(99,102,241,0.08)",
+    backgroundColor: "rgba(0,0,0,0.04)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -671,10 +654,10 @@ const styles = StyleSheet.create({
   // ─── Split cards ─────────────────────────────────────────
   splitCard: {
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 20,
+    borderRadius: 10,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -697,7 +680,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
-    backgroundColor: "rgba(99,102,241,0.10)",
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   splitFreqText: {
     fontSize: 12,
@@ -721,11 +704,13 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    borderRadius: 6,
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
-  splitRoutineChipEmoji: {
-    fontSize: 14,
+  splitRoutineChipInitial: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: Colors.primary,
   },
   splitRoutineChipText: {
     fontSize: 12,
@@ -736,10 +721,10 @@ const styles = StyleSheet.create({
   // ─── Preview detail ──────────────────────────────────────
   previewRoutineCard: {
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 18,
+    borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   previewRoutineHeader: {
     flexDirection: "row",
@@ -748,10 +733,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(99,102,241,0.08)",
+    borderBottomColor: "rgba(0,0,0,0.04)",
   },
-  previewRoutineEmoji: {
-    fontSize: 20,
+  previewRoutineInitial: {
+    fontSize: 16,
+    fontWeight: "700" as const,
+    color: Colors.primary,
   },
   previewRoutineName: {
     flex: 1,
@@ -799,7 +786,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 10,
+    backgroundColor: Colors.primary,
   },
   confirmSplitText: {
     fontSize: 16,

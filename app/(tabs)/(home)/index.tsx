@@ -10,7 +10,6 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { Flame, Target, Play, X, Clock } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -103,7 +102,7 @@ export default function TodayScreen() {
   const totalCount = currentSession?.exercises.length ?? 0;
   const progress = totalCount > 0 ? completedCount / totalCount : 0;
 
-  // Total volume lifted (weight × reps for completed sets)
+  // Total volume lifted (weight x reps for completed sets)
   const totalVolume = useMemo(() => {
     if (!currentSession) return 0;
     return currentSession.exercises.reduce((vol, ex) => {
@@ -118,7 +117,7 @@ export default function TodayScreen() {
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
   const monthDay = today.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
 
-  // Live workout timer — depend only on startedAt (stable during a workout)
+  // Live workout timer -- depend only on startedAt (stable during a workout)
   // to avoid re-creating the interval on every set toggle
   const sessionStartedAt = currentSession?.startedAt;
   useEffect(() => {
@@ -290,34 +289,28 @@ export default function TodayScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.dateLabel}>{dayName}, {monthDay}</Text>
-          <Text style={styles.greeting}>Let's go, {firstName} 💪</Text>
+          <Text style={styles.greeting}>Welcome back, {firstName}</Text>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <LinearGradient
-              colors={["#FFFBEB", "#FEF3C7"]}
-              style={styles.statIconBg}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
+              style={[styles.statIconBg, { backgroundColor: "#FFFBEB" }]}
             >
               <Flame size={22} color="#F59E0B" />
-            </LinearGradient>
+            </View>
             <View>
               <Text style={styles.statValue}>{streak.currentStreak}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
           </View>
           <View style={styles.statCard}>
-            <LinearGradient
-              colors={["#EEF2FF", "#E0E7FF"]}
-              style={styles.statIconBg}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <View
+              style={[styles.statIconBg, { backgroundColor: "#EEF2FF" }]}
             >
               <Target size={22} color={Colors.indigo} />
-            </LinearGradient>
+            </View>
             <View>
               <Text style={styles.statValue}>{workoutsThisWeek}/{weeklyGoal}</Text>
               <Text style={styles.statLabel}>This Week</Text>
@@ -328,19 +321,13 @@ export default function TodayScreen() {
         {currentSession ? (
           <View>
             {/* Hero Workout Card */}
-            <LinearGradient
-              colors={[Colors.primary, Colors.indigo, Colors.violet]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroCard}
+            <View
+              style={[styles.heroCard, { backgroundColor: Colors.primary }]}
             >
-              <View style={styles.heroDecor1} />
-              <View style={styles.heroDecor2} />
-              <View style={styles.heroDecor3} />
               <View style={styles.heroContent}>
                 <View style={styles.heroLeft}>
                   <Text style={styles.heroLabel}>TODAY'S WORKOUT</Text>
-                  <Text style={styles.heroTitle}>{currentSession.routineName} 🔥</Text>
+                  <Text style={styles.heroTitle}>{currentSession.routineName}</Text>
                   <View style={styles.heroProgressRow}>
                     <View style={styles.heroProgressBg}>
                       <View style={[styles.heroProgressFill, { width: `${progress * 100}%` }]} />
@@ -367,7 +354,7 @@ export default function TodayScreen() {
                   <ProgressRing progress={progress} completed={completedCount} total={totalCount} />
                 </View>
               </View>
-            </LinearGradient>
+            </View>
 
             {/* Exercises */}
             <View style={styles.exerciseSection}>
@@ -435,10 +422,8 @@ export default function TodayScreen() {
               const tbg = todaysRoutine.color;
               const tDark = tbg ? getLuminance(tbg) < 0.55 : false;
               const tAltPlay = tbg ? isBlueish(tbg) : false;
-              const tPlayColors: [string, string] = tAltPlay
-                ? ["#FFFFFF", "#F0F0F0"]
-                : [Colors.primary, Colors.indigo];
-              const tStartTextColor = tAltPlay ? tbg : "#fff";
+              const tStartBg = tAltPlay ? "#FFFFFF" : Colors.primary;
+              const tStartTextColor = tAltPlay ? (tbg ?? Colors.primary) : "#fff";
               return (
               <View>
                 <Text style={styles.scheduledLabel}>TODAY'S PLAN</Text>
@@ -452,30 +437,29 @@ export default function TodayScreen() {
                   accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
                   accessibilityRole="button"
                 >
-                  {todaysRoutine.emoji ? (
-                    <Text style={styles.routineCardEmoji}>{todaysRoutine.emoji}</Text>
-                  ) : null}
+                  <View style={[styles.routineInitialBg, { backgroundColor: tbg ? "rgba(255,255,255,0.25)" : Colors.primaryUltraLight }]}>
+                    <Text style={[styles.routineInitialText, { color: tDark ? "#fff" : Colors.primary }]}>
+                      {todaysRoutine.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
                   <View style={styles.routineCardLeft}>
                     <Text style={[styles.scheduledName, tDark && { color: "#fff" }]}>{todaysRoutine.name}</Text>
                     <Text style={[styles.routineCardDetail, tDark && { color: "rgba(255,255,255,0.75)" }]}>
                       {todaysRoutine.exercises.length} exercises · ~{todaysRoutine.exercises.length * 5 + 10}min
                     </Text>
                   </View>
-                  <LinearGradient
-                    colors={tPlayColors}
-                    style={styles.startButton}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                  <View
+                    style={[styles.startButton, { backgroundColor: tStartBg }]}
                   >
                     <Text style={[styles.startButtonText, { color: tStartTextColor }]}>Start</Text>
-                  </LinearGradient>
+                  </View>
                 </TouchableOpacity>
               </View>
               );
             })() : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Ready to train?</Text>
-                <Text style={styles.emptySubtitle}>Pick a routine to start today's workout</Text>
+                <Text style={styles.emptyTitle}>No workout scheduled</Text>
+                <Text style={styles.emptySubtitle}>Select a routine to begin</Text>
               </View>
             )}
 
@@ -485,9 +469,7 @@ export default function TodayScreen() {
                   const bg = routine.color;
                   const isDark = bg ? getLuminance(bg) < 0.55 : false;
                   const useAltPlay = bg ? isBlueish(bg) : false;
-                  const playColors: [string, string] = useAltPlay
-                    ? ["#FFFFFF", "#F0F0F0"]
-                    : [Colors.primary, Colors.indigo];
+                  const playBg = useAltPlay ? "#FFFFFF" : Colors.primary;
                   const playIconColor = useAltPlay ? (bg ?? Colors.white) : Colors.white;
                   return (
                   <TouchableOpacity
@@ -499,23 +481,22 @@ export default function TodayScreen() {
                     onPress={() => handleStartWorkout(routine.id)}
                     activeOpacity={0.7}
                   >
-                    {routine.emoji ? (
-                      <Text style={styles.routineCardEmoji}>{routine.emoji}</Text>
-                    ) : null}
+                    <View style={[styles.routineInitialBg, { backgroundColor: bg ? "rgba(255,255,255,0.25)" : Colors.primaryUltraLight }]}>
+                      <Text style={[styles.routineInitialText, { color: isDark ? "#fff" : Colors.primary }]}>
+                        {routine.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
                     <View style={styles.routineCardLeft}>
                       <Text style={[styles.routineCardName, isDark && { color: "#fff" }]}>{routine.name}</Text>
                       <Text style={[styles.routineCardDetail, isDark && { color: "rgba(255,255,255,0.75)" }]}>
                         {routine.exercises.length} exercises · ~{routine.exercises.length * 5 + 10}min
                       </Text>
                     </View>
-                    <LinearGradient
-                      colors={playColors}
-                      style={styles.playButton}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                    <View
+                      style={[styles.playButton, { backgroundColor: playBg }]}
                     >
                       <Play size={18} color={playIconColor} fill={playIconColor} />
-                    </LinearGradient>
+                    </View>
                   </TouchableOpacity>
                   );
                 })}
@@ -526,7 +507,7 @@ export default function TodayScreen() {
                 onPress={() => router.push("/(tabs)/routines")}
                 activeOpacity={0.7}
               >
-                <Text style={styles.createPromptText}>Create your first routine →</Text>
+                <Text style={styles.createPromptText}>Create your first routine</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -588,14 +569,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 20,
+    borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
   },
   statIconBg: {
@@ -618,42 +599,15 @@ const styles = StyleSheet.create({
     fontWeight: "500" as const,
   },
   heroCard: {
-    borderRadius: 24,
+    borderRadius: 12,
     padding: 22,
     marginBottom: 16,
     overflow: "hidden",
     shadowColor: Colors.indigo,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.3,
-    shadowRadius: 48,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
     elevation: 8,
-  },
-  heroDecor1: {
-    position: "absolute",
-    top: -40,
-    right: -40,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: "rgba(255,255,255,0.07)",
-  },
-  heroDecor2: {
-    position: "absolute",
-    bottom: -30,
-    left: -30,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  heroDecor3: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "rgba(255,255,255,0.04)",
   },
   heroContent: {
     flexDirection: "row",
@@ -750,7 +704,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: "#FEE2E2",
     backgroundColor: "#FEF2F2",
@@ -762,14 +716,14 @@ const styles = StyleSheet.create({
   },
   lastWorkoutCard: {
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 20,
+    borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
     marginBottom: 16,
   },
@@ -813,11 +767,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(99,102,241,0.06)",
-    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 10,
     padding: 18,
     borderWidth: 1.5,
-    borderColor: "rgba(99,102,241,0.15)",
+    borderColor: "rgba(0,0,0,0.08)",
     marginBottom: 16,
   },
   scheduledName: {
@@ -830,10 +784,10 @@ const styles = StyleSheet.create({
   startButton: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 8,
     shadowColor: Colors.indigo,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -864,19 +818,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 20,
+    borderRadius: 10,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
   },
-  routineCardEmoji: {
-    fontSize: 24,
-    marginRight: 2,
+  routineInitialBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  routineInitialText: {
+    fontSize: 18,
+    fontWeight: "700" as const,
   },
   routineCardLeft: {
     flex: 1,
@@ -895,12 +857,12 @@ const styles = StyleSheet.create({
   playButton: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: Colors.indigo,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -909,7 +871,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 24,
     backgroundColor: "rgba(59,130,246,0.06)",
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: Colors.primaryLight,
     borderStyle: "dashed" as const,

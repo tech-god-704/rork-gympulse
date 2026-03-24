@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "rgba(99,102,241,0.08)",
+    backgroundColor: "rgba(0,0,0,0.04)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   progressDot: {
     height: 4,
     borderRadius: 3,
-    backgroundColor: "rgba(99,102,241,0.12)",
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   progressDotActive: {
     backgroundColor: Colors.indigo,
@@ -447,12 +447,12 @@ const styles = StyleSheet.create({
   },
   welcomeFeature: {
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   welcomeFeatureEmoji: {
     fontSize: 24,
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   nameInput: {
     width: "100%",
     borderWidth: 1.5,
-    borderColor: "rgba(99,102,241,0.15)",
+    borderColor: "rgba(0,0,0,0.08)",
     borderRadius: 18,
     padding: 16,
     fontSize: 17,
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   optionCardLarge: {
     padding: 18,
@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 16,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -577,7 +577,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.88)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   dayButtonActive: {
     borderWidth: 0,

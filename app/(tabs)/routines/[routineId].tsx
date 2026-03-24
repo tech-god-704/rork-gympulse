@@ -13,8 +13,7 @@ import {
   PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Plus, Trash2, Search, Check, X, Palette, Smile, Timer, Bell } from "lucide-react-native";
+import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -31,7 +30,6 @@ import {
   RestTimerAlert,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
-import { ROUTINE_EMOJI_OPTIONS } from "@/mocks/exercises";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
@@ -197,7 +195,7 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
 const swStyles = StyleSheet.create({
   container: {
     marginBottom: 10,
-    borderRadius: 16,
+    borderRadius: 10,
     overflow: "hidden",
   },
   deleteAction: {
@@ -208,27 +206,27 @@ const swStyles = StyleSheet.create({
     width: 56,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FF3B30",
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    backgroundColor: "#E53535",
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
   },
   deleteButton: {
     width: 36,
     height: 36,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
   foreground: {
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
   },
   rowContent: {
@@ -239,7 +237,7 @@ const swStyles = StyleSheet.create({
   exerciseNumber: {
     width: 38,
     height: 38,
-    borderRadius: 13,
+    borderRadius: 8,
     backgroundColor: "rgba(59,130,246,0.08)",
     borderWidth: 1.5,
     borderColor: "rgba(59,130,246,0.15)",
@@ -378,10 +376,13 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                 />
                 <TouchableOpacity
                   onPress={() => handleRemoveSet(index)}
-                  style={editStyles.removeSetBtn}
+                  style={[
+                    editStyles.removeSetBtn,
+                    setRows.length > 1 && { backgroundColor: "#E53535" },
+                  ]}
                   disabled={setRows.length <= 1}
                 >
-                  <X size={14} color={setRows.length <= 1 ? "rgba(0,0,0,0.1)" : Colors.error} />
+                  <Trash2 size={12} color={setRows.length <= 1 ? "rgba(0,0,0,0.15)" : "#fff"} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -433,15 +434,10 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
               <Text style={editStyles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
-              <LinearGradient
-                colors={[Colors.primary, Colors.indigo]}
-                style={editStyles.saveBtn}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
+              <View style={[editStyles.saveBtn, { backgroundColor: Colors.primary }]}>
                 <Check size={18} color="#fff" />
                 <Text style={editStyles.saveText}>Save</Text>
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -459,14 +455,14 @@ const editStyles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 24,
+    borderRadius: 12,
     padding: 24,
     width: "90%",
     maxHeight: "80%",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowRadius: 8,
     elevation: 10,
   },
   header: {
@@ -513,7 +509,7 @@ const editStyles = StyleSheet.create({
     width: 36,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "rgba(99,102,241,0.08)",
+    backgroundColor: "rgba(0,0,0,0.04)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -524,7 +520,7 @@ const editStyles = StyleSheet.create({
   },
   setInput: {
     flex: 1,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
@@ -538,9 +534,10 @@ const editStyles = StyleSheet.create({
   removeSetBtn: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 7,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.04)",
   },
   addSetBtn: {
     flexDirection: "row",
@@ -616,8 +613,8 @@ const editStyles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.03)",
     alignItems: "center",
   },
   cancelText: {
@@ -630,14 +627,14 @@ const editStyles = StyleSheet.create({
     flexDirection: "row",
     paddingVertical: 14,
     paddingHorizontal: 28,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     shadowColor: Colors.indigo,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     elevation: 4,
   },
   saveText: {
@@ -808,18 +805,6 @@ export default function RoutineDetailScreen() {
     if (Platform.OS !== "web") void Haptics.selectionAsync();
   }, [routine, routineId, updateRoutine]);
 
-  const handlePickColor = useCallback((color: string | null) => {
-    if (!routineId) return;
-    updateRoutine(routineId, { color: color || undefined });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, updateRoutine]);
-
-  const handlePickEmoji = useCallback((emoji: string) => {
-    if (!routineId) return;
-    updateRoutine(routineId, { emoji });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, updateRoutine]);
-
   const handleToggleRestTimer = useCallback(() => {
     if (!routineId || !routine) return;
     const current = routine.restTimerEnabled !== false; // default true
@@ -883,14 +868,9 @@ export default function RoutineDetailScreen() {
               activeOpacity={0.7}
             >
               {active ? (
-                <LinearGradient
-                  colors={[Colors.primary, Colors.indigo]}
-                  style={styles.dayChip}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
+                <View style={[styles.dayChip, { backgroundColor: Colors.primary }]}>
                   <Text style={styles.dayChipTextActive}>{WEEKDAY_SHORT[day]}</Text>
-                </LinearGradient>
+                </View>
               ) : (
                 <View style={[styles.dayChip, styles.dayChipInactive]}>
                   <Text style={styles.dayChipText}>{WEEKDAY_SHORT[day]}</Text>
@@ -899,70 +879,6 @@ export default function RoutineDetailScreen() {
             </TouchableOpacity>
           );
         })}
-      </View>
-
-      {/* Color Picker */}
-      <View style={styles.colorPickerSection}>
-        <View style={styles.colorPickerHeader}>
-          <Palette size={14} color={Colors.textTertiary} />
-          <Text style={styles.colorPickerLabel}>Card Color</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.colorPickerRow}
-        >
-          {ROUTINE_COLORS.map((c) => {
-            const isSelected = c.value === (routine.color ?? null);
-            return (
-              <TouchableOpacity
-                key={c.label}
-                onPress={() => handlePickColor(c.value)}
-                activeOpacity={0.7}
-                style={[
-                  styles.colorSwatch,
-                  { backgroundColor: c.value ?? "#FFFFFF" },
-                  !c.value && styles.colorSwatchDefault,
-                  isSelected && styles.colorSwatchSelected,
-                ]}
-              >
-                {isSelected && (
-                  <Check size={14} color={c.value ? "#fff" : Colors.text} strokeWidth={3} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* Emoji Picker */}
-      <View style={styles.colorPickerSection}>
-        <View style={styles.colorPickerHeader}>
-          <Smile size={14} color={Colors.textTertiary} />
-          <Text style={styles.colorPickerLabel}>Icon</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.colorPickerRow}
-        >
-          {ROUTINE_EMOJI_OPTIONS.map((em) => {
-            const isSelected = em === routine.emoji;
-            return (
-              <TouchableOpacity
-                key={em}
-                onPress={() => handlePickEmoji(em)}
-                activeOpacity={0.7}
-                style={[
-                  styles.emojiSwatch,
-                  isSelected && styles.emojiSwatchSelected,
-                ]}
-              >
-                <Text style={styles.emojiSwatchText}>{em}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
       </View>
 
       {/* Rest Timer Settings */}
@@ -1123,16 +1039,11 @@ export default function RoutineDetailScreen() {
                 onPress={() => setSelectedMuscle(mg)}
               >
                 {selectedMuscle === mg ? (
-                  <LinearGradient
-                    colors={[Colors.primary, Colors.indigo]}
-                    style={styles.musclePill}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                  >
+                  <View style={[styles.musclePill, { backgroundColor: Colors.primary }]}>
                     <Text style={styles.musclePillTextActive}>
                       {MUSCLE_GROUP_LABELS[mg]}
                     </Text>
-                  </LinearGradient>
+                  </View>
                 ) : (
                   <View style={[styles.musclePill, styles.musclePillInactive]}>
                     <Text style={styles.musclePillText}>
@@ -1247,9 +1158,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dayChipInactive: {
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   dayChipText: {
     fontSize: 11,
@@ -1308,12 +1219,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   emojiSwatchSelected: {
     borderWidth: 2,
     borderColor: Colors.primary,
-    backgroundColor: "rgba(99,102,241,0.12)",
+    backgroundColor: "rgba(0,0,0,0.06)",
   },
   emojiSwatchText: {
     fontSize: 18,
@@ -1354,9 +1265,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   restDurPillActive: {
     backgroundColor: "rgba(59,130,246,0.10)",
@@ -1386,7 +1297,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
   },
   restAlertChipActive: {
     backgroundColor: "rgba(59,130,246,0.10)",
@@ -1435,7 +1346,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: Colors.primary,
     borderStyle: "dashed" as const,
@@ -1495,7 +1406,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   setsRepsInput: {
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderRadius: 12,
     padding: 12,
     fontSize: 16,
@@ -1503,7 +1414,7 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: "center" as const,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   muscleScroll: {
     maxHeight: 48,
@@ -1516,12 +1427,12 @@ const styles = StyleSheet.create({
   musclePill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 8,
   },
   musclePillInactive: {
-    backgroundColor: "rgba(99,102,241,0.06)",
+    backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   musclePillText: {
     fontSize: 14,
@@ -1536,13 +1447,13 @@ const styles = StyleSheet.create({
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(99,102,241,0.06)",
-    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderRadius: 8,
     paddingHorizontal: 14,
     marginHorizontal: 20,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "rgba(99,102,241,0.10)",
+    borderColor: "rgba(0,0,0,0.06)",
   },
   searchInput: {
     flex: 1,
@@ -1565,7 +1476,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     backgroundColor: "rgba(59,130,246,0.06)",
-    borderRadius: 14,
+    borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: "rgba(59,130,246,0.15)",
