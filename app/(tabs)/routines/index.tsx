@@ -134,7 +134,11 @@ export default function RoutinesScreen() {
             {routines.map((routine, idx) => {
               const muscleGroups = getMuscleGroups(routine);
               const duration = estimateRoutineDuration(routine.exercises.length);
-              const gradientColors = ROUTINE_GRADIENTS[idx % ROUTINE_GRADIENTS.length];
+              const fallbackGradient = ROUTINE_GRADIENTS[idx % ROUTINE_GRADIENTS.length];
+              const routineColor = routine.color;
+              const gradientColors: [string, string] = routineColor
+                ? [routineColor, routineColor]
+                : fallbackGradient;
               const emoji = routine.emoji || FALLBACK_EMOJIS[idx % FALLBACK_EMOJIS.length];
               return (
                 <TouchableOpacity

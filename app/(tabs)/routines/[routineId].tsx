@@ -65,9 +65,10 @@ interface SwipeableRowProps {
   onDelete: () => void;
   onTap: () => void;
   weightUnit: string;
+  accentColor?: string;
 }
 
-function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit }: SwipeableRowProps) {
+function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor }: SwipeableRowProps) {
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
 
@@ -136,7 +137,11 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit }: 
 
       {/* Foreground row */}
       <Animated.View
-        style={[swStyles.foreground, { transform: [{ translateX }] }]}
+        style={[
+          swStyles.foreground,
+          { transform: [{ translateX }] },
+          accentColor ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
+        ]}
         {...panResponder.panHandlers}
       >
         <TouchableOpacity
@@ -150,8 +155,11 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit }: 
           }}
           activeOpacity={0.7}
         >
-          <View style={swStyles.exerciseNumber}>
-            <Text style={swStyles.exerciseNumberText}>{index + 1}</Text>
+          <View style={[
+            swStyles.exerciseNumber,
+            accentColor ? { backgroundColor: `${accentColor}15`, borderColor: `${accentColor}30` } : undefined,
+          ]}>
+            <Text style={[swStyles.exerciseNumberText, accentColor ? { color: accentColor } : undefined]}>{index + 1}</Text>
           </View>
           <View style={swStyles.exerciseInfo}>
             <Text style={swStyles.exerciseName} numberOfLines={1}>{exercise.exerciseName}</Text>
@@ -271,12 +279,14 @@ interface SetRow {
 interface EditModalProps {
   visible: boolean;
   exercise: RoutineExercise | null;
-  onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[]) => void;
+  routineColor?: string;
+  onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], color?: string) => void;
   onClose: () => void;
 }
 
-function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProps) {
+function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }: EditModalProps) {
   const [setRows, setSetRows] = useState<SetRow[]>([]);
+  const [exerciseColor, setExerciseColor] = useState<string | null>(null);
 
   React.useEffect(() => {
     if (exercise) {
@@ -288,6 +298,7 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
         });
       }
       setSetRows(rows);
+      setExerciseColor(exercise.color ?? null);
     }
   }, [exercise]);
 
@@ -313,9 +324,11 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
     }));
     const firstReps = configs[0]?.reps ?? 10;
     const firstWeight = configs[0]?.weight ?? 0;
-    onSave(exercise.id, setRows.length, firstReps, firstWeight, configs);
+    onSave(exercise.id, setRows.length, firstReps, firstWeight, configs, exerciseColor ?? undefined);
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
+
+  const activeColor = exerciseColor || routineColor;
 
   if (!exercise) return null;
 
@@ -379,6 +392,41 @@ function EditExerciseModal({ visible, exercise, onSave, onClose }: EditModalProp
             <Plus size={14} color={Colors.primary} />
             <Text style={editStyles.addSetText}>Add Set</Text>
           </TouchableOpacity>
+
+          {/* Per-exercise color */}
+          <View style={editStyles.colorSection}>
+            <Text style={editStyles.colorSectionLabel}>Card Color</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={editStyles.colorRow}>
+              {ROUTINE_COLORS.map((c) => {
+                const isSelected = exerciseColor === c.value || (!exerciseColor && !c.value);
+                return (
+                  <TouchableOpacity
+                    key={c.label}
+                    onPress={() => {
+                      setExerciseColor(c.value);
+                      if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    }}
+                    style={[
+                      editStyles.colorDot,
+                      c.value ? { backgroundColor: c.value } : editStyles.colorDotDefault,
+                      isSelected && editStyles.colorDotSelected,
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    {isSelected && <Check size={12} color={c.value ? "#fff" : Colors.text} strokeWidth={3} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            {activeColor && (
+              <View style={[editStyles.colorPreview, { backgroundColor: `${activeColor}15`, borderColor: `${activeColor}30` }]}>
+                <View style={[editStyles.colorPreviewDot, { backgroundColor: activeColor }]} />
+                <Text style={[editStyles.colorPreviewText, { color: activeColor }]}>
+                  {exerciseColor ? "Custom color" : "Using routine color"}
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={editStyles.buttons}>
             <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
@@ -510,6 +558,56 @@ const editStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600" as const,
     color: Colors.primary,
+  },
+  colorSection: {
+    marginBottom: 16,
+  },
+  colorSectionLabel: {
+    fontSize: 11,
+    fontWeight: "700" as const,
+    color: Colors.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase" as const,
+    marginBottom: 8,
+  },
+  colorRow: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  colorDot: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  colorDotDefault: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  colorDotSelected: {
+    borderWidth: 2.5,
+    borderColor: "#1F2937",
+  },
+  colorPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  colorPreviewDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  colorPreviewText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
   },
   buttons: {
     flexDirection: "row",
@@ -666,10 +764,10 @@ export default function RoutineDetailScreen() {
   );
 
   const handleEditSave = useCallback(
-    (exerciseId: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[]) => {
+    (exerciseId: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], color?: string) => {
       if (!routine || !routineId) return;
       const updatedExercises = routine.exercises.map((e) =>
-        e.id === exerciseId ? { ...e, sets, reps, weight, setConfigs } : e
+        e.id === exerciseId ? { ...e, sets, reps, weight, setConfigs, color } : e
       );
       updateRoutine(routineId, { exercises: updatedExercises });
       setEditingExercise(null);
@@ -951,6 +1049,7 @@ export default function RoutineDetailScreen() {
               onDelete={() => handleRemoveExercise(exercise.id)}
               onTap={() => setEditingExercise(exercise)}
               weightUnit={wu}
+              accentColor={exercise.color || routine.color}
             />
           ))
         )}
@@ -969,6 +1068,7 @@ export default function RoutineDetailScreen() {
       <EditExerciseModal
         visible={editingExercise !== null}
         exercise={editingExercise}
+        routineColor={routine.color}
         onSave={handleEditSave}
         onClose={() => setEditingExercise(null)}
       />

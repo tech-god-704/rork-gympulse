@@ -71,6 +71,16 @@ export default function TodayScreen() {
   }, [currentSession, routines]);
   const routineRestEnabled = activeRoutine?.restTimerEnabled !== false;
   const routineRestAlert = activeRoutine?.restTimerAlert ?? "vibrate";
+
+  // Build per-exercise color lookup: exercise.color > routine.color > undefined
+  const exerciseColorMap = useMemo(() => {
+    if (!activeRoutine) return {} as Record<string, string | undefined>;
+    const map: Record<string, string | undefined> = {};
+    activeRoutine.exercises.forEach((e) => {
+      map[e.id] = e.color || activeRoutine.color;
+    });
+    return map;
+  }, [activeRoutine]);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0 });
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -368,6 +378,7 @@ export default function TodayScreen() {
                     weightUnit={settings.weightUnit}
                     defaultRestTimer={activeRoutine?.restTimerDuration ?? settings.defaultRestTimer}
                     autoStartRestTimer={routineRestEnabled && settings.autoStartRestTimer}
+                    accentColor={exerciseColorMap[exercise.routineExerciseId]}
                   />
                 ))}
               </View>
