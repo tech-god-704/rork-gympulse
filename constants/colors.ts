@@ -15,7 +15,7 @@ const Colors = {
 
   // Background & surfaces
   background: "#EAECF5",
-  cardBackground: "rgba(255,255,255,0.88)",
+  cardBackground: "rgba(255,255,255,0.95)",
   cardBorder: "rgba(99,102,241,0.10)",
   surface: "#E2E5F0",
 

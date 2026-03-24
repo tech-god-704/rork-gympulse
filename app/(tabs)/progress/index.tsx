@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { Flame, TrendingUp, Minus, Trophy, Clock, Dumbbell, Calendar, Target, ChevronDown, ChevronUp } from "lucide-react-native";
 import Colors from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
@@ -222,27 +221,21 @@ export default function ProgressScreen() {
       >
         {history.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>💪</Text>
+            <Dumbbell size={40} color={Colors.textTertiary} />
             <Text style={styles.emptyTitle}>No workouts yet</Text>
-            <Text style={styles.emptySubtitle}>Complete your first workout to start tracking progress!</Text>
+            <Text style={styles.emptySubtitle}>Complete a workout to begin tracking your progress.</Text>
           </View>
         )}
 
         {/* ─── Streak Hero ─── */}
-        <LinearGradient
-          colors={["#FFFBEB", "#FEF3C7", "#FDE68A"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.streakHero}
-        >
-          <View style={styles.streakDecor} />
+        <View style={styles.streakHero}>
           <View style={styles.streakContent}>
             <Flame size={36} color="#F59E0B" />
             <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
             <Text style={styles.streakLabel}>Day Streak</Text>
             <Text style={styles.streakBest}>Best: {streak.longestStreak} days</Text>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* ─── This Week Summary ─── */}
         {history.length > 0 && (
@@ -273,11 +266,8 @@ export default function ProgressScreen() {
               )}
             </View>
             <View style={styles.weekProgressBg}>
-              <LinearGradient
-                colors={[Colors.primary, Colors.indigo]}
-                style={[styles.weekProgressFill, { width: `${Math.min((workoutsThisWeek / weeklyGoal) * 100, 100)}%` }]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+              <View
+                style={[styles.weekProgressFill, { width: `${Math.min((workoutsThisWeek / weeklyGoal) * 100, 100)}%`, backgroundColor: Colors.primary }]}
               />
             </View>
           </View>
@@ -303,16 +293,13 @@ export default function ProgressScreen() {
               return (
                 <View key={i} style={styles.calendarCell}>
                   {isToday ? (
-                    <LinearGradient
-                      colors={isCompleted ? [Colors.emerald, "#059669"] : [Colors.primary, Colors.indigo]}
-                      style={styles.calendarDay}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
+                    <View
+                      style={[styles.calendarDay, { backgroundColor: Colors.primary }]}
                     >
                       <Text style={[styles.calendarDayText, styles.calendarDayTextToday]}>
                         {item.dayOfMonth}
                       </Text>
-                    </LinearGradient>
+                    </View>
                   ) : (
                     <View
                       style={[
@@ -389,11 +376,8 @@ export default function ProgressScreen() {
                   <View key={i} style={styles.barColumn}>
                     <Text style={[styles.barValue, isLast && styles.barValueActive]}>{count}</Text>
                     {isLast ? (
-                      <LinearGradient
-                        colors={[Colors.primary, Colors.indigo]}
-                        style={[styles.bar, { height: barHeight }]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 0, y: 1 }}
+                      <View
+                        style={[styles.bar, { height: barHeight, backgroundColor: Colors.primary }]}
                       />
                     ) : (
                       <View style={[styles.bar, styles.barInactive, { height: barHeight }]} />
@@ -623,25 +607,17 @@ const styles = StyleSheet.create({
   },
   // ─── Streak Hero ───
   streakHero: {
-    borderRadius: 24,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 12,
     padding: 28,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#FDE68A",
     shadowColor: "#F59E0B",
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
-    shadowRadius: 32,
+    shadowRadius: 8,
     elevation: 4,
-  },
-  streakDecor: {
-    position: "absolute",
-    top: -20,
-    right: -20,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "rgba(245,158,11,0.08)",
   },
   streakContent: {
     alignItems: "center",
@@ -670,13 +646,13 @@ const styles = StyleSheet.create({
   // ─── Card ───
   card: {
     backgroundColor: "rgba(255,255,255,0.88)",
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: "rgba(99,102,241,0.10)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
     overflow: "hidden",
   },
@@ -1122,10 +1098,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 40,
     paddingHorizontal: 24,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
   },
   emptyTitle: {
     fontSize: 18,

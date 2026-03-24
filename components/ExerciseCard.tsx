@@ -364,7 +364,7 @@ export default React.memo(ExerciseCard);
 
 const styles = StyleSheet.create({
   swipeWrapper: {
-    borderRadius: 20,
+    borderRadius: 10,
     overflow: "hidden",
   },
   skipAction: {
@@ -376,8 +376,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F59E0B",
     justifyContent: "center",
     alignItems: "center",
-    borderTopRightRadius: 20,
-    borderBottomRightRadius: 20,
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
   },
   skipActionRestore: {
     backgroundColor: Colors.primary,
@@ -396,12 +396,12 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   container: {
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowRadius: 6,
     elevation: 2,
     overflow: "hidden",
   },
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 38,
     height: 38,
-    borderRadius: 13,
+    borderRadius: 8,
     borderWidth: 1.5,
     justifyContent: "center",
     alignItems: "center",
