@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, TextInput } from "react-native";
-import { Check, ChevronDown, Minus, Plus } from "lucide-react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, TextInput, PanResponder } from "react-native";
+import { Check, ChevronDown, Minus, Plus, SkipForward, RotateCcw } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS } from "@/types";
@@ -12,6 +12,7 @@ interface Props {
   onRestTimer: (seconds?: number) => void;
   onToggleSet?: (setNumber: number) => void;
   onUpdateSetWeight?: (setNumber: number, weight: number) => void;
+  onSkip?: () => void;
   previousPerformance?: { sets: { weight: number; reps: number }[] };
   personalRecord?: { weight: number; reps: number; estimated1RM: number };
   weightUnit?: string;
@@ -19,13 +20,40 @@ interface Props {
   autoStartRestTimer?: boolean;
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const swipeOpen = useRef(false);
   const [expanded, setExpanded] = useState(false);
   const [editingSet, setEditingSet] = useState<number | null>(null);
   const [editWeight, setEditWeight] = useState("");
+
+  const isSkipped = exercise.completed && exercise.completedAt === "skipped";
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 20,
+      onPanResponderMove: (_, g) => {
+        if (g.dx < 0) {
+          swipeX.setValue(Math.max(g.dx, -80));
+        } else if (swipeOpen.current) {
+          swipeX.setValue(Math.min(g.dx - 64, 0));
+        }
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -40) {
+          Animated.spring(swipeX, { toValue: -64, useNativeDriver: true, friction: 8 }).start();
+          swipeOpen.current = true;
+          if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else {
+          Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+          swipeOpen.current = false;
+        }
+      },
+    })
+  ).current;
 
   const completedSets = (exercise.setDetails || []).filter((s) => s.completed).length;
   const totalSets = exercise.setDetails?.length || exercise.sets;
@@ -126,18 +154,42 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
     outputRange: ["0deg", "180deg"],
   });
 
+  const handleSkip = useCallback(() => {
+    Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+    swipeOpen.current = false;
+    if (onSkip) {
+      onSkip();
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  }, [onSkip, swipeX]);
+
   const hasSets = exercise.setDetails && exercise.setDetails.length > 0;
 
   return (
+    <View style={styles.swipeWrapper}>
+      {/* Skip action behind */}
+      <View style={[styles.skipAction, isSkipped && styles.skipActionRestore]}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
+          {isSkipped ? (
+            <RotateCcw size={16} color="#fff" />
+          ) : (
+            <SkipForward size={16} color="#fff" />
+          )}
+          <Text style={styles.skipText}>{isSkipped ? "Undo" : "Skip"}</Text>
+        </TouchableOpacity>
+      </View>
+
     <Animated.View
       style={[
         styles.container,
         {
           backgroundColor,
           borderColor,
-          transform: [{ scale: scaleAnim }],
+          transform: [{ scale: scaleAnim }, { translateX: swipeX }],
         },
+        isSkipped && styles.skippedContainer,
       ]}
+      {...panResponder.panHandlers}
     >
       {/* Main exercise row */}
       <View style={styles.content}>
@@ -164,9 +216,12 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
             )}
           </Animated.View>
           <View style={styles.info}>
-            <Text style={[styles.exerciseName, exercise.completed && styles.exerciseNameCompleted]} numberOfLines={1}>
-              {exercise.exerciseName}
-            </Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.exerciseName, exercise.completed && styles.exerciseNameCompleted, isSkipped && styles.exerciseNameSkipped]} numberOfLines={1}>
+                {exercise.exerciseName}
+              </Text>
+              {isSkipped && <Text style={styles.skippedBadge}>SKIPPED</Text>}
+            </View>
             <View style={styles.detailRow}>
               <Text style={styles.detail}>
                 {completedSets}/{totalSets} sets
@@ -302,12 +357,45 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
         </View>
       )}
     </Animated.View>
+    </View>
   );
 }
 
 export default React.memo(ExerciseCard);
 
 const styles = StyleSheet.create({
+  swipeWrapper: {
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  skipAction: {
+    position: "absolute",
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 64,
+    backgroundColor: "#F59E0B",
+    justifyContent: "center",
+    alignItems: "center",
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  skipActionRestore: {
+    backgroundColor: Colors.primary,
+  },
+  skipButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 2,
+  },
+  skipText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
+  skippedContainer: {
+    opacity: 0.5,
+  },
   container: {
     borderRadius: 20,
     borderWidth: 1,
@@ -348,16 +436,38 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   exerciseName: {
     fontSize: 14,
     fontWeight: "700" as const,
     color: Colors.text,
     marginBottom: 3,
     letterSpacing: -0.3,
+    flexShrink: 1,
   },
   exerciseNameCompleted: {
     color: Colors.textTertiary,
     textDecorationLine: "line-through" as const,
+  },
+  exerciseNameSkipped: {
+    color: Colors.textTertiary,
+    textDecorationLine: "line-through" as const,
+    fontStyle: "italic" as const,
+  },
+  skippedBadge: {
+    fontSize: 9,
+    fontWeight: "800" as const,
+    color: "#92400E",
+    backgroundColor: "rgba(245,158,11,0.18)",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 3,
   },
   detailRow: {
     flexDirection: "row",

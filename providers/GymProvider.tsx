@@ -385,6 +385,7 @@ function useGymState() {
       const starterRoutines: Routine[] = STARTER_ROUTINES.map((sr) => ({
         id: generateId(),
         name: sr.name,
+        emoji: sr.emoji,
         exercises: sr.exercises.map((e) => ({
           id: generateId(),
           exerciseId: BUILT_IN_EXERCISES.find((be) => be.name === e.name)?.id ?? generateId(),
@@ -415,6 +416,31 @@ function useGymState() {
       const updated = [...routines, newRoutine];
       saveRoutinesMutation.mutate(updated);
       return newRoutine;
+    },
+    [routines, saveRoutinesMutation]
+  );
+
+  const addRoutinesFromTemplates = useCallback(
+    (templates: { name: string; emoji?: string; exercises: { name: string; muscleGroup: MuscleGroup; sets: number; reps: number; weight: number }[] }[]) => {
+      const newRoutines: Routine[] = templates.map((template) => ({
+        id: generateId(),
+        name: template.name,
+        emoji: template.emoji,
+        exercises: template.exercises.map((e) => ({
+          id: generateId(),
+          exerciseId: BUILT_IN_EXERCISES.find((be) => be.name === e.name)?.id ?? generateId(),
+          exerciseName: e.name,
+          muscleGroup: e.muscleGroup,
+          sets: e.sets,
+          reps: e.reps,
+          weight: e.weight,
+          setConfigs: Array.from({ length: e.sets }, () => ({ reps: e.reps, weight: e.weight })),
+        })),
+        createdAt: new Date().toISOString(),
+      }));
+      const updated = [...routines, ...newRoutines];
+      saveRoutinesMutation.mutate(updated);
+      return newRoutines;
     },
     [routines, saveRoutinesMutation]
   );
@@ -534,6 +560,33 @@ function useGymState() {
       };
       saveSession(updatedSession);
       return allComplete;
+    },
+    [saveSession]
+  );
+
+  // Skip / unskip exercise
+  const skipExercise = useCallback(
+    (routineExerciseId: string) => {
+      const session = sessionRef.current;
+      if (!session) return;
+      const updatedExercises = session.exercises.map((e) => {
+        if (e.routineExerciseId !== routineExerciseId) return e;
+        const wasSkipped = e.completed && e.completedAt === "skipped";
+        if (wasSkipped) {
+          // Unskip — restore to incomplete
+          return { ...e, completed: false, completedAt: undefined, setDetails: ensureSetDetails(e).map((s) => ({ ...s, completed: false })) };
+        }
+        // Skip — mark complete with sentinel
+        return { ...e, completed: true, completedAt: "skipped", setDetails: ensureSetDetails(e).map((s) => ({ ...s, completed: true })) };
+      });
+      const allComplete = updatedExercises.every((ex) => ex.completed);
+      const updatedSession: WorkoutSession = {
+        ...session,
+        exercises: updatedExercises,
+        isComplete: allComplete,
+        completedAt: allComplete ? new Date().toISOString() : undefined,
+      };
+      saveSession(updatedSession);
     },
     [saveSession]
   );
@@ -779,6 +832,7 @@ function useGymState() {
     saveProfile,
     completeOnboarding,
     addRoutine,
+    addRoutinesFromTemplates,
     updateRoutine,
     deleteRoutine,
     addExerciseToRoutine,
@@ -786,6 +840,7 @@ function useGymState() {
     addCustomExercise,
     startWorkout,
     toggleExerciseComplete,
+    skipExercise,
     toggleSetComplete,
     updateSetWeight,
     completeWorkout,
