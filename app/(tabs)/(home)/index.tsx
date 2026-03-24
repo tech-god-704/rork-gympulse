@@ -13,7 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Flame, Target, Play, X, Clock, Dumbbell, ChevronRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { type ColorScheme } from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
 import { useGym } from "@/providers/GymProvider";
 import { getTodayWeekDay, getToday, formatDate } from "@/utils/helpers";
 import { WeekDay } from "@/types";
@@ -40,6 +41,7 @@ function isBlueish(hex: string): boolean {
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const {
     profile,
     routines,
@@ -59,6 +61,8 @@ export default function TodayScreen() {
     personalRecords,
     settings,
   } = useGym();
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restTimerDuration, setRestTimerDuration] = useState(settings.defaultRestTimer);
@@ -283,7 +287,7 @@ export default function TodayScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.indigo} />
         }
       >
         {/* Header */}
@@ -309,7 +313,7 @@ export default function TodayScreen() {
             <View
               style={[styles.statIconBg, { backgroundColor: "#EEF2FF" }]}
             >
-              <Target size={22} color={Colors.indigo} />
+              <Target size={22} color={colors.indigo} />
             </View>
             <View>
               <Text style={styles.statValue}>{workoutsThisWeek}/{weeklyGoal}</Text>
@@ -322,7 +326,7 @@ export default function TodayScreen() {
           <View>
             {/* Hero Workout Card */}
             <View
-              style={[styles.heroCard, { backgroundColor: Colors.primary }]}
+              style={[styles.heroCard, { backgroundColor: colors.primary }]}
             >
               <View style={styles.heroContent}>
                 <View style={styles.heroLeft}>
@@ -390,7 +394,7 @@ export default function TodayScreen() {
               onPress={handleCancelWorkout}
               activeOpacity={0.7}
             >
-              <X size={16} color={Colors.error} />
+              <X size={16} color={colors.error} />
               <Text style={styles.cancelText}>Cancel Workout</Text>
             </TouchableOpacity>
           </View>
@@ -422,8 +426,8 @@ export default function TodayScreen() {
               const tbg = todaysRoutine.color;
               const tDark = tbg ? getLuminance(tbg) < 0.55 : false;
               const tAltPlay = tbg ? isBlueish(tbg) : false;
-              const tStartBg = tAltPlay ? "#FFFFFF" : Colors.primary;
-              const tStartTextColor = tAltPlay ? (tbg ?? Colors.primary) : "#fff";
+              const tStartBg = tAltPlay ? "#FFFFFF" : colors.primary;
+              const tStartTextColor = tAltPlay ? (tbg ?? colors.primary) : "#fff";
               return (
               <View>
                 <Text style={styles.scheduledLabel}>TODAY'S PLAN</Text>
@@ -437,8 +441,8 @@ export default function TodayScreen() {
                   accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
                   accessibilityRole="button"
                 >
-                  <View style={[styles.routineInitialBg, { backgroundColor: tbg ? "rgba(255,255,255,0.25)" : Colors.primaryUltraLight }]}>
-                    <Text style={[styles.routineInitialText, { color: tDark ? "#fff" : Colors.primary }]}>
+                  <View style={[styles.routineInitialBg, { backgroundColor: tbg ? "rgba(255,255,255,0.25)" : colors.primaryUltraLight }]}>
+                    <Text style={[styles.routineInitialText, { color: tDark ? "#fff" : colors.primary }]}>
                       {todaysRoutine.name.charAt(0).toUpperCase()}
                     </Text>
                   </View>
@@ -467,10 +471,10 @@ export default function TodayScreen() {
               <View style={styles.routinesList}>
                 {routines.filter((r) => r.id !== todaysRoutine?.id && r.exercises.length > 0).map((routine) => {
                   const bg = routine.color;
-                  const isDark = bg ? getLuminance(bg) < 0.55 : false;
+                  const isRoutineDark = bg ? getLuminance(bg) < 0.55 : false;
                   const useAltPlay = bg ? isBlueish(bg) : false;
-                  const playBg = useAltPlay ? "#FFFFFF" : Colors.primary;
-                  const playIconColor = useAltPlay ? (bg ?? Colors.white) : Colors.white;
+                  const playBg = useAltPlay ? "#FFFFFF" : colors.primary;
+                  const playIconColor = useAltPlay ? (bg ?? colors.white) : colors.white;
                   return (
                   <TouchableOpacity
                     key={routine.id}
@@ -481,14 +485,14 @@ export default function TodayScreen() {
                     onPress={() => handleStartWorkout(routine.id)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.routineInitialBg, { backgroundColor: bg ? "rgba(255,255,255,0.25)" : Colors.primaryUltraLight }]}>
-                      <Text style={[styles.routineInitialText, { color: isDark ? "#fff" : Colors.primary }]}>
+                    <View style={[styles.routineInitialBg, { backgroundColor: bg ? "rgba(255,255,255,0.25)" : colors.primaryUltraLight }]}>
+                      <Text style={[styles.routineInitialText, { color: isRoutineDark ? "#fff" : colors.primary }]}>
                         {routine.name.charAt(0).toUpperCase()}
                       </Text>
                     </View>
                     <View style={styles.routineCardLeft}>
-                      <Text style={[styles.routineCardName, isDark && { color: "#fff" }]}>{routine.name}</Text>
-                      <Text style={[styles.routineCardDetail, isDark && { color: "rgba(255,255,255,0.75)" }]}>
+                      <Text style={[styles.routineCardName, isRoutineDark && { color: "#fff" }]}>{routine.name}</Text>
+                      <Text style={[styles.routineCardDetail, isRoutineDark && { color: "rgba(255,255,255,0.75)" }]}>
                         {routine.exercises.length} exercises · ~{routine.exercises.length * 5 + 10}min
                       </Text>
                     </View>
@@ -505,7 +509,7 @@ export default function TodayScreen() {
               <View style={styles.emptyStateCard}>
                 <View style={styles.emptyStateIconRow}>
                   <View style={styles.emptyStateIconBg}>
-                    <Dumbbell size={28} color={Colors.primary} />
+                    <Dumbbell size={28} color={colors.primary} />
                   </View>
                 </View>
                 <Text style={styles.emptyStateHeading}>Build Your First Routine</Text>
@@ -542,10 +546,10 @@ export default function TodayScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -559,7 +563,7 @@ const styles = StyleSheet.create({
   },
   dateLabel: {
     fontSize: 14,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontWeight: "600" as const,
     letterSpacing: 0.5,
     marginBottom: 2,
@@ -567,7 +571,7 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
   },
   statsRow: {
@@ -580,11 +584,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -601,13 +605,13 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: "900" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
     lineHeight: 28,
   },
   statLabel: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontWeight: "500" as const,
   },
   heroCard: {
@@ -615,7 +619,7 @@ const styles = StyleSheet.create({
     padding: 22,
     marginBottom: 16,
     overflow: "hidden",
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -699,13 +703,13 @@ const styles = StyleSheet.create({
   exerciseSectionTitle: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
   },
   exerciseCount: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   exerciseList: {
     gap: 8,
@@ -724,14 +728,14 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.error,
+    color: colors.error,
   },
   lastWorkoutCard: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -742,14 +746,14 @@ const styles = StyleSheet.create({
   lastWorkoutLabel: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 1.5,
     marginBottom: 4,
   },
   lastWorkoutName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
     marginBottom: 6,
   },
@@ -761,17 +765,17 @@ const styles = StyleSheet.create({
   lastWorkoutDetail: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   lastWorkoutDate: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontWeight: "500" as const,
   },
   scheduledLabel: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.indigo,
+    color: colors.indigo,
     letterSpacing: 1.2,
     marginBottom: 8,
   },
@@ -779,17 +783,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 18,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.08)",
+    borderColor: colors.glassBorder,
     marginBottom: 16,
   },
   scheduledName: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
     marginBottom: 4,
   },
@@ -797,7 +801,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -815,12 +819,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 24,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   routinesList: {
     gap: 12,
@@ -829,11 +833,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -858,13 +862,13 @@ const styles = StyleSheet.create({
   routineCardName: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 4,
     letterSpacing: -0.3,
   },
   routineCardDetail: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   playButton: {
     width: 42,
@@ -872,19 +876,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 4,
   },
   emptyStateCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.cardBackground,
     borderRadius: 12,
     padding: 28,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -898,21 +902,21 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 14,
-    backgroundColor: Colors.primaryUltraLight ?? "rgba(59,130,246,0.08)",
+    backgroundColor: colors.primaryUltraLight,
     justifyContent: "center",
     alignItems: "center",
   },
   emptyStateHeading: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   emptyStateBody: {
     fontSize: 14,
     lineHeight: 20,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center" as const,
     marginBottom: 20,
     paddingHorizontal: 8,
@@ -920,7 +924,7 @@ const styles = StyleSheet.create({
   emptyStateCta: {
     flexDirection: "row" as const,
     alignItems: "center",
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 10,

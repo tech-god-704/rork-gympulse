@@ -1,11 +1,73 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Platform, Vibration } from "react-native";
 import { X, Play, Pause } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { Audio } from "expo-av";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { RestTimerAlert } from "@/types";
 
 const PRESETS = [30, 60, 90, 120];
+
+// Generate a short 440Hz beep tone as a WAV data URI (no network needed)
+function generateBeepWav(): string {
+  const sampleRate = 22050;
+  const duration = 0.15; // 150ms per beep
+  const frequency = 880; // A5 note - gentle, not jarring
+  const numSamples = Math.floor(sampleRate * duration);
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+  const blockAlign = numChannels * (bitsPerSample / 8);
+  const dataSize = numSamples * blockAlign;
+  const fileSize = 36 + dataSize;
+
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  // WAV header
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeString(0, "RIFF");
+  view.setUint32(4, fileSize, true);
+  writeString(8, "WAVE");
+  writeString(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  // Generate sine wave with fade-in/out envelope
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const envelope = Math.min(1, i / (numSamples * 0.1)) * Math.min(1, (numSamples - i) / (numSamples * 0.2));
+    const sample = Math.sin(2 * Math.PI * frequency * t) * 0.4 * envelope;
+    view.setInt16(44 + i * 2, Math.max(-32768, Math.min(32767, sample * 32767)), true);
+  }
+
+  // Convert to base64
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 =
+    typeof btoa !== "undefined"
+      ? btoa(binary)
+      : Buffer.from(buffer).toString("base64");
+
+  return `data:audio/wav;base64,${base64}`;
+}
+
+let cachedBeepUri: string | null = null;
+function getBeepUri(): string {
+  if (!cachedBeepUri) cachedBeepUri = generateBeepWav();
+  return cachedBeepUri;
+}
 
 interface Props {
   visible: boolean;
@@ -15,6 +77,9 @@ interface Props {
 }
 
 export default function RestTimer({ visible, onClose, initialDuration = 60, alertType = "vibrate" }: Props) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const [seconds, setSeconds] = useState(initialDuration);
   const [isRunning, setIsRunning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(initialDuration);
@@ -42,6 +107,53 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
     prevVisible.current = visible;
   }, [visible, initialDuration]);
 
+  const soundRef = useRef<Audio.Sound | null>(null);
+
+  // Configure audio mode so the alert ducks (lowers) background music
+  // instead of pausing it — less intrusive for users playing Spotify/Apple Music
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    void Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      interruptionModeIOS: 1, // DuckOthers
+      shouldDuckAndroid: true,
+    });
+    return () => {
+      if (soundRef.current) {
+        void soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  const playAlertSound = useCallback(async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+      }
+      const beepUri = getBeepUri();
+      // Play triple beep: beep - pause - beep - pause - beep
+      for (let i = 0; i < 3; i++) {
+        await new Promise((resolve) => setTimeout(resolve, i * 300));
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: beepUri },
+          { shouldPlay: true, volume: 0.6 },
+        );
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            void sound.unloadAsync();
+          }
+        });
+        if (i === 2) soundRef.current = sound;
+      }
+    } catch {
+      // Fallback to heavy haptics if audio fails
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 250);
+      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 500);
+    }
+  }, []);
+
   const fireAlert = useCallback(() => {
     if (Platform.OS === "web" || alertType === "none") return;
     if (alertType === "vibrate" || alertType === "both") {
@@ -50,12 +162,9 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
     if (alertType === "sound" || alertType === "both") {
-      // Heavy haptic as an audible tap-back (no audio lib needed)
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 250);
-      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 500);
+      void playAlertSound();
     }
-  }, [alertType]);
+  }, [alertType, playAlertSound]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -115,7 +224,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
           <View style={styles.header}>
             <Text style={styles.title}>Rest Timer</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-              <X size={20} color={Colors.textSecondary} />
+              <X size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -129,7 +238,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
               style={[
                 styles.progressRing,
                 {
-                  borderColor: isRunning ? Colors.primary : timeLeft === 0 ? Colors.success : "rgba(0,0,0,0.06)",
+                  borderColor: isRunning ? colors.primary : timeLeft === 0 ? colors.success : colors.glassBorder,
                   borderWidth: 4,
                 },
               ]}
@@ -175,7 +284,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
                 </TouchableOpacity>
               </View>
               <TouchableOpacity style={styles.pauseButton} onPress={togglePause} activeOpacity={0.8}>
-                <Pause size={20} color={Colors.white} />
+                <Pause size={20} color={colors.white} />
                 <Text style={styles.pauseText}>Pause</Text>
               </TouchableOpacity>
             </View>
@@ -184,9 +293,9 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
           {!isRunning && timeLeft > 0 && timeLeft < seconds && (
             <TouchableOpacity onPress={togglePause} activeOpacity={0.8}>
               <View
-                style={[styles.startButton, { backgroundColor: Colors.primary }]}
+                style={[styles.startButton, { backgroundColor: colors.primary }]}
               >
-                <Play size={20} color={Colors.white} />
+                <Play size={20} color={colors.white} />
                 <Text style={styles.startText}>Resume</Text>
               </View>
             </TouchableOpacity>
@@ -195,9 +304,9 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
           {(!isRunning && timeLeft === seconds) && (
             <TouchableOpacity onPress={() => startTimer(seconds)} activeOpacity={0.8}>
               <View
-                style={[styles.startButton, { backgroundColor: Colors.primary }]}
+                style={[styles.startButton, { backgroundColor: colors.primary }]}
               >
-                <Play size={20} color={Colors.white} />
+                <Play size={20} color={colors.white} />
                 <Text style={styles.startText}>Start</Text>
               </View>
             </TouchableOpacity>
@@ -206,7 +315,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
           {timeLeft === 0 && (
             <TouchableOpacity onPress={handleClose} activeOpacity={0.8}>
               <View
-                style={[styles.startButton, { backgroundColor: Colors.emerald }]}
+                style={[styles.startButton, { backgroundColor: colors.emerald }]}
               >
                 <Text style={styles.startText}>Close</Text>
               </View>
@@ -218,14 +327,14 @@ export default function RestTimer({ visible, onClose, initialDuration = 60, aler
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: colors.overlay,
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 24,
@@ -235,7 +344,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    backgroundColor: colors.glassBorder,
     alignSelf: "center",
     marginBottom: 16,
   },
@@ -248,7 +357,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   closeButton: {
@@ -268,18 +377,18 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 48,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
   },
   timerLabel: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 4,
   },
   doneLabel: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.success,
+    color: colors.success,
     marginTop: 4,
   },
   progressRing: {
@@ -298,21 +407,21 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   presetPillActive: {
-    backgroundColor: "rgba(59,130,246,0.08)",
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryUltraLight,
+    borderColor: colors.primary,
   },
   presetText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   presetTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   startButton: {
     paddingVertical: 16,
@@ -321,14 +430,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 6,
   },
   startText: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 17,
     fontWeight: "700" as const,
   },
@@ -342,9 +451,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 28,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     minHeight: 48,
     justifyContent: "center" as const,
     alignItems: "center" as const,
@@ -352,10 +461,10 @@ const styles = StyleSheet.create({
   adjustText: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   pauseButton: {
-    backgroundColor: Colors.textSecondary,
+    backgroundColor: colors.textSecondary,
     paddingVertical: 16,
     borderRadius: 10,
     flexDirection: "row",
@@ -364,7 +473,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pauseText: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 17,
     fontWeight: "700" as const,
   },

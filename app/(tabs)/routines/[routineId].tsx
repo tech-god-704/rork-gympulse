@@ -16,7 +16,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import {
   MuscleGroup,
@@ -67,6 +68,8 @@ interface SwipeableRowProps {
 }
 
 function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor }: SwipeableRowProps) {
+  const { colors } = useTheme();
+  const swStyles = useMemo(() => createSwStyles(colors), [colors]);
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
 
@@ -192,7 +195,7 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
   );
 }
 
-const swStyles = StyleSheet.create({
+const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     marginBottom: 10,
     borderRadius: 10,
@@ -222,7 +225,7 @@ const swStyles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.88)",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -248,7 +251,7 @@ const swStyles = StyleSheet.create({
   exerciseNumberText: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   exerciseInfo: {
     flex: 1,
@@ -256,14 +259,14 @@ const swStyles = StyleSheet.create({
   exerciseName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 2,
     letterSpacing: -0.3,
   },
   exerciseDetail: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 2,
   },
 });
@@ -283,6 +286,8 @@ interface EditModalProps {
 }
 
 function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }: EditModalProps) {
+  const { colors } = useTheme();
+  const editStyles = useMemo(() => createEditStyles(colors), [colors]);
   const [setRows, setSetRows] = useState<SetRow[]>([]);
   const [exerciseColor, setExerciseColor] = useState<string | null>(null);
 
@@ -337,7 +342,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
           <View style={editStyles.header}>
             <Text style={editStyles.title}>{exercise.exerciseName}</Text>
             <TouchableOpacity onPress={onClose} style={editStyles.closeBtn}>
-              <X size={20} color={Colors.textTertiary} />
+              <X size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
 
@@ -363,7 +368,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                   keyboardType="number-pad"
                   selectTextOnFocus
                   placeholder="10"
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                 />
                 <TextInput
                   style={editStyles.setInput}
@@ -372,7 +377,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                   keyboardType="number-pad"
                   selectTextOnFocus
                   placeholder="0"
-                  placeholderTextColor={Colors.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                 />
                 <TouchableOpacity
                   onPress={() => handleRemoveSet(index)}
@@ -390,7 +395,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
 
           {/* Add set button */}
           <TouchableOpacity style={editStyles.addSetBtn} onPress={handleAddSet} activeOpacity={0.7}>
-            <Plus size={14} color={Colors.primary} />
+            <Plus size={14} color={colors.primary} />
             <Text style={editStyles.addSetText}>Add Set</Text>
           </TouchableOpacity>
 
@@ -414,7 +419,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                     ]}
                     activeOpacity={0.7}
                   >
-                    {isSelected && <Check size={12} color={c.value ? "#fff" : Colors.text} strokeWidth={3} />}
+                    {isSelected && <Check size={12} color={c.value ? "#fff" : colors.text} strokeWidth={3} />}
                   </TouchableOpacity>
                 );
               })}
@@ -434,7 +439,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
               <Text style={editStyles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
-              <View style={[editStyles.saveBtn, { backgroundColor: Colors.primary }]}>
+              <View style={[editStyles.saveBtn, { backgroundColor: colors.primary }]}>
                 <Check size={18} color="#fff" />
                 <Text style={editStyles.saveText}>Save</Text>
               </View>
@@ -446,7 +451,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
   );
 }
 
-const editStyles = StyleSheet.create({
+const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -474,7 +479,7 @@ const editStyles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
     flex: 1,
   },
@@ -491,7 +496,7 @@ const editStyles = StyleSheet.create({
   columnLabel: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.8,
     textAlign: "center" as const,
   },
@@ -516,7 +521,7 @@ const editStyles = StyleSheet.create({
   setNumberText: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.indigo,
+    color: colors.indigo,
   },
   setInput: {
     flex: 1,
@@ -526,10 +531,10 @@ const editStyles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     textAlign: "center" as const,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   removeSetBtn: {
     width: 28,
@@ -554,7 +559,7 @@ const editStyles = StyleSheet.create({
   addSetText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   colorSection: {
     marginBottom: 16,
@@ -562,7 +567,7 @@ const editStyles = StyleSheet.create({
   colorSectionLabel: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.5,
     textTransform: "uppercase" as const,
     marginBottom: 8,
@@ -620,7 +625,7 @@ const editStyles = StyleSheet.create({
   cancelText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   saveBtn: {
     flex: 1,
@@ -631,7 +636,7 @@ const editStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -646,6 +651,8 @@ const editStyles = StyleSheet.create({
 
 // ═══ MAIN SCREEN ════════════════════════════════════════════
 export default function RoutineDetailScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { routineId } = useLocalSearchParams<{ routineId: string }>();
@@ -836,7 +843,7 @@ export default function RoutineDetailScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <ArrowLeft size={24} color={Colors.text} />
+          <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         {editingName ? (
           <TextInput
@@ -853,7 +860,7 @@ export default function RoutineDetailScreen() {
           </TouchableOpacity>
         )}
         <TouchableOpacity onPress={handleDeleteRoutine} style={styles.deleteButton}>
-          <Trash2 size={20} color={Colors.error} />
+          <Trash2 size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
 
@@ -868,7 +875,7 @@ export default function RoutineDetailScreen() {
               activeOpacity={0.7}
             >
               {active ? (
-                <View style={[styles.dayChip, { backgroundColor: Colors.primary }]}>
+                <View style={[styles.dayChip, { backgroundColor: colors.primary }]}>
                   <Text style={styles.dayChipTextActive}>{WEEKDAY_SHORT[day]}</Text>
                 </View>
               ) : (
@@ -888,7 +895,7 @@ export default function RoutineDetailScreen() {
           onPress={handleToggleRestTimer}
           activeOpacity={0.7}
         >
-          <Timer size={14} color={Colors.textTertiary} />
+          <Timer size={14} color={colors.textTertiary} />
           <Text style={styles.colorPickerLabel}>Rest Timer</Text>
           <View style={[styles.toggleTrack, routine.restTimerEnabled !== false && styles.toggleTrackOn]}>
             <View style={[styles.toggleThumb, routine.restTimerEnabled !== false && styles.toggleThumbOn]} />
@@ -919,7 +926,7 @@ export default function RoutineDetailScreen() {
               })}
             </ScrollView>
             <View style={styles.restAlertRow}>
-              <Bell size={12} color={Colors.textTertiary} />
+              <Bell size={12} color={colors.textTertiary} />
               <Text style={styles.restAlertLabel}>Alert:</Text>
               {REST_ALERT_OPTIONS.map((opt) => {
                 const isActive = (routine.restTimerAlert ?? "vibrate") === opt.value;
@@ -975,7 +982,7 @@ export default function RoutineDetailScreen() {
           onPress={() => setShowAddModal(true)}
           activeOpacity={0.8}
         >
-          <Plus size={20} color={Colors.primary} />
+          <Plus size={20} color={colors.primary} />
           <Text style={styles.addExerciseText}>Add Exercise</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -1027,7 +1034,7 @@ export default function RoutineDetailScreen() {
                 onChangeText={setCustomWeight}
                 keyboardType="number-pad"
                 placeholder="0"
-                placeholderTextColor={Colors.textTertiary}
+                placeholderTextColor={colors.textTertiary}
               />
             </View>
           </View>
@@ -1039,7 +1046,7 @@ export default function RoutineDetailScreen() {
                 onPress={() => setSelectedMuscle(mg)}
               >
                 {selectedMuscle === mg ? (
-                  <View style={[styles.musclePill, { backgroundColor: Colors.primary }]}>
+                  <View style={[styles.musclePill, { backgroundColor: colors.primary }]}>
                     <Text style={styles.musclePillTextActive}>
                       {MUSCLE_GROUP_LABELS[mg]}
                     </Text>
@@ -1056,13 +1063,13 @@ export default function RoutineDetailScreen() {
           </ScrollView>
 
           <View style={styles.searchRow}>
-            <Search size={18} color={Colors.textTertiary} />
+            <Search size={18} color={colors.textTertiary} />
             <TextInput
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search or type custom exercise..."
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
             />
           </View>
 
@@ -1074,7 +1081,7 @@ export default function RoutineDetailScreen() {
                   handleAddCustom(searchQuery.trim());
                 }}
               >
-                <Plus size={18} color={Colors.primary} />
+                <Plus size={18} color={colors.primary} />
                 <Text style={styles.customExerciseText}>
                   Add "{searchQuery.trim()}" as custom exercise
                 </Text>
@@ -1094,7 +1101,7 @@ export default function RoutineDetailScreen() {
                     <Text style={styles.customBadgeText}>Custom</Text>
                   </View>
                 )}
-                <Plus size={18} color={Colors.primary} />
+                <Plus size={18} color={colors.primary} />
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -1104,10 +1111,10 @@ export default function RoutineDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   headerRow: {
     flexDirection: "row",
@@ -1126,18 +1133,18 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     textAlign: "center" as const,
     letterSpacing: -0.3,
   },
   nameInput: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
     textAlign: "center" as const,
     borderBottomWidth: 2,
-    borderBottomColor: Colors.primary,
+    borderBottomColor: colors.primary,
     paddingBottom: 4,
   },
   deleteButton: {
@@ -1160,12 +1167,12 @@ const styles = StyleSheet.create({
   dayChipInactive: {
     backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   dayChipText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   dayChipTextActive: {
     fontSize: 11,
@@ -1186,7 +1193,7 @@ const styles = StyleSheet.create({
   colorPickerLabel: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
     textTransform: "uppercase" as const,
   },
@@ -1223,7 +1230,7 @@ const styles = StyleSheet.create({
   },
   emojiSwatchSelected: {
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     backgroundColor: "rgba(0,0,0,0.06)",
   },
   emojiSwatchText: {
@@ -1245,13 +1252,13 @@ const styles = StyleSheet.create({
     marginLeft: "auto",
   },
   toggleTrackOn: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   toggleThumb: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: Colors.white,
+    backgroundColor: colors.white,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.15,
@@ -1267,19 +1274,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   restDurPillActive: {
     backgroundColor: "rgba(59,130,246,0.10)",
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
   },
   restDurText: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   restDurTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   restAlertRow: {
     flexDirection: "row",
@@ -1289,7 +1296,7 @@ const styles = StyleSheet.create({
   },
   restAlertLabel: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontWeight: "600" as const,
     marginRight: 2,
   },
@@ -1305,15 +1312,15 @@ const styles = StyleSheet.create({
   restAlertChipText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   restAlertChipTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "700" as const,
   },
   hintText: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textAlign: "center",
     marginBottom: 4,
     letterSpacing: 0.2,
@@ -1333,12 +1340,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 4,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   addExerciseButton: {
     flexDirection: "row",
@@ -1348,24 +1355,24 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     borderStyle: "dashed" as const,
     marginTop: 8,
   },
   addExerciseText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   errorText: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center" as const,
     marginTop: 40,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: "row",
@@ -1378,14 +1385,14 @@ const styles = StyleSheet.create({
   },
   modalClose: {
     fontSize: 16,
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "600" as const,
     width: 60,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   setsRepsRow: {
@@ -1400,7 +1407,7 @@ const styles = StyleSheet.create({
   setsRepsLabel: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 6,
     textTransform: "uppercase" as const,
     letterSpacing: 0.5,
@@ -1411,10 +1418,10 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     textAlign: "center" as const,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   muscleScroll: {
     maxHeight: 48,
@@ -1432,17 +1439,17 @@ const styles = StyleSheet.create({
   musclePillInactive: {
     backgroundColor: "rgba(0,0,0,0.03)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   musclePillText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   musclePillTextActive: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: colors.white,
   },
   searchRow: {
     flexDirection: "row",
@@ -1453,13 +1460,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   searchInput: {
     flex: 1,
     padding: 12,
     fontSize: 15,
-    color: Colors.text,
+    color: colors.text,
   },
   exercisesList: {
     flex: 1,
@@ -1484,7 +1491,7 @@ const styles = StyleSheet.create({
   customExerciseText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
     flex: 1,
   },
   exerciseListItem: {
@@ -1496,7 +1503,7 @@ const styles = StyleSheet.create({
   },
   exerciseListName: {
     fontSize: 16,
-    color: Colors.text,
+    color: colors.text,
     flex: 1,
   },
   customBadge: {
@@ -1509,6 +1516,6 @@ const styles = StyleSheet.create({
   customBadgeText: {
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
 });

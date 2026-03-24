@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, GOAL_LABELS, LEVEL_LABELS, WeightUnit, AppTheme } from "@/types";
 
@@ -22,7 +23,10 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const { profile, streak, history, saveProfile, refreshData, settings, updateSettings } = useGym();
+
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [refreshing, setRefreshing] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -103,14 +107,14 @@ export default function ProfileScreen() {
               refreshData();
               setTimeout(() => setRefreshing(false), 600);
             }}
-            tintColor={Colors.indigo}
+            tintColor={colors.indigo}
           />
         }
       >
         {/* Avatar Card */}
         <View style={styles.avatarCard}>
           <LinearGradient
-            colors={[Colors.primary, Colors.indigo, Colors.violet]}
+            colors={[colors.primary, colors.indigo, colors.violet]}
             style={styles.avatar}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -152,9 +156,9 @@ export default function ProfileScreen() {
         {/* Stat Cards Grid */}
         <View style={styles.statGrid}>
           {[
-            { v: streak.currentStreak.toString(), l: "STREAK", icon: <Flame size={18} color="#F59E0B" />, bg: ["#FFFBEB", "#FEF3C7"] as [string, string] },
-            { v: totalWorkouts.toString(), l: "WORKOUTS", icon: <Dumbbell size={18} color={Colors.indigo} />, bg: ["#EEF2FF", "#E0E7FF"] as [string, string] },
-            { v: streak.longestStreak.toString(), l: "BEST", icon: <Trophy size={18} color={Colors.emerald} />, bg: ["#ECFDF5", "#D1FAE5"] as [string, string] },
+            { v: streak.currentStreak.toString(), l: "STREAK", icon: <Flame size={18} color="#F59E0B" />, bg: [isDark ? "#2D2006" : "#FFFBEB", isDark ? "#3D2B08" : "#FEF3C7"] as [string, string] },
+            { v: totalWorkouts.toString(), l: "WORKOUTS", icon: <Dumbbell size={18} color={colors.indigo} />, bg: [isDark ? "#1E1B4B" : "#EEF2FF", isDark ? "#252262" : "#E0E7FF"] as [string, string] },
+            { v: streak.longestStreak.toString(), l: "BEST", icon: <Trophy size={18} color={colors.emerald} />, bg: [isDark ? "#052E1C" : "#ECFDF5", isDark ? "#073D25" : "#D1FAE5"] as [string, string] },
           ].map((s) => (
             <View key={s.l} style={styles.statGridCard}>
               <LinearGradient
@@ -176,7 +180,7 @@ export default function ProfileScreen() {
           <View style={styles.extendedStats}>
             <View style={styles.extendedStatsRow}>
               <View style={styles.extendedStatItem}>
-                <TrendingUp size={14} color={Colors.indigo} />
+                <TrendingUp size={14} color={colors.indigo} />
                 <Text style={styles.extendedStatValue}>
                   {totalVolume >= 1000000
                     ? `${(totalVolume / 1000000).toFixed(1)}M`
@@ -188,13 +192,13 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.extendedStatDivider} />
               <View style={styles.extendedStatItem}>
-                <Clock size={14} color={Colors.indigo} />
+                <Clock size={14} color={colors.indigo} />
                 <Text style={styles.extendedStatValue}>{avgDuration}m</Text>
                 <Text style={styles.extendedStatLabel}>Avg Duration</Text>
               </View>
               <View style={styles.extendedStatDivider} />
               <View style={styles.extendedStatItem}>
-                <Clock size={14} color={Colors.indigo} />
+                <Clock size={14} color={colors.indigo} />
                 <Text style={styles.extendedStatValue}>
                   {totalDuration >= 60
                     ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
@@ -216,7 +220,7 @@ export default function ProfileScreen() {
             <Text style={styles.settingLabel}>Training Days</Text>
             <View style={styles.settingRight}>
               <Text style={styles.settingValue}>{profile.trainingDaysPerWeek} days/week</Text>
-              <ChevronRight size={14} color={Colors.textTertiary} />
+              <ChevronRight size={14} color={colors.textTertiary} />
             </View>
           </TouchableOpacity>
           {editingDays && (
@@ -228,7 +232,7 @@ export default function ProfileScreen() {
                 >
                   {profile.trainingDaysPerWeek === d ? (
                     <LinearGradient
-                      colors={[Colors.primary, Colors.indigo]}
+                      colors={[colors.primary, colors.indigo]}
                       style={styles.dayPill}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -255,7 +259,7 @@ export default function ProfileScreen() {
             <Text style={styles.settingLabel}>Fitness Goal</Text>
             <View style={styles.settingRight}>
               <Text style={styles.settingValue}>{GOAL_LABELS[profile.fitnessGoal]}</Text>
-              <ChevronRight size={14} color={Colors.textTertiary} />
+              <ChevronRight size={14} color={colors.textTertiary} />
             </View>
           </TouchableOpacity>
           {editingGoal && (
@@ -286,7 +290,7 @@ export default function ProfileScreen() {
             <Text style={styles.settingLabel}>Experience</Text>
             <View style={styles.settingRight}>
               <Text style={styles.settingValue}>{LEVEL_LABELS[profile.experienceLevel]}</Text>
-              <ChevronRight size={14} color={Colors.textTertiary} />
+              <ChevronRight size={14} color={colors.textTertiary} />
             </View>
           </TouchableOpacity>
           {editingLevel && (
@@ -325,7 +329,7 @@ export default function ProfileScreen() {
                 >
                   {settings.weightUnit === unit ? (
                     <LinearGradient
-                      colors={[Colors.primary, Colors.indigo]}
+                      colors={[colors.primary, colors.indigo]}
                       style={styles.segmentActive}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -358,7 +362,7 @@ export default function ProfileScreen() {
                 >
                   {settings.defaultRestTimer === sec ? (
                     <LinearGradient
-                      colors={[Colors.primary, Colors.indigo]}
+                      colors={[colors.primary, colors.indigo]}
                       style={styles.segmentActive}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -395,7 +399,7 @@ export default function ProfileScreen() {
                 >
                   {settings.theme === t.key ? (
                     <LinearGradient
-                      colors={[Colors.primary, Colors.indigo]}
+                      colors={[colors.primary, colors.indigo]}
                       style={styles.segmentActive}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
@@ -457,15 +461,15 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -484,11 +488,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 16,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.glass,
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -501,7 +505,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 24,
@@ -510,7 +514,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 26,
     fontWeight: "800" as const,
-    color: "#FFFFFF",
+    color: colors.white,
   },
   avatarInfo: {
     flex: 1,
@@ -518,21 +522,21 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
   },
   nameInput: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     borderBottomWidth: 2,
-    borderBottomColor: Colors.primary,
+    borderBottomColor: colors.primary,
     paddingBottom: 4,
     letterSpacing: -0.5,
   },
   memberText: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 2,
   },
   badgesRow: {
@@ -541,7 +545,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   badgeActive: {
-    backgroundColor: "rgba(59,130,246,0.1)",
+    backgroundColor: colors.primaryUltraLight,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 8,
@@ -549,12 +553,12 @@ const styles = StyleSheet.create({
   badgeActiveText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
   },
   badge: {
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 8,
@@ -562,7 +566,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
   },
@@ -572,12 +576,12 @@ const styles = StyleSheet.create({
   },
   statGridCard: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.glass,
     borderRadius: 20,
     padding: 14,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -595,21 +599,21 @@ const styles = StyleSheet.create({
   statGridValue: {
     fontSize: 22,
     fontWeight: "900" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.8,
     lineHeight: 24,
   },
   statGridLabel: {
     fontSize: 10,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 3,
   },
   extendedStats: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.glass,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     padding: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -629,25 +633,25 @@ const styles = StyleSheet.create({
   extendedStatValue: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
   },
   extendedStatLabel: {
     fontSize: 9,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
     textTransform: "uppercase" as const,
   },
   extendedStatDivider: {
     width: 1,
     height: 36,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
   },
   settingsList: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.glass,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -665,7 +669,7 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   settingRight: {
     flexDirection: "row",
@@ -675,11 +679,11 @@ const styles = StyleSheet.create({
   settingValue: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   settingDivider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
     marginHorizontal: 16,
   },
   daysRow: {
@@ -697,19 +701,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   dayPillInactive: {
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   dayPillText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   dayPillTextActive: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: colors.white,
   },
   optionsList: {
     flexDirection: "row",
@@ -722,21 +726,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   optionItemActive: {
-    backgroundColor: "rgba(59,130,246,0.08)",
-    borderColor: Colors.primary,
+    backgroundColor: colors.primaryUltraLight,
+    borderColor: colors.primary,
   },
   optionText: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   optionTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   segmentedControl: {
     flexDirection: "row",
@@ -753,38 +757,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     minWidth: 44,
     alignItems: "center",
   },
   segmentTextActive: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: "#fff",
+    color: colors.white,
   },
   segmentText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   toggleTrack: {
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "rgba(0,0,0,0.1)",
+    backgroundColor: colors.surface,
     justifyContent: "center",
     paddingHorizontal: 2,
   },
   toggleTrackOn: {
-    backgroundColor: Colors.emerald,
+    backgroundColor: colors.emerald,
   },
   toggleThumb: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.cardBackground,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -801,7 +805,7 @@ const styles = StyleSheet.create({
   footerApp: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: -0.3,
   },
   footerVersion: {
@@ -811,7 +815,7 @@ const styles = StyleSheet.create({
   },
   footerSub: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     opacity: 0.5,
     marginTop: 4,
   },

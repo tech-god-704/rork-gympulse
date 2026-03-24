@@ -1,8 +1,9 @@
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, TextInput, PanResponder } from "react-native";
 import { Check, ChevronDown, Minus, Plus, SkipForward, RotateCcw } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS } from "@/types";
 
 interface Props {
@@ -23,6 +24,9 @@ interface Props {
 }
 
 function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true, accentColor }: Props) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
@@ -145,12 +149,12 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
 
   const backgroundColor = checkAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#FFFFFF", "#E8F8F0"],
+    outputRange: [colors.cardBackground, colors.completedCard],
   });
 
   const borderColor = checkAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["#E8E9F4", "#B8E6D0"],
+    outputRange: [colors.glassBorder, colors.completedBorder],
   });
 
   const chevronRotation = chevronAnim.interpolate({
@@ -175,9 +179,9 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
       <View style={[styles.skipAction, isSkipped && styles.skipActionRestore]}>
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
           {isSkipped ? (
-            <RotateCcw size={16} color="#fff" />
+            <RotateCcw size={16} color={colors.white} />
           ) : (
-            <SkipForward size={16} color="#fff" />
+            <SkipForward size={16} color={colors.white} />
           )}
           <Text style={styles.skipText}>{isSkipped ? "Undo" : "Skip"}</Text>
         </TouchableOpacity>
@@ -204,17 +208,17 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
               {
                 backgroundColor: checkAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [accentColor ? `${accentColor}15` : "rgba(59,130,246,0.08)", Colors.emerald],
+                  outputRange: [accentColor ? `${accentColor}15` : `${colors.primary}15`, colors.emerald],
                 }),
                 borderColor: checkAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [accentColor ? `${accentColor}30` : "rgba(59,130,246,0.2)", Colors.emerald],
+                  outputRange: [accentColor ? `${accentColor}30` : `${colors.primary}33`, colors.emerald],
                 }),
               },
             ]}
           >
             {exercise.completed ? (
-              <Check size={16} color={Colors.white} />
+              <Check size={16} color={colors.white} />
             ) : (
               <Text style={[styles.indexText, accentColor ? { color: accentColor } : undefined]}>{index + 1}</Text>
             )}
@@ -276,7 +280,7 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
             {expanded ? "Hide sets" : `${totalSets} sets · Tap to ${exercise.completed ? "view" : "log"}`}
           </Text>
           <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
-            <ChevronDown size={14} color={Colors.textTertiary} />
+            <ChevronDown size={14} color={colors.textTertiary} />
           </Animated.View>
         </TouchableOpacity>
       )}
@@ -292,7 +296,7 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
               activeOpacity={0.7}
             >
               <View style={[styles.setCheckbox, set.completed && styles.setCheckboxCompleted]}>
-                {set.completed && <Check size={14} color="#fff" />}
+                {set.completed && <Check size={14} color={colors.white} />}
               </View>
               <Text style={[styles.setLabel, set.completed && styles.setLabelCompleted]}>
                 Set {set.setNumber}
@@ -308,7 +312,7 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
                     }}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   >
-                    <Minus size={14} color={Colors.primary} />
+                    <Minus size={14} color={colors.primary} />
                   </TouchableOpacity>
                   <TextInput
                     style={styles.editWeightInput}
@@ -328,7 +332,7 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
                     }}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   >
-                    <Plus size={14} color={Colors.primary} />
+                    <Plus size={14} color={colors.primary} />
                   </TouchableOpacity>
                   <Text style={styles.editWeightUnit}>{weightUnit}</Text>
                 </View>
@@ -362,7 +366,7 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
 
 export default React.memo(ExerciseCard);
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   swipeWrapper: {
     borderRadius: 10,
     overflow: "hidden",
@@ -380,7 +384,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 10,
   },
   skipActionRestore: {
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   skipButton: {
     justifyContent: "center",
@@ -390,7 +394,7 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: "#fff",
+    color: colors.white,
   },
   skippedContainer: {
     opacity: 0.5,
@@ -398,7 +402,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 10,
     borderWidth: 1,
-    shadowColor: "#000",
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -429,7 +433,7 @@ const styles = StyleSheet.create({
   indexText: {
     fontSize: 14,
     fontWeight: "800" as const,
-    color: Colors.primary,
+    color: colors.primary,
     opacity: 0.6,
   },
   info: {
@@ -443,17 +447,17 @@ const styles = StyleSheet.create({
   exerciseName: {
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 3,
     letterSpacing: -0.3,
     flexShrink: 1,
   },
   exerciseNameCompleted: {
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textDecorationLine: "line-through" as const,
   },
   exerciseNameSkipped: {
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textDecorationLine: "line-through" as const,
     fontStyle: "italic" as const,
   },
@@ -477,17 +481,17 @@ const styles = StyleSheet.create({
   detail: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 10,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   dot: {
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: Colors.textTertiary,
+    backgroundColor: colors.textTertiary,
     opacity: 0.3,
   },
   muscleTag: {
-    backgroundColor: "rgba(59,130,246,0.08)",
+    backgroundColor: `${colors.primary}15`,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -495,7 +499,7 @@ const styles = StyleSheet.create({
   muscleTagText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
   },
@@ -517,9 +521,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     marginLeft: 8,
     alignItems: "center",
   },
@@ -527,7 +531,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.indigo,
+    color: colors.indigo,
   },
   // ─── Full-width expand/collapse bar ───
   expandBar: {
@@ -537,21 +541,21 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.06)",
-    backgroundColor: "rgba(0,0,0,0.02)",
+    borderTopColor: colors.glassBorder,
+    backgroundColor: colors.glassBorder,
     minHeight: 44,
   },
   expandBarText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
     fontWeight: "600" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.2,
   },
   // ─── Set details ───
   setsContainer: {
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.06)",
+    borderTopColor: colors.glassBorder,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
@@ -567,38 +571,38 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.1)",
-    backgroundColor: "rgba(0,0,0,0.02)",
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.glassBorder,
     justifyContent: "center",
     alignItems: "center",
   },
   setCheckboxCompleted: {
-    backgroundColor: Colors.emerald,
-    borderColor: Colors.emerald,
+    backgroundColor: colors.emerald,
+    borderColor: colors.emerald,
   },
   setLabel: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     width: 50,
   },
   setLabelCompleted: {
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textDecorationLine: "line-through" as const,
   },
   setReps: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     flex: 1,
   },
   weightButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
-    backgroundColor: "rgba(59,130,246,0.08)",
+    backgroundColor: `${colors.primary}15`,
     borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.12)",
+    borderColor: `${colors.primary}20`,
     minHeight: 32,
     justifyContent: "center",
   },
@@ -606,10 +610,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   setWeightCompleted: {
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   editWeightContainer: {
     flexDirection: "row",
@@ -620,9 +624,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: "rgba(59,130,246,0.08)",
+    backgroundColor: `${colors.primary}15`,
     borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.12)",
+    borderColor: `${colors.primary}20`,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -631,24 +635,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 10,
-    backgroundColor: "#fff",
+    backgroundColor: colors.cardBackground,
     borderWidth: 2,
-    borderColor: Colors.primary,
+    borderColor: colors.primary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 14,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     textAlign: "center" as const,
   },
   editWeightUnit: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontWeight: "500" as const,
   },
   prevHint: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 9,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     opacity: 0.6,
     marginLeft: 4,
   },

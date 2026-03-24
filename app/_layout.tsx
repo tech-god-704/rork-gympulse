@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { GymProvider, useGym } from "@/providers/GymProvider";
+import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -42,13 +43,20 @@ function RootLayoutNav() {
   );
 }
 
+function ThemedStatusBar() {
+  const { isDark } = useTheme();
+  return <StatusBar style={isDark ? "light" : "dark"} />;
+}
+
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <GymProvider>
-          <StatusBar style="dark" />
-          <RootLayoutNav />
+          <ThemeProvider>
+            <ThemedStatusBar />
+            <RootLayoutNav />
+          </ThemeProvider>
         </GymProvider>
       </GestureHandlerRootView>
     </QueryClientProvider>
