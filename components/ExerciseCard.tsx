@@ -8,11 +8,12 @@ import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS } from "@/types";
 interface Props {
   exercise: WorkoutSessionExercise;
   index?: number;
-  onToggle: () => void;
+  exerciseId: string;
+  onToggle: (id: string) => void;
   onRestTimer: (seconds?: number) => void;
-  onToggleSet?: (setNumber: number) => void;
-  onUpdateSetWeight?: (setNumber: number, weight: number) => void;
-  onSkip?: () => void;
+  onToggleSet?: (id: string, setNumber: number) => void;
+  onUpdateSetWeight?: (id: string, setNumber: number, weight: number) => void;
+  onSkip?: (id: string) => void;
   previousPerformance?: { sets: { weight: number; reps: number }[] };
   personalRecord?: { weight: number; reps: number; estimated1RM: number };
   weightUnit?: string;
@@ -21,13 +22,14 @@ interface Props {
   accentColor?: string;
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true, accentColor }: Props) {
+function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true, accentColor }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
   const swipeX = useRef(new Animated.Value(0)).current;
   const swipeOpen = useRef(false);
   const [expanded, setExpanded] = useState(false);
+  const expandedRef = useRef(false);
   const [editingSet, setEditingSet] = useState<number | null>(null);
   const [editWeight, setEditWeight] = useState("");
 
@@ -90,11 +92,12 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     }
-    onToggle();
-  }, [exercise.completed, onToggle, scaleAnim]);
+    onToggle(exerciseId);
+  }, [exercise.completed, onToggle, exerciseId, scaleAnim]);
 
   const handleExpandToggle = useCallback(() => {
-    const next = !expanded;
+    const next = !expandedRef.current;
+    expandedRef.current = next;
     setExpanded(next);
     Animated.spring(chevronAnim, {
       toValue: next ? 1 : 0,
@@ -105,11 +108,11 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
     if (Platform.OS !== "web") {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-  }, [expanded, chevronAnim]);
+  }, [chevronAnim]);
 
   const handleSetToggle = useCallback((setNumber: number, wasCompleted: boolean) => {
     if (onToggleSet) {
-      onToggleSet(setNumber);
+      onToggleSet(exerciseId, setNumber);
       if (Platform.OS !== "web") {
         void Haptics.impactAsync(wasCompleted ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
       }
@@ -117,23 +120,23 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
         onRestTimer(defaultRestTimer);
       }
     }
-  }, [onToggleSet, onRestTimer, autoStartRestTimer, defaultRestTimer]);
+  }, [onToggleSet, exerciseId, onRestTimer, autoStartRestTimer, defaultRestTimer]);
 
   const handleWeightSave = useCallback((setNumber: number) => {
     if (onUpdateSetWeight && editWeight.trim()) {
       const w = parseFloat(editWeight);
       if (!isNaN(w) && w >= 0) {
-        onUpdateSetWeight(setNumber, w);
+        onUpdateSetWeight(exerciseId, setNumber, w);
       }
     }
     setEditingSet(null);
     setEditWeight("");
-  }, [onUpdateSetWeight, editWeight]);
+  }, [onUpdateSetWeight, exerciseId, editWeight]);
 
   const handleWeightStep = useCallback((setNumber: number, currentWeight: number, delta: number) => {
     const newWeight = Math.max(0, currentWeight + delta);
     if (onUpdateSetWeight) {
-      onUpdateSetWeight(setNumber, newWeight);
+      onUpdateSetWeight(exerciseId, setNumber, newWeight);
       if (Platform.OS !== "web") {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
@@ -159,10 +162,10 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
     Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
     swipeOpen.current = false;
     if (onSkip) {
-      onSkip();
+      onSkip(exerciseId);
       if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-  }, [onSkip, swipeX]);
+  }, [onSkip, exerciseId, swipeX]);
 
   const hasSets = exercise.setDetails && exercise.setDetails.length > 0;
 
