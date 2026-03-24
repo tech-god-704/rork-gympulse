@@ -18,9 +18,10 @@ interface Props {
   weightUnit?: string;
   defaultRestTimer?: number;
   autoStartRestTimer?: boolean;
+  accentColor?: string;
 }
 
-function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true }: Props) {
+function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true, accentColor }: Props) {
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chevronAnim = useRef(new Animated.Value(0)).current;
@@ -188,6 +189,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
           transform: [{ scale: scaleAnim }, { translateX: swipeX }],
         },
         isSkipped && styles.skippedContainer,
+        accentColor && !exercise.completed ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
       ]}
       {...panResponder.panHandlers}
     >
@@ -200,11 +202,11 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
               {
                 backgroundColor: checkAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ["rgba(59,130,246,0.08)", Colors.emerald],
+                  outputRange: [accentColor ? `${accentColor}15` : "rgba(59,130,246,0.08)", Colors.emerald],
                 }),
                 borderColor: checkAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: ["rgba(59,130,246,0.2)", Colors.emerald],
+                  outputRange: [accentColor ? `${accentColor}30` : "rgba(59,130,246,0.2)", Colors.emerald],
                 }),
               },
             ]}
@@ -212,7 +214,7 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
             {exercise.completed ? (
               <Check size={16} color={Colors.white} />
             ) : (
-              <Text style={styles.indexText}>{index + 1}</Text>
+              <Text style={[styles.indexText, accentColor ? { color: accentColor } : undefined]}>{index + 1}</Text>
             )}
           </Animated.View>
           <View style={styles.info}>

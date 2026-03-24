@@ -33,6 +33,7 @@ export interface RoutineExercise {
   reps: number;
   weight: number;
   setConfigs?: RoutineSetConfig[];
+  color?: string;
 }
 
 export type WeekDay = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
