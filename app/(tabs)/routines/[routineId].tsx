@@ -142,7 +142,6 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
           { transform: [{ translateX }] },
           accentColor ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
         ]}
-        {...panResponder.panHandlers}
       >
         <TouchableOpacity
           style={swStyles.rowContent}
@@ -154,6 +153,7 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
             }
           }}
           activeOpacity={0.7}
+          {...panResponder.panHandlers}
         >
           <View style={[
             swStyles.exerciseNumber,
