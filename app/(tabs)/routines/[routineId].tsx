@@ -208,15 +208,15 @@ const swStyles = StyleSheet.create({
     width: 56,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FF3B30",
+    backgroundColor: "#E53535",
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
   },
   deleteButton: {
     width: 36,
     height: 36,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10,
+    backgroundColor: "rgba(0,0,0,0.15)",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -378,10 +378,13 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                 />
                 <TouchableOpacity
                   onPress={() => handleRemoveSet(index)}
-                  style={editStyles.removeSetBtn}
+                  style={[
+                    editStyles.removeSetBtn,
+                    setRows.length > 1 && { backgroundColor: "#E53535" },
+                  ]}
                   disabled={setRows.length <= 1}
                 >
-                  <X size={14} color={setRows.length <= 1 ? "rgba(0,0,0,0.1)" : Colors.error} />
+                  <Trash2 size={12} color={setRows.length <= 1 ? "rgba(0,0,0,0.15)" : "#fff"} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -538,9 +541,10 @@ const editStyles = StyleSheet.create({
   removeSetBtn: {
     width: 28,
     height: 28,
-    borderRadius: 8,
+    borderRadius: 7,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.04)",
   },
   addSetBtn: {
     flexDirection: "row",
