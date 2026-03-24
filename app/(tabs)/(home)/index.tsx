@@ -118,21 +118,22 @@ export default function TodayScreen() {
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
   const monthDay = today.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toUpperCase();
 
-  // Live workout timer
+  // Live workout timer — depend only on startedAt (stable during a workout)
+  // to avoid re-creating the interval on every set toggle
+  const sessionStartedAt = currentSession?.startedAt;
   useEffect(() => {
-    if (!currentSession) {
+    if (!sessionStartedAt) {
       setElapsedSeconds(0);
       return;
     }
+    const startTime = new Date(sessionStartedAt).getTime();
     const updateElapsed = () => {
-      const startTime = new Date(currentSession.startedAt).getTime();
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      setElapsedSeconds(elapsed);
+      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
     };
     updateElapsed();
     const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
-  }, [currentSession]);
+  }, [sessionStartedAt]);
 
   const elapsedMinutes = Math.floor(elapsedSeconds / 60);
 
@@ -214,6 +215,22 @@ export default function TodayScreen() {
       updateSetWeight(routineExerciseId, setNumber, weight);
     },
     [updateSetWeight]
+  );
+
+  const handleSkipExercise = useCallback(
+    (routineExerciseId: string) => {
+      skipExercise(routineExerciseId);
+    },
+    [skipExercise]
+  );
+
+  const handleRestTimer = useCallback(
+    (seconds?: number) => {
+      if (!routineRestEnabled) return;
+      setRestTimerDuration(seconds ?? activeRoutine?.restTimerDuration ?? 60);
+      setShowRestTimer(true);
+    },
+    [routineRestEnabled, activeRoutine?.restTimerDuration]
   );
 
   const handleDismissConfetti = useCallback(() => {
@@ -363,16 +380,13 @@ export default function TodayScreen() {
                   <ExerciseCard
                     key={exercise.routineExerciseId}
                     exercise={exercise}
+                    exerciseId={exercise.routineExerciseId}
                     index={index}
-                    onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
-                    onSkip={() => skipExercise(exercise.routineExerciseId)}
-                    onRestTimer={(seconds) => {
-                      if (!routineRestEnabled) return;
-                      setRestTimerDuration(seconds ?? activeRoutine?.restTimerDuration ?? 60);
-                      setShowRestTimer(true);
-                    }}
-                    onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
-                    onUpdateSetWeight={(setNumber, weight) => handleUpdateSetWeight(exercise.routineExerciseId, setNumber, weight)}
+                    onToggle={handleToggleExercise}
+                    onSkip={handleSkipExercise}
+                    onRestTimer={handleRestTimer}
+                    onToggleSet={handleToggleSet}
+                    onUpdateSetWeight={handleUpdateSetWeight}
                     previousPerformance={lastPerformance[exercise.exerciseName]}
                     personalRecord={personalRecords[exercise.exerciseName]}
                     weightUnit={settings.weightUnit}
