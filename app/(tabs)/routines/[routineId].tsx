@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Plus, Trash2, Search, Check, X, Palette } from "lucide-react-native";
+import { ArrowLeft, Plus, Trash2, Search, Check, X, Palette, Smile, Timer, Bell } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -28,11 +28,20 @@ import {
   WeekDay,
   WEEKDAY_SHORT,
   ALL_WEEKDAYS,
+  RestTimerAlert,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
+import { ROUTINE_EMOJI_OPTIONS } from "@/mocks/exercises";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
+const REST_TIMER_DURATIONS = [30, 45, 60, 90, 120, 180];
+const REST_ALERT_OPTIONS: { value: RestTimerAlert; label: string }[] = [
+  { value: "vibrate", label: "Vibrate" },
+  { value: "sound", label: "Sound" },
+  { value: "both", label: "Both" },
+  { value: "none", label: "None" },
+];
 
 const ROUTINE_COLORS: { label: string; value: string | null }[] = [
   { label: "Default", value: null },
@@ -623,7 +632,7 @@ export default function RoutineDetailScreen() {
     if (!exercise) return;
     const numSets = parseInt(customSets, 10) || 3;
     const numReps = parseInt(customReps, 10) || 10;
-    const numWeight = parseInt(customWeight, 10) || 0;
+    const numWeight = parseFloat(customWeight) || 0;
     const routineExercise: RoutineExercise = {
       id: generateId(),
       exerciseId: exercise.id,
@@ -704,6 +713,31 @@ export default function RoutineDetailScreen() {
   const handlePickColor = useCallback((color: string | null) => {
     if (!routineId) return;
     updateRoutine(routineId, { color: color || undefined });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  }, [routineId, updateRoutine]);
+
+  const handlePickEmoji = useCallback((emoji: string) => {
+    if (!routineId) return;
+    updateRoutine(routineId, { emoji });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  }, [routineId, updateRoutine]);
+
+  const handleToggleRestTimer = useCallback(() => {
+    if (!routineId || !routine) return;
+    const current = routine.restTimerEnabled !== false; // default true
+    updateRoutine(routineId, { restTimerEnabled: !current });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  }, [routineId, routine, updateRoutine]);
+
+  const handleSetRestDuration = useCallback((duration: number) => {
+    if (!routineId) return;
+    updateRoutine(routineId, { restTimerDuration: duration });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  }, [routineId, updateRoutine]);
+
+  const handleSetRestAlert = useCallback((alert: RestTimerAlert) => {
+    if (!routineId) return;
+    updateRoutine(routineId, { restTimerAlert: alert });
     if (Platform.OS !== "web") void Haptics.selectionAsync();
   }, [routineId, updateRoutine]);
 
@@ -801,6 +835,96 @@ export default function RoutineDetailScreen() {
             );
           })}
         </ScrollView>
+      </View>
+
+      {/* Emoji Picker */}
+      <View style={styles.colorPickerSection}>
+        <View style={styles.colorPickerHeader}>
+          <Smile size={14} color={Colors.textTertiary} />
+          <Text style={styles.colorPickerLabel}>Icon</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.colorPickerRow}
+        >
+          {ROUTINE_EMOJI_OPTIONS.map((em) => {
+            const isSelected = em === routine.emoji;
+            return (
+              <TouchableOpacity
+                key={em}
+                onPress={() => handlePickEmoji(em)}
+                activeOpacity={0.7}
+                style={[
+                  styles.emojiSwatch,
+                  isSelected && styles.emojiSwatchSelected,
+                ]}
+              >
+                <Text style={styles.emojiSwatchText}>{em}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Rest Timer Settings */}
+      <View style={styles.colorPickerSection}>
+        <TouchableOpacity
+          style={styles.restTimerToggleRow}
+          onPress={handleToggleRestTimer}
+          activeOpacity={0.7}
+        >
+          <Timer size={14} color={Colors.textTertiary} />
+          <Text style={styles.colorPickerLabel}>Rest Timer</Text>
+          <View style={[styles.toggleTrack, routine.restTimerEnabled !== false && styles.toggleTrackOn]}>
+            <View style={[styles.toggleThumb, routine.restTimerEnabled !== false && styles.toggleThumbOn]} />
+          </View>
+        </TouchableOpacity>
+
+        {routine.restTimerEnabled !== false && (
+          <>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.colorPickerRow}
+            >
+              {REST_TIMER_DURATIONS.map((dur) => {
+                const isActive = (routine.restTimerDuration ?? 60) === dur;
+                return (
+                  <TouchableOpacity
+                    key={dur}
+                    onPress={() => handleSetRestDuration(dur)}
+                    activeOpacity={0.7}
+                    style={[styles.restDurPill, isActive && styles.restDurPillActive]}
+                  >
+                    <Text style={[styles.restDurText, isActive && styles.restDurTextActive]}>
+                      {dur < 60 ? `${dur}s` : dur % 60 === 0 ? `${dur / 60}m` : `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <View style={styles.restAlertRow}>
+              <Bell size={12} color={Colors.textTertiary} />
+              <Text style={styles.restAlertLabel}>Alert:</Text>
+              {REST_ALERT_OPTIONS.map((opt) => {
+                const isActive = (routine.restTimerAlert ?? "vibrate") === opt.value;
+                return (
+                  <TouchableOpacity
+                    key={opt.value}
+                    onPress={() => handleSetRestAlert(opt.value)}
+                    activeOpacity={0.7}
+                    style={[styles.restAlertChip, isActive && styles.restAlertChipActive]}
+                  >
+                    <Text style={[styles.restAlertChipText, isActive && styles.restAlertChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
       </View>
 
       {/* Hint text */}
@@ -1077,6 +1201,104 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
+  },
+  emojiSwatch: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(99,102,241,0.06)",
+  },
+  emojiSwatchSelected: {
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    backgroundColor: "rgba(99,102,241,0.12)",
+  },
+  emojiSwatchText: {
+    fontSize: 18,
+  },
+  restTimerToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  toggleTrack: {
+    width: 40,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+    marginLeft: "auto",
+  },
+  toggleTrackOn: {
+    backgroundColor: Colors.primary,
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleThumbOn: {
+    alignSelf: "flex-end",
+  },
+  restDurPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: "rgba(99,102,241,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(99,102,241,0.10)",
+  },
+  restDurPillActive: {
+    backgroundColor: "rgba(59,130,246,0.10)",
+    borderColor: Colors.primary,
+  },
+  restDurText: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  restDurTextActive: {
+    color: Colors.primary,
+  },
+  restAlertRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+  },
+  restAlertLabel: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    fontWeight: "600" as const,
+    marginRight: 2,
+  },
+  restAlertChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(99,102,241,0.06)",
+  },
+  restAlertChipActive: {
+    backgroundColor: "rgba(59,130,246,0.10)",
+  },
+  restAlertChipText: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: Colors.textSecondary,
+  },
+  restAlertChipTextActive: {
+    color: Colors.primary,
+    fontWeight: "700" as const,
   },
   hintText: {
     fontSize: 11,

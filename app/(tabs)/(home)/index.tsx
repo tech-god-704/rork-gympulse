@@ -48,6 +48,7 @@ export default function TodayScreen() {
     streak,
     startWorkout,
     toggleExerciseComplete,
+    skipExercise,
     toggleSetComplete,
     updateSetWeight,
     completeWorkout,
@@ -62,6 +63,14 @@ export default function TodayScreen() {
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restTimerDuration, setRestTimerDuration] = useState(settings.defaultRestTimer);
+
+  // Per-routine rest timer overrides
+  const activeRoutine = useMemo(() => {
+    if (!currentSession) return null;
+    return routines.find((r) => r.id === currentSession.routineId) ?? null;
+  }, [currentSession, routines]);
+  const routineRestEnabled = activeRoutine?.restTimerEnabled !== false;
+  const routineRestAlert = activeRoutine?.restTimerAlert ?? "vibrate";
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0 });
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -342,8 +351,10 @@ export default function TodayScreen() {
                     exercise={exercise}
                     index={index}
                     onToggle={() => handleToggleExercise(exercise.routineExerciseId)}
+                    onSkip={() => skipExercise(exercise.routineExerciseId)}
                     onRestTimer={(seconds) => {
-                      setRestTimerDuration(seconds ?? 60);
+                      if (!routineRestEnabled) return;
+                      setRestTimerDuration(seconds ?? activeRoutine?.restTimerDuration ?? 60);
                       setShowRestTimer(true);
                     }}
                     onToggleSet={(setNumber) => handleToggleSet(exercise.routineExerciseId, setNumber)}
@@ -351,8 +362,8 @@ export default function TodayScreen() {
                     previousPerformance={lastPerformance[exercise.exerciseName]}
                     personalRecord={personalRecords[exercise.exerciseName]}
                     weightUnit={settings.weightUnit}
-                    defaultRestTimer={settings.defaultRestTimer}
-                    autoStartRestTimer={settings.autoStartRestTimer}
+                    defaultRestTimer={activeRoutine?.restTimerDuration ?? settings.defaultRestTimer}
+                    autoStartRestTimer={routineRestEnabled && settings.autoStartRestTimer}
                   />
                 ))}
               </View>
@@ -412,6 +423,9 @@ export default function TodayScreen() {
                   accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
                   accessibilityRole="button"
                 >
+                  {todaysRoutine.emoji ? (
+                    <Text style={styles.routineCardEmoji}>{todaysRoutine.emoji}</Text>
+                  ) : null}
                   <View style={styles.routineCardLeft}>
                     <Text style={[styles.scheduledName, tDark && { color: "#fff" }]}>{todaysRoutine.name}</Text>
                     <Text style={[styles.routineCardDetail, tDark && { color: "rgba(255,255,255,0.75)" }]}>
@@ -456,6 +470,9 @@ export default function TodayScreen() {
                     onPress={() => handleStartWorkout(routine.id)}
                     activeOpacity={0.7}
                   >
+                    {routine.emoji ? (
+                      <Text style={styles.routineCardEmoji}>{routine.emoji}</Text>
+                    ) : null}
                     <View style={styles.routineCardLeft}>
                       <Text style={[styles.routineCardName, isDark && { color: "#fff" }]}>{routine.name}</Text>
                       <Text style={[styles.routineCardDetail, isDark && { color: "rgba(255,255,255,0.75)" }]}>
@@ -487,7 +504,7 @@ export default function TodayScreen() {
         )}
       </ScrollView>
 
-      <RestTimer visible={showRestTimer} onClose={() => setShowRestTimer(false)} initialDuration={restTimerDuration} />
+      <RestTimer visible={showRestTimer} onClose={() => setShowRestTimer(false)} initialDuration={restTimerDuration} alertType={routineRestAlert} />
 
       <ConfettiOverlay
         visible={showConfetti}
@@ -827,6 +844,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 20,
     elevation: 2,
+  },
+  routineCardEmoji: {
+    fontSize: 24,
+    marginRight: 2,
   },
   routineCardLeft: {
     flex: 1,

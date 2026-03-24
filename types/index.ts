@@ -59,12 +59,18 @@ export const WEEKDAY_SHORT: Record<WeekDay, string> = {
 
 export const ALL_WEEKDAYS: WeekDay[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
+export type RestTimerAlert = "vibrate" | "sound" | "both" | "none";
+
 export interface Routine {
   id: string;
   name: string;
   exercises: RoutineExercise[];
   scheduledDays?: WeekDay[];
   color?: string;
+  emoji?: string;
+  restTimerEnabled?: boolean; // per-routine override (defaults to global setting)
+  restTimerDuration?: number; // seconds, per-routine override
+  restTimerAlert?: RestTimerAlert; // alert type when timer ends
   createdAt: string;
 }
 

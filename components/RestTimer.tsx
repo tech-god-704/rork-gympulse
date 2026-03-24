@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Modal, Platform, Vibration } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { X, Play, Pause } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { RestTimerAlert } from "@/types";
 
 const PRESETS = [30, 60, 90, 120];
 
@@ -11,9 +12,10 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   initialDuration?: number;
+  alertType?: RestTimerAlert;
 }
 
-export default function RestTimer({ visible, onClose, initialDuration = 60 }: Props) {
+export default function RestTimer({ visible, onClose, initialDuration = 60, alertType = "vibrate" }: Props) {
   const [seconds, setSeconds] = useState(initialDuration);
   const [isRunning, setIsRunning] = useState(false);
   const [timeLeft, setTimeLeft] = useState(initialDuration);
@@ -30,16 +32,31 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
     []
   );
 
-  // Reset timer when opened (pick up latest initialDuration)
+  // Reset timer when opened (pick up latest initialDuration) & auto-start
   const prevVisible = useRef(false);
   useEffect(() => {
     if (visible && !prevVisible.current) {
       setSeconds(initialDuration);
       setTimeLeft(initialDuration);
-      setIsRunning(false);
+      setIsRunning(true); // auto-start the countdown
     }
     prevVisible.current = visible;
   }, [visible, initialDuration]);
+
+  const fireAlert = useCallback(() => {
+    if (Platform.OS === "web" || alertType === "none") return;
+    if (alertType === "vibrate" || alertType === "both") {
+      // Triple-pulse vibration pattern
+      Vibration.vibrate([0, 300, 150, 300, 150, 300]);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    if (alertType === "sound" || alertType === "both") {
+      // Heavy haptic as an audible tap-back (no audio lib needed)
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 250);
+      setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 500);
+    }
+  }, [alertType]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -47,7 +64,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setIsRunning(false);
-          if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          fireAlert();
           return 0;
         }
         return prev - 1;
@@ -56,7 +73,7 @@ export default function RestTimer({ visible, onClose, initialDuration = 60 }: Pr
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning]);
+  }, [isRunning, fireAlert]);
 
   useEffect(() => {
     if (isRunning) {
