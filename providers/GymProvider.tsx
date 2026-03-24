@@ -16,7 +16,7 @@ import {
   AppSettings,
   DEFAULT_SETTINGS,
 } from "@/types";
-import { BUILT_IN_EXERCISES, STARTER_ROUTINES } from "@/mocks/exercises";
+import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
 
 const STORAGE_KEYS = {
@@ -382,25 +382,9 @@ function useGymState() {
   const completeOnboarding = useCallback(
     (p: UserProfile) => {
       saveProfile(p);
-      const starterRoutines: Routine[] = STARTER_ROUTINES.map((sr) => ({
-        id: generateId(),
-        name: sr.name,
-        emoji: sr.emoji,
-        exercises: sr.exercises.map((e) => ({
-          id: generateId(),
-          exerciseId: BUILT_IN_EXERCISES.find((be) => be.name === e.name)?.id ?? generateId(),
-          exerciseName: e.name,
-          muscleGroup: e.muscleGroup,
-          sets: e.sets,
-          reps: e.reps,
-          weight: e.weight,
-          setConfigs: Array.from({ length: e.sets }, () => ({ reps: e.reps, weight: e.weight })),
-        })),
-        createdAt: new Date().toISOString(),
-      }));
-      saveRoutinesMutation.mutate(starterRoutines);
+      // Don't auto-create routines — let the user build or pick from splits
     },
-    [saveProfile, saveRoutinesMutation]
+    [saveProfile]
   );
 
   const addRoutine = useCallback(

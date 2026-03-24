@@ -450,7 +450,7 @@ export default function ProfileScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerApp}>GymPulse <Text style={styles.footerVersion}>v1.0</Text></Text>
-          <Text style={styles.footerSub}>Media Ape Ventures</Text>
+          <Text style={styles.footerSub}>Quntm Technology Group LLC</Text>
         </View>
       </ScrollView>
     </View>

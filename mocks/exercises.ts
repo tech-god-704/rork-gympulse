@@ -144,7 +144,7 @@ type RoutineTemplate = {
 };
 
 // ── Workout-split metadata ────────────────────────────────────────
-export type WorkoutSplitId = "ppl" | "upper_lower" | "bro_split" | "full_body";
+export type WorkoutSplitId = "ppl" | "upper_lower" | "bro_split" | "full_body" | "strength_foundation" | "arnold_split" | "powerbuilding";
 
 export interface WorkoutSplit {
   id: WorkoutSplitId;
@@ -319,6 +319,134 @@ const FULL_BODY_ROUTINES: RoutineTemplate[] = [
   },
 ];
 
+// ===================================================================
+//  5. STRENGTH FOUNDATION  –  3-day split (compound-focused)
+// ===================================================================
+const STRENGTH_FOUNDATION_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Squat Day",
+    emoji: "🏋️",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 5, reps: 5, weight: 205 },
+      { name: "Overhead Press", muscleGroup: "shoulders", sets: 5, reps: 5, weight: 95 },
+      { name: "Barbell Rows", muscleGroup: "back", sets: 5, reps: 5, weight: 135 },
+      { name: "Dumbbell Curls", muscleGroup: "arms", sets: 3, reps: 10, weight: 25 },
+    ],
+  },
+  {
+    name: "Bench Day",
+    emoji: "🏋️",
+    exercises: [
+      { name: "Bench Press", muscleGroup: "chest", sets: 5, reps: 5, weight: 155 },
+      { name: "Deadlift", muscleGroup: "back", sets: 1, reps: 5, weight: 225 },
+      { name: "Lat Pulldown", muscleGroup: "back", sets: 3, reps: 10, weight: 100 },
+      { name: "Overhead Tricep Extension", muscleGroup: "arms", sets: 3, reps: 10, weight: 30 },
+    ],
+  },
+  {
+    name: "Deadlift Day",
+    emoji: "🏋️",
+    exercises: [
+      { name: "Deadlift", muscleGroup: "back", sets: 5, reps: 5, weight: 245 },
+      { name: "Bench Press", muscleGroup: "chest", sets: 5, reps: 5, weight: 135 },
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 3, reps: 8, weight: 185 },
+      { name: "Face Pulls", muscleGroup: "shoulders", sets: 3, reps: 15, weight: 30 },
+    ],
+  },
+];
+
+// ===================================================================
+//  6. ARNOLD SPLIT  –  6-day split (chest/back, shoulders/arms, legs)
+// ===================================================================
+const ARNOLD_SPLIT_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Chest & Back",
+    emoji: "💪",
+    exercises: [
+      { name: "Bench Press", muscleGroup: "chest", sets: 4, reps: 8, weight: 155 },
+      { name: "Pull-Ups", muscleGroup: "back", sets: 4, reps: 8, weight: 0 },
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 10, weight: 50 },
+      { name: "Barbell Rows", muscleGroup: "back", sets: 4, reps: 8, weight: 135 },
+      { name: "Cable Flyes", muscleGroup: "chest", sets: 3, reps: 12, weight: 30 },
+      { name: "Seated Cable Row", muscleGroup: "back", sets: 3, reps: 10, weight: 120 },
+    ],
+  },
+  {
+    name: "Shoulders & Arms",
+    emoji: "💪",
+    exercises: [
+      { name: "Overhead Press", muscleGroup: "shoulders", sets: 4, reps: 8, weight: 95 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 4, reps: 15, weight: 15 },
+      { name: "Barbell Curls", muscleGroup: "arms", sets: 3, reps: 10, weight: 50 },
+      { name: "Skull Crushers", muscleGroup: "arms", sets: 3, reps: 10, weight: 50 },
+      { name: "Hammer Curls", muscleGroup: "arms", sets: 3, reps: 12, weight: 25 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 3, reps: 12, weight: 40 },
+    ],
+  },
+  {
+    name: "Legs",
+    emoji: "🦵",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 4, reps: 8, weight: 205 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 4, reps: 10, weight: 270 },
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 3, reps: 10, weight: 155 },
+      { name: "Leg Extensions", muscleGroup: "legs", sets: 3, reps: 12, weight: 90 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 3, reps: 12, weight: 80 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 4, reps: 15, weight: 100 },
+    ],
+  },
+];
+
+// ===================================================================
+//  7. POWERBUILDING  –  4-day split (strength + hypertrophy hybrid)
+// ===================================================================
+const POWERBUILDING_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Heavy Upper",
+    emoji: "⚡",
+    exercises: [
+      { name: "Bench Press", muscleGroup: "chest", sets: 5, reps: 3, weight: 185 },
+      { name: "Barbell Rows", muscleGroup: "back", sets: 5, reps: 3, weight: 165 },
+      { name: "Overhead Press", muscleGroup: "shoulders", sets: 4, reps: 5, weight: 105 },
+      { name: "Pull-Ups", muscleGroup: "back", sets: 3, reps: 8, weight: 0 },
+    ],
+  },
+  {
+    name: "Heavy Lower",
+    emoji: "⚡",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 5, reps: 3, weight: 245 },
+      { name: "Deadlift", muscleGroup: "back", sets: 5, reps: 3, weight: 275 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 8, weight: 315 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 4, reps: 12, weight: 120 },
+    ],
+  },
+  {
+    name: "Volume Upper",
+    emoji: "⚡",
+    exercises: [
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 4, reps: 10, weight: 55 },
+      { name: "Seated Cable Row", muscleGroup: "back", sets: 4, reps: 10, weight: 120 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 4, reps: 15, weight: 15 },
+      { name: "Barbell Curls", muscleGroup: "arms", sets: 3, reps: 12, weight: 45 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 3, reps: 12, weight: 40 },
+      { name: "Face Pulls", muscleGroup: "shoulders", sets: 3, reps: 15, weight: 30 },
+    ],
+  },
+  {
+    name: "Volume Lower",
+    emoji: "⚡",
+    exercises: [
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 4, reps: 10, weight: 155 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 4, reps: 12, weight: 250 },
+      { name: "Hip Thrusts", muscleGroup: "legs", sets: 3, reps: 12, weight: 155 },
+      { name: "Leg Extensions", muscleGroup: "legs", sets: 3, reps: 15, weight: 80 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 3, reps: 15, weight: 70 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 4, reps: 15, weight: 100 },
+    ],
+  },
+];
+
 // ── All splits in one exportable collection ───────────────────────
 export const WORKOUT_SPLITS: WorkoutSplit[] = [
   {
@@ -348,6 +476,27 @@ export const WORKOUT_SPLITS: WorkoutSplit[] = [
     shortDescription: "3 days per week — same workout each session",
     daysPerWeek: 3,
     routines: FULL_BODY_ROUTINES,
+  },
+  {
+    id: "strength_foundation",
+    name: "Strength Foundation",
+    shortDescription: "3 days per week — heavy compound lifts (5x5 style)",
+    daysPerWeek: 3,
+    routines: STRENGTH_FOUNDATION_ROUTINES,
+  },
+  {
+    id: "arnold_split",
+    name: "Arnold Split",
+    shortDescription: "6 days per week — chest/back, shoulders/arms, legs",
+    daysPerWeek: 6,
+    routines: ARNOLD_SPLIT_ROUTINES,
+  },
+  {
+    id: "powerbuilding",
+    name: "Powerbuilding",
+    shortDescription: "4 days per week — strength + hypertrophy hybrid",
+    daysPerWeek: 4,
+    routines: POWERBUILDING_ROUTINES,
   },
 ];
 

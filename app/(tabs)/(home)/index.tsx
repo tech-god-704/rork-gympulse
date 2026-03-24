@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Flame, Target, Play, X, Clock } from "lucide-react-native";
+import { Flame, Target, Play, X, Clock, Dumbbell, ChevronRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
@@ -502,13 +502,25 @@ export default function TodayScreen() {
                 })}
               </View>
             ) : (
-              <TouchableOpacity
-                style={styles.createPrompt}
-                onPress={() => router.push("/(tabs)/routines")}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.createPromptText}>Create your first routine</Text>
-              </TouchableOpacity>
+              <View style={styles.emptyStateCard}>
+                <View style={styles.emptyStateIconRow}>
+                  <View style={styles.emptyStateIconBg}>
+                    <Dumbbell size={28} color={Colors.primary} />
+                  </View>
+                </View>
+                <Text style={styles.emptyStateHeading}>Build Your First Routine</Text>
+                <Text style={styles.emptyStateBody}>
+                  Create a custom workout or pick from popular splits like Push/Pull/Legs, Upper/Lower, and more.
+                </Text>
+                <TouchableOpacity
+                  style={styles.emptyStateCta}
+                  onPress={() => router.push("/(tabs)/routines")}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.emptyStateCtaText}>Get Started</Text>
+                  <ChevronRight size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         )}
@@ -866,19 +878,57 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  createPrompt: {
+  emptyStateCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 28,
     alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    backgroundColor: "rgba(59,130,246,0.06)",
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryLight,
-    borderStyle: "dashed" as const,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.06)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  createPromptText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: Colors.primary,
+  emptyStateIconRow: {
+    marginBottom: 16,
+  },
+  emptyStateIconBg: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: Colors.primaryUltraLight ?? "rgba(59,130,246,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyStateHeading: {
+    fontSize: 20,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  emptyStateBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.textSecondary,
+    textAlign: "center" as const,
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  emptyStateCta: {
+    flexDirection: "row" as const,
+    alignItems: "center",
+    backgroundColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    gap: 6,
+  },
+  emptyStateCtaText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#FFFFFF",
   },
 });
