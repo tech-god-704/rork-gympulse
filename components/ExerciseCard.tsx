@@ -141,12 +141,12 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
 
   const backgroundColor = checkAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["rgba(255,255,255,0.88)", "rgba(16,185,129,0.08)"],
+    outputRange: ["#FFFFFF", "#E8F8F0"],
   });
 
   const borderColor = checkAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ["rgba(99,102,241,0.10)", "rgba(16,185,129,0.25)"],
+    outputRange: ["#E8E9F4", "#B8E6D0"],
   });
 
   const chevronRotation = chevronAnim.interpolate({
@@ -248,21 +248,16 @@ function ExerciseCard({ exercise, index = 0, onToggle, onRestTimer, onToggleSet,
           </View>
         </TouchableOpacity>
         {!exercise.completed && (
-          <View style={styles.restButtons}>
-            {[...new Set([defaultRestTimer, 60, 90])].sort((a, b) => a - b).map((s) => (
-              <TouchableOpacity
-                key={s}
-                style={styles.restButton}
-                onPress={() => {
-                  onRestTimer(s);
-                  if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-              >
-                <Text style={styles.restButtonText}>{s}s</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity
+            style={styles.restButton}
+            onPress={() => {
+              onRestTimer(defaultRestTimer);
+              if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.restButtonText}>{defaultRestTimer}s</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -514,19 +509,14 @@ const styles = StyleSheet.create({
     color: "#92400E",
     letterSpacing: 0.5,
   },
-  restButtons: {
-    flexDirection: "row",
-    gap: 6,
-    marginLeft: 8,
-  },
   restButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: "rgba(99,102,241,0.06)",
     borderWidth: 1,
     borderColor: "rgba(99,102,241,0.10)",
-    minWidth: 44,
+    marginLeft: 8,
     alignItems: "center",
   },
   restButtonText: {
