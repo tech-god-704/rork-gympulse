@@ -836,7 +836,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     alignItems: "center",
   },
   overloadBadgePR: {
-    backgroundColor: "rgba(16,185,129,0.12)",
+    backgroundColor: `${colors.emerald}1F`,
   },
   overloadBadgeNormal: {
     backgroundColor: colors.glassBorder,
@@ -988,7 +988,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     flexShrink: 1,
   },
   newPrBadge: {
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: colors.amberTint,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
@@ -1069,7 +1069,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     gap: 6,
   },
   historyPrBadge: {
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: colors.amberTint,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,

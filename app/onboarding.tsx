@@ -602,7 +602,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     color: "#fff",
   },
   dayButtonSubtext: {
-    fontSize: 7,
+    fontSize: 9,
     fontWeight: "600" as const,
     color: "rgba(255,255,255,0.8)",
     letterSpacing: 0.8,

@@ -552,8 +552,8 @@ const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "rgba(59,130,246,0.15)",
-    backgroundColor: "rgba(59,130,246,0.04)",
+    borderColor: `${colors.primary}26`,
+    backgroundColor: `${colors.primary}0A`,
     marginBottom: 16,
   },
   addSetText: {
@@ -1124,7 +1124,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingVertical: 12,
   },
   backButton: {
-    padding: 4,
+    padding: 10,
   },
   titleContainer: {
     flex: 1,
@@ -1277,7 +1277,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderColor: colors.glassBorder,
   },
   restDurPillActive: {
-    backgroundColor: "rgba(59,130,246,0.10)",
+    backgroundColor: `${colors.primary}1A`,
     borderColor: colors.primary,
   },
   restDurText: {
@@ -1307,7 +1307,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   restAlertChipActive: {
-    backgroundColor: "rgba(59,130,246,0.10)",
+    backgroundColor: `${colors.primary}1A`,
   },
   restAlertChipText: {
     fontSize: 11,
@@ -1482,11 +1482,11 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     gap: 10,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: "rgba(59,130,246,0.06)",
+    backgroundColor: `${colors.primary}0F`,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "rgba(59,130,246,0.15)",
+    borderColor: `${colors.primary}26`,
   },
   customExerciseText: {
     fontSize: 15,
@@ -1507,7 +1507,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     flex: 1,
   },
   customBadge: {
-    backgroundColor: "rgba(59,130,246,0.08)",
+    backgroundColor: `${colors.primary}14`,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,

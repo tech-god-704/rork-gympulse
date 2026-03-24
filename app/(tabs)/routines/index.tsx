@@ -365,9 +365,9 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     letterSpacing: -1,
   },
   addButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: colors.primary,
@@ -630,8 +630,8 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingVertical: 14,
   },
   templateBackButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: colors.glassBorder,
     justifyContent: "center",
