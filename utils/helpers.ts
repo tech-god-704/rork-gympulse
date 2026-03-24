@@ -14,10 +14,6 @@ export function getToday(): string {
   return formatDate(new Date());
 }
 
-export function getDayOfWeek(): number {
-  return new Date().getDay();
-}
-
 export function getTodayWeekDay(): string {
   const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
   return days[new Date().getDay()];

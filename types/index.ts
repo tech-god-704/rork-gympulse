@@ -142,6 +142,7 @@ export interface AppSettings {
   theme: AppTheme;
   showConfetti: boolean;
   autoStartRestTimer: boolean;
+  notificationsEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -150,6 +151,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: "light",
   showConfetti: true,
   autoStartRestTimer: true,
+  notificationsEnabled: true,
 };
 
 export const GOAL_LABELS: Record<FitnessGoal, string> = {

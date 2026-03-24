@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -16,24 +16,27 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Zap, Check, ChevronLeft } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
 
-const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
-  { key: "build_muscle", label: "Build Muscle", emoji: "💪", desc: "Hypertrophy focused", color: Colors.primary },
-  { key: "lose_weight", label: "Lose Weight", emoji: "🔥", desc: "Cut & lean out", color: Colors.rose },
-  { key: "stay_active", label: "Stay Active", emoji: "🏃", desc: "General fitness", color: Colors.emerald },
-  { key: "get_stronger", label: "Get Stronger", emoji: "⚡", desc: "Strength & power", color: Colors.amber },
-];
-
-const LEVELS: { key: ExperienceLevel; label: string; emoji: string; desc: string; color: string }[] = [
-  { key: "beginner", label: "Beginner", emoji: "🌱", desc: "Just getting started", color: Colors.emerald },
-  { key: "intermediate", label: "Intermediate", emoji: "⚡", desc: "1-3 years training", color: Colors.amber },
-  { key: "advanced", label: "Advanced", emoji: "🏆", desc: "3+ years structured", color: Colors.rose },
-];
-
 export default function OnboardingScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
+    { key: "build_muscle", label: "Build Muscle", emoji: "💪", desc: "Hypertrophy focused", color: colors.primary },
+    { key: "lose_weight", label: "Lose Weight", emoji: "🔥", desc: "Cut & lean out", color: colors.rose },
+    { key: "stay_active", label: "Stay Active", emoji: "🏃", desc: "General fitness", color: colors.emerald },
+    { key: "get_stronger", label: "Get Stronger", emoji: "⚡", desc: "Strength & power", color: colors.amber },
+  ];
+
+  const LEVELS: { key: ExperienceLevel; label: string; emoji: string; desc: string; color: string }[] = [
+    { key: "beginner", label: "Beginner", emoji: "🌱", desc: "Just getting started", color: colors.emerald },
+    { key: "intermediate", label: "Intermediate", emoji: "⚡", desc: "1-3 years training", color: colors.amber },
+    { key: "advanced", label: "Advanced", emoji: "🏆", desc: "3+ years structured", color: colors.rose },
+  ];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { completeOnboarding } = useGym();
@@ -120,7 +123,7 @@ export default function OnboardingScreen() {
   const renderStep0 = () => (
     <View style={styles.stepCenter}>
       <LinearGradient
-        colors={[Colors.primary, Colors.indigo, Colors.violet]}
+        colors={[colors.primary, colors.indigo, colors.violet]}
         style={styles.logoMark}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -152,7 +155,7 @@ export default function OnboardingScreen() {
         value={name}
         onChangeText={setName}
         placeholder="Your first name"
-        placeholderTextColor={Colors.textTertiary}
+        placeholderTextColor={colors.textTertiary}
         autoCapitalize="words"
         autoFocus
         testID="name-input"
@@ -279,7 +282,7 @@ export default function OnboardingScreen() {
           >
             {trainingDays === d ? (
               <LinearGradient
-                colors={[Colors.primary, Colors.indigo]}
+                colors={[colors.primary, colors.indigo]}
                 style={[styles.dayButton, styles.dayButtonActive]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -303,7 +306,7 @@ export default function OnboardingScreen() {
       {step > 0 && (
         <View style={styles.topRow}>
           <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
-            <ChevronLeft size={20} color={Colors.text} />
+            <ChevronLeft size={20} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.progressRowWrap}>
             <ProgressDots />
@@ -339,8 +342,8 @@ export default function OnboardingScreen() {
         <LinearGradient
           colors={
             step === 3
-              ? [Colors.primary, Colors.indigo, Colors.violet]
-              : [Colors.primary, Colors.indigo]
+              ? [colors.primary, colors.indigo, colors.violet]
+              : [colors.primary, colors.indigo]
           }
           style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
           start={{ x: 0, y: 0 }}
@@ -355,10 +358,10 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 24,
   },
   topRow: {
@@ -371,7 +374,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: colors.glassBorder,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -385,10 +388,10 @@ const styles = StyleSheet.create({
   progressDot: {
     height: 4,
     borderRadius: 3,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
   },
   progressDotActive: {
-    backgroundColor: Colors.indigo,
+    backgroundColor: colors.indigo,
   },
   content: {
     flex: 1,
@@ -412,7 +415,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 32,
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.35,
     shadowRadius: 48,
@@ -421,23 +424,23 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 42,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1.5,
     lineHeight: 44,
   },
   appNameAccent: {
-    color: Colors.indigo,
+    color: colors.indigo,
   },
   tagline: {
     fontSize: 16,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 12,
     lineHeight: 22,
     letterSpacing: -0.2,
   },
   taglineBold: {
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   welcomeFeatures: {
     flexDirection: "row",
@@ -447,12 +450,12 @@ const styles = StyleSheet.create({
   },
   welcomeFeature: {
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   welcomeFeatureEmoji: {
     fontSize: 24,
@@ -461,47 +464,47 @@ const styles = StyleSheet.create({
   welcomeFeatureLabel: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.2,
   },
   nameLabel: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 10,
     letterSpacing: -0.2,
   },
   nameInput: {
     width: "100%",
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.08)",
+    borderColor: colors.glassBorder,
     borderRadius: 18,
     padding: 16,
     fontSize: 17,
-    color: Colors.text,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    color: colors.text,
+    backgroundColor: colors.cardBackground,
     textAlign: "center",
   },
   stepTitle: {
     fontSize: 32,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
     lineHeight: 36,
     marginBottom: 4,
   },
   stepTitleAccent: {
-    color: Colors.primary,
+    color: colors.primary,
   },
   stepTitleAccent2: {
-    color: Colors.violet,
+    color: colors.violet,
   },
   stepTitleAccent3: {
-    color: Colors.cyan,
+    color: colors.cyan,
   },
   stepSubtitle: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 22,
   },
   optionList: {
@@ -511,12 +514,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 20,
     padding: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   optionCardLarge: {
     padding: 18,
@@ -525,7 +528,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 15,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -533,7 +536,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -543,17 +546,17 @@ const styles = StyleSheet.create({
   optionLabel: {
     fontSize: 15,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   optionLabelLg: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   optionDesc: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   optionCheck: {
@@ -575,13 +578,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   dayButtonActive: {
     borderWidth: 0,
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 24,
@@ -591,7 +594,7 @@ const styles = StyleSheet.create({
   dayButtonText: {
     fontSize: 22,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   dayButtonTextActive: {
     fontSize: 22,
@@ -599,7 +602,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   dayButtonSubtext: {
-    fontSize: 7,
+    fontSize: 9,
     fontWeight: "600" as const,
     color: "rgba(255,255,255,0.8)",
     letterSpacing: 0.8,
@@ -609,7 +612,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 18,
     alignItems: "center",
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 28,

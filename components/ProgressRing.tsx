@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, StyleSheet, Platform } from "react-native";
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 
 interface Props {
   progress: number;
@@ -12,6 +13,9 @@ interface Props {
 }
 
 export default function ProgressRing({ progress, size = 72, strokeWidth = 6, completed, total }: Props) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - Math.min(progress, 1));
@@ -21,9 +25,9 @@ export default function ProgressRing({ progress, size = 72, strokeWidth = 6, com
       <Svg width={size} height={size}>
         <Defs>
           <SvgLinearGradient id="ringGradient" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="#60A5FA" />
-            <Stop offset="50%" stopColor="#818CF8" />
-            <Stop offset="100%" stopColor="#A78BFA" />
+            <Stop offset="0%" stopColor={colors.primary} />
+            <Stop offset="50%" stopColor={colors.indigo} />
+            <Stop offset="100%" stopColor={colors.violet} />
           </SvgLinearGradient>
         </Defs>
         <Circle
@@ -31,7 +35,7 @@ export default function ProgressRing({ progress, size = 72, strokeWidth = 6, com
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke={colors.glassBorder}
           strokeWidth={strokeWidth}
         />
         <Circle
@@ -60,7 +64,7 @@ export default function ProgressRing({ progress, size = 72, strokeWidth = 6, com
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     justifyContent: "center",
     alignItems: "center",
@@ -73,7 +77,7 @@ const styles = StyleSheet.create({
   percentText: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: "#FFFFFF",
+    color: colors.white,
     letterSpacing: -0.5,
   },
 });

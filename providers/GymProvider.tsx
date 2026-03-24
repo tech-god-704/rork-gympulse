@@ -16,8 +16,14 @@ import {
   AppSettings,
   DEFAULT_SETTINGS,
 } from "@/types";
-import { BUILT_IN_EXERCISES, STARTER_ROUTINES } from "@/mocks/exercises";
+import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
+import {
+  sendWorkoutCompleteNotification,
+  sendStreakMilestoneNotification,
+  setupNotifications,
+  disableAllNotifications,
+} from "@/utils/notifications";
 
 const STORAGE_KEYS = {
   PROFILE: "gympulse_profile",
@@ -270,7 +276,13 @@ function useGymState() {
       !perfQuery.isLoading &&
       !prQuery.isLoading &&
       !settingsQuery.isLoading;
-    if (allDone) setIsLoading(false);
+    if (allDone) {
+      setIsLoading(false);
+      // Set up scheduled notifications on launch if enabled
+      if (settingsRef.current.notificationsEnabled) {
+        void setupNotifications();
+      }
+    }
   }, [
     profileQuery.isLoading,
     routinesQuery.isLoading,
@@ -368,6 +380,15 @@ function useGymState() {
       setSettings(updated);
       settingsRef.current = updated;
       saveSettingsMutation.mutate(updated);
+
+      // Toggle scheduled notifications when the setting changes
+      if (updates.notificationsEnabled !== undefined) {
+        if (updates.notificationsEnabled) {
+          void setupNotifications();
+        } else {
+          void disableAllNotifications();
+        }
+      }
     },
     [saveSettingsMutation]
   );
@@ -382,25 +403,9 @@ function useGymState() {
   const completeOnboarding = useCallback(
     (p: UserProfile) => {
       saveProfile(p);
-      const starterRoutines: Routine[] = STARTER_ROUTINES.map((sr) => ({
-        id: generateId(),
-        name: sr.name,
-        emoji: sr.emoji,
-        exercises: sr.exercises.map((e) => ({
-          id: generateId(),
-          exerciseId: BUILT_IN_EXERCISES.find((be) => be.name === e.name)?.id ?? generateId(),
-          exerciseName: e.name,
-          muscleGroup: e.muscleGroup,
-          sets: e.sets,
-          reps: e.reps,
-          weight: e.weight,
-          setConfigs: Array.from({ length: e.sets }, () => ({ reps: e.reps, weight: e.weight })),
-        })),
-        createdAt: new Date().toISOString(),
-      }));
-      saveRoutinesMutation.mutate(starterRoutines);
+      // Don't auto-create routines — let the user build or pick from splits
     },
-    [saveProfile, saveRoutinesMutation]
+    [saveProfile]
   );
 
   const addRoutine = useCallback(
@@ -650,13 +655,9 @@ function useGymState() {
     if (completingRef.current) return;
     completingRef.current = true;
 
-    const session = sessionRef.current;
-    if (!session) {
-      completingRef.current = false;
-      return;
-    }
-
     try {
+    const session = sessionRef.current;
+    if (!session) return;
     const startTime = new Date(session.startedAt).getTime();
     const endTime = Date.now();
     const rawDuration = Math.round((endTime - startTime) / 60000);
@@ -775,6 +776,12 @@ function useGymState() {
       completedDates: updatedDates,
     };
     saveStreakMutation.mutate(updatedStreak);
+
+    // Fire notifications if enabled
+    if (settingsRef.current.notificationsEnabled) {
+      void sendWorkoutCompleteNotification(session.exercises.length, duration, newPRCount);
+      void sendStreakMilestoneNotification(newStreak);
+    }
 
     saveSession(null);
     } finally {

@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CONFETTI_COUNT = 60;
@@ -20,6 +21,9 @@ interface Props {
 }
 
 export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, weightUnit = "lbs", onDismiss }: Props) {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const overlayAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const [celebrationEmoji, setCelebrationEmoji] = useState("🎉");
@@ -134,9 +138,9 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
 
         <View style={styles.statsRow}>
           {[
-            { v: exerciseCount.toString(), l: "Exercises", c: Colors.indigo },
-            { v: `${streak}`, l: "Day Streak", c: Colors.amber },
-            { v: `${duration}m`, l: "Duration", c: Colors.emerald },
+            { v: exerciseCount.toString(), l: "Exercises", c: colors.indigo },
+            { v: `${streak}`, l: "Day Streak", c: colors.amber },
+            { v: `${duration}m`, l: "Duration", c: colors.emerald },
           ].map((s) => (
             <View key={s.l} style={styles.statItem}>
               <Text style={[styles.statValue, { color: s.c }]}>{s.v}</Text>
@@ -158,7 +162,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
 
         <TouchableOpacity onPress={onDismiss} activeOpacity={0.8}>
           <LinearGradient
-            colors={[Colors.primary, Colors.indigo]}
+            colors={[colors.primary, colors.indigo]}
             style={styles.doneButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -171,10 +175,10 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.92)",
+    backgroundColor: colors.glass,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
@@ -194,14 +198,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: "900" as const,
-    color: Colors.text,
+    color: colors.text,
     textAlign: "center",
     letterSpacing: -1.2,
     lineHeight: 36,
   },
   subtitle: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 10,
     marginBottom: 28,
     textAlign: "center",
@@ -221,14 +225,14 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 4,
   },
   volumeRow: {
     alignItems: "center",
     marginBottom: 24,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 14,
@@ -236,12 +240,12 @@ const styles = StyleSheet.create({
   volumeValue: {
     fontSize: 20,
     fontWeight: "900" as const,
-    color: Colors.indigo,
+    color: colors.indigo,
     letterSpacing: -0.5,
   },
   volumeLabel: {
     fontSize: 10,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.5,
     textTransform: "uppercase" as const,
     marginTop: 2,
@@ -250,14 +254,14 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 56,
     borderRadius: 18,
-    shadowColor: Colors.indigo,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
     shadowRadius: 28,
     elevation: 6,
   },
   doneButtonText: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontSize: 16,
     fontWeight: "700" as const,
   },

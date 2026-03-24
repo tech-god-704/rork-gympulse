@@ -2,7 +2,8 @@ import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Flame, TrendingUp, Minus, Trophy, Clock, Dumbbell, Calendar, Target, ChevronDown, ChevronUp } from "lucide-react-native";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { getMonthCalendarDates, getToday } from "@/utils/helpers";
 import { MuscleGroup, MUSCLE_GROUP_LABELS } from "@/types";
@@ -10,17 +11,19 @@ import { MuscleGroup, MUSCLE_GROUP_LABELS } from "@/types";
 const WEEKDAYS = ["M", "T", "W", "T", "F", "S", "S"];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const MUSCLE_COLORS: Record<MuscleGroup, string> = {
-  chest: Colors.muscleChest,
-  back: Colors.muscleBack,
-  shoulders: Colors.muscleShoulders,
-  arms: Colors.muscleArms,
-  legs: Colors.muscleLegs,
-  core: Colors.muscleCore,
-  cardio: Colors.muscleCardio,
-};
-
 export default function ProgressScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const MUSCLE_COLORS: Record<MuscleGroup, string> = {
+    chest: colors.muscleChest,
+    back: colors.muscleBack,
+    shoulders: colors.muscleShoulders,
+    arms: colors.muscleArms,
+    legs: colors.muscleLegs,
+    core: colors.muscleCore,
+    cardio: colors.muscleCardio,
+  };
   const insets = useSafeAreaInsets();
   const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance, settings } = useGym();
   const wu = settings.weightUnit;
@@ -216,12 +219,12 @@ export default function ProgressScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.indigo} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.indigo} />
         }
       >
         {history.length === 0 && (
           <View style={styles.emptyState}>
-            <Dumbbell size={40} color={Colors.textTertiary} />
+            <Dumbbell size={40} color={colors.textTertiary} />
             <Text style={styles.emptyTitle}>No workouts yet</Text>
             <Text style={styles.emptySubtitle}>Complete a workout to begin tracking your progress.</Text>
           </View>
@@ -230,7 +233,7 @@ export default function ProgressScreen() {
         {/* ─── Streak Hero ─── */}
         <View style={styles.streakHero}>
           <View style={styles.streakContent}>
-            <Flame size={36} color="#F59E0B" />
+            <Flame size={36} color={colors.amber} />
             <Text style={styles.streakNumber}>{streak.currentStreak}</Text>
             <Text style={styles.streakLabel}>Day Streak</Text>
             <Text style={styles.streakBest}>Best: {streak.longestStreak} days</Text>
@@ -267,7 +270,7 @@ export default function ProgressScreen() {
             </View>
             <View style={styles.weekProgressBg}>
               <View
-                style={[styles.weekProgressFill, { width: `${Math.min((workoutsThisWeek / weeklyGoal) * 100, 100)}%`, backgroundColor: Colors.primary }]}
+                style={[styles.weekProgressFill, { width: `${Math.min((workoutsThisWeek / weeklyGoal) * 100, 100)}%`, backgroundColor: colors.primary }]}
               />
             </View>
           </View>
@@ -276,7 +279,7 @@ export default function ProgressScreen() {
         {/* ─── Activity Calendar ─── */}
         <View style={styles.card}>
           <View style={styles.cardHeaderRow}>
-            <Calendar size={16} color={Colors.indigo} />
+            <Calendar size={16} color={colors.indigo} />
             <Text style={styles.cardTitle}>Activity</Text>
           </View>
           <View style={styles.weekdayRow}>
@@ -294,7 +297,7 @@ export default function ProgressScreen() {
                 <View key={i} style={styles.calendarCell}>
                   {isToday ? (
                     <View
-                      style={[styles.calendarDay, { backgroundColor: Colors.primary }]}
+                      style={[styles.calendarDay, { backgroundColor: colors.primary }]}
                     >
                       <Text style={[styles.calendarDayText, styles.calendarDayTextToday]}>
                         {item.dayOfMonth}
@@ -329,7 +332,7 @@ export default function ProgressScreen() {
         {progressTracking.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
-              <TrendingUp size={16} color={Colors.indigo} />
+              <TrendingUp size={16} color={colors.indigo} />
               <Text style={styles.cardTitle}>Progressive Overload</Text>
             </View>
             <View style={styles.overloadList}>
@@ -349,9 +352,9 @@ export default function ProgressScreen() {
                     </View>
                     <View style={[styles.overloadBadge, atPR ? styles.overloadBadgePR : styles.overloadBadgeNormal]}>
                       {atPR ? (
-                        <TrendingUp size={12} color={Colors.emerald} />
+                        <TrendingUp size={12} color={colors.emerald} />
                       ) : (
-                        <Minus size={12} color={Colors.textTertiary} />
+                        <Minus size={12} color={colors.textTertiary} />
                       )}
                     </View>
                   </View>
@@ -365,7 +368,7 @@ export default function ProgressScreen() {
         {history.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
-              <Target size={16} color={Colors.indigo} />
+              <Target size={16} color={colors.indigo} />
               <Text style={styles.cardTitle}>Weekly Workouts</Text>
             </View>
             <View style={styles.barChart}>
@@ -377,7 +380,7 @@ export default function ProgressScreen() {
                     <Text style={[styles.barValue, isLast && styles.barValueActive]}>{count}</Text>
                     {isLast ? (
                       <View
-                        style={[styles.bar, { height: barHeight, backgroundColor: Colors.primary }]}
+                        style={[styles.bar, { height: barHeight, backgroundColor: colors.primary }]}
                       />
                     ) : (
                       <View style={[styles.bar, styles.barInactive, { height: barHeight }]} />
@@ -394,7 +397,7 @@ export default function ProgressScreen() {
         {muscleDistribution.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
-              <Dumbbell size={16} color={Colors.indigo} />
+              <Dumbbell size={16} color={colors.indigo} />
               <Text style={styles.cardTitle}>Muscle Split</Text>
             </View>
             <View style={styles.muscleList}>
@@ -424,7 +427,7 @@ export default function ProgressScreen() {
         {history.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
-              <Clock size={16} color={Colors.indigo} />
+              <Clock size={16} color={colors.indigo} />
               <Text style={styles.cardTitle}>Workout Stats</Text>
             </View>
             <View style={styles.statsGrid}>
@@ -497,16 +500,16 @@ export default function ProgressScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.cardHeaderLeft}>
-                <Trophy size={16} color="#F59E0B" />
+                <Trophy size={16} color={colors.amber} />
                 <Text style={styles.cardTitle}>Personal Records</Text>
                 <View style={styles.prCountBadge}>
                   <Text style={styles.prCountText}>{prEntries.length}</Text>
                 </View>
               </View>
               {prExpanded ? (
-                <ChevronUp size={16} color={Colors.textTertiary} />
+                <ChevronUp size={16} color={colors.textTertiary} />
               ) : (
-                <ChevronDown size={16} color={Colors.textTertiary} />
+                <ChevronDown size={16} color={colors.textTertiary} />
               )}
             </TouchableOpacity>
             {prExpanded && (
@@ -582,15 +585,15 @@ export default function ProgressScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   title: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -607,13 +610,13 @@ const styles = StyleSheet.create({
   },
   // ─── Streak Hero ───
   streakHero: {
-    backgroundColor: "#FEF3C7",
+    backgroundColor: colors.amberLight,
     borderRadius: 12,
     padding: 28,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#FDE68A",
-    shadowColor: "#F59E0B",
+    borderColor: colors.amberBorder,
+    shadowColor: colors.amber,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -625,7 +628,7 @@ const styles = StyleSheet.create({
   streakNumber: {
     fontSize: 52,
     fontWeight: "900" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -2,
     lineHeight: 56,
     marginTop: 8,
@@ -633,23 +636,23 @@ const styles = StyleSheet.create({
   streakLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: "#92400E",
+    color: colors.amberDark,
     marginTop: 4,
     letterSpacing: -0.2,
   },
   streakBest: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 8,
   },
   // ─── Card ───
   card: {
-    backgroundColor: Colors.cardBackground,
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    shadowColor: "#000",
+    borderColor: colors.glassBorder,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -678,7 +681,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   // ─── Calendar ───
@@ -694,7 +697,7 @@ const styles = StyleSheet.create({
   weekdayText: {
     fontSize: 9,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.5,
   },
   calendarGrid: {
@@ -716,13 +719,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.02)",
+    backgroundColor: colors.glassBorder,
     borderWidth: 1,
     borderColor: "transparent",
   },
   calendarDayCompleted: {
-    backgroundColor: "rgba(0,0,0,0.08)",
-    borderColor: "rgba(0,0,0,0.08)",
+    backgroundColor: colors.surface,
+    borderColor: colors.glassBorder,
   },
   calendarDayOtherMonth: {
     opacity: 0.3,
@@ -731,18 +734,18 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 10,
     fontWeight: "500" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   calendarDayTextCompleted: {
-    color: Colors.indigo,
+    color: colors.indigo,
     fontWeight: "700" as const,
   },
   calendarDayTextToday: {
-    color: "#FFFFFF",
+    color: colors.white,
     fontWeight: "700" as const,
   },
   calendarDayTextOther: {
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   // ─── Week Summary ───
   weekSummary: {
@@ -758,23 +761,23 @@ const styles = StyleSheet.create({
   weekSummaryValue: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
   },
   weekSummaryLabel: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginTop: 2,
   },
   weekSummaryDivider: {
     width: 1,
     height: 36,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
   },
   weekProgressBg: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
     marginHorizontal: 16,
     marginBottom: 16,
     overflow: "hidden",
@@ -793,7 +796,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    borderBottomColor: colors.glassBorder,
     gap: 12,
   },
   overloadInfo: {
@@ -802,12 +805,12 @@ const styles = StyleSheet.create({
   overloadName: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.2,
   },
   overloadDate: {
     fontSize: 10,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   overloadValues: {
@@ -816,13 +819,13 @@ const styles = StyleSheet.create({
   overloadWeight: {
     fontSize: 15,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
   },
   overload1RM: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 9,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   overloadBadge: {
@@ -833,10 +836,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   overloadBadgePR: {
-    backgroundColor: "rgba(16,185,129,0.12)",
+    backgroundColor: `${colors.emerald}1F`,
   },
   overloadBadgeNormal: {
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: colors.glassBorder,
   },
   // ─── Bar Chart ───
   barChart: {
@@ -857,10 +860,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   barValueActive: {
-    color: Colors.indigo,
+    color: colors.indigo,
   },
   bar: {
     width: "100%",
@@ -868,12 +871,12 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   barInactive: {
-    backgroundColor: "rgba(0,0,0,0.08)",
+    backgroundColor: colors.glassBorder,
   },
   barLabel: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 8,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
   },
   // ─── Muscle Split ───
@@ -895,14 +898,14 @@ const styles = StyleSheet.create({
   muscleName: {
     fontSize: 13,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     width: 80,
   },
   muscleBarBg: {
     flex: 1,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: colors.glassBorder,
     overflow: "hidden",
   },
   muscleBarFill: {
@@ -913,7 +916,7 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     width: 35,
     textAlign: "right" as const,
   },
@@ -930,24 +933,24 @@ const styles = StyleSheet.create({
   statsValue: {
     fontSize: 18,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.5,
   },
   statsLabel: {
     fontSize: 9,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 3,
     textTransform: "uppercase" as const,
   },
   statsDivider: {
     height: 1,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
     marginHorizontal: 16,
   },
   // ─── Personal Records ───
   prCountBadge: {
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: colors.amberTint,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -955,7 +958,7 @@ const styles = StyleSheet.create({
   prCountText: {
     fontSize: 11,
     fontWeight: "700" as const,
-    color: "#92400E",
+    color: colors.amberDark,
   },
   prList: {
     paddingHorizontal: 16,
@@ -966,7 +969,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    borderBottomColor: colors.glassBorder,
     gap: 12,
   },
   prInfo: {
@@ -980,12 +983,12 @@ const styles = StyleSheet.create({
   prName: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.2,
     flexShrink: 1,
   },
   newPrBadge: {
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: colors.amberTint,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
@@ -993,12 +996,12 @@ const styles = StyleSheet.create({
   newPrText: {
     fontSize: 8,
     fontWeight: "800" as const,
-    color: "#92400E",
+    color: colors.amberDark,
     letterSpacing: 0.5,
   },
   prDate: {
     fontSize: 10,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   prValues: {
@@ -1009,17 +1012,17 @@ const styles = StyleSheet.create({
   prWeight: {
     fontSize: 16,
     fontWeight: "800" as const,
-    color: Colors.indigo,
+    color: colors.indigo,
     letterSpacing: -0.5,
   },
   prReps: {
     fontSize: 12,
     fontWeight: "500" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   pr1RMBadge: {
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: colors.glassBorder,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -1028,13 +1031,13 @@ const styles = StyleSheet.create({
   pr1RMText: {
     fontSize: 13,
     fontWeight: "800" as const,
-    color: Colors.indigo,
+    color: colors.indigo,
     letterSpacing: -0.3,
   },
   pr1RMLabel: {
     fontSize: 7,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     letterSpacing: 0.5,
     textTransform: "uppercase" as const,
   },
@@ -1048,13 +1051,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.06)",
+    borderBottomColor: colors.glassBorder,
   },
   historyDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.indigo,
+    backgroundColor: colors.indigo,
     marginRight: 12,
   },
   historyInfo: {
@@ -1066,7 +1069,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   historyPrBadge: {
-    backgroundColor: "rgba(245,158,11,0.15)",
+    backgroundColor: colors.amberTint,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
@@ -1074,24 +1077,24 @@ const styles = StyleSheet.create({
   historyPrText: {
     fontSize: 8,
     fontWeight: "800" as const,
-    color: "#92400E",
+    color: colors.amberDark,
     letterSpacing: 0.3,
   },
   historyName: {
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.2,
   },
   historyMeta: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginTop: 1,
   },
   historyDate: {
     fontSize: 11,
     fontWeight: "500" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
   },
   // ─── Empty State ───
   emptyState: {
@@ -1102,12 +1105,12 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textAlign: "center",
     lineHeight: 20,
   },

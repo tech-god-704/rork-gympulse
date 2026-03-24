@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -13,22 +13,26 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Plus, Dumbbell, ChevronRight, Layers, ArrowLeft, Check } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/colors";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { MuscleGroup, MUSCLE_GROUP_LABELS, WEEKDAY_SHORT } from "@/types";
 import { estimateRoutineDuration } from "@/utils/helpers";
 import { WORKOUT_SPLITS, ROUTINE_NAME_SUGGESTIONS, type WorkoutSplit } from "@/mocks/exercises";
 
-const ROUTINE_COLORS: string[] = [
-  Colors.primary,
-  Colors.indigo,
-  "#06B6D4",
-  "#F59E0B",
-  "#8B5CF6",
-  "#10B981",
-];
-
 export default function RoutinesScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const ROUTINE_COLORS: string[] = [
+    colors.primary,
+    colors.indigo,
+    "#06B6D4",
+    "#F59E0B",
+    "#8B5CF6",
+    "#10B981",
+  ];
+
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { routines, addRoutine, addRoutinesFromTemplates } = useGym();
@@ -81,7 +85,7 @@ export default function RoutinesScreen() {
           activeOpacity={0.8}
         >
           <View style={styles.addButton}>
-            <Plus size={20} color={Colors.white} />
+            <Plus size={20} color={colors.white} />
           </View>
         </TouchableOpacity>
       </View>
@@ -93,7 +97,7 @@ export default function RoutinesScreen() {
       >
         {routines.length === 0 ? (
           <View style={styles.emptyState}>
-            <Dumbbell size={48} color={Colors.textTertiary} />
+            <Dumbbell size={48} color={colors.textTertiary} />
             <Text style={styles.emptyTitle}>No routines yet</Text>
             <Text style={styles.emptySubtitle}>
               Create a custom routine or start with a proven workout split
@@ -103,7 +107,7 @@ export default function RoutinesScreen() {
               activeOpacity={0.8}
             >
               <View style={styles.emptyButton}>
-                <Plus size={18} color={Colors.white} />
+                <Plus size={18} color={colors.white} />
                 <Text style={styles.emptyButtonText}>Create Routine</Text>
               </View>
             </TouchableOpacity>
@@ -112,7 +116,7 @@ export default function RoutinesScreen() {
               activeOpacity={0.8}
               style={styles.templateButton}
             >
-              <Layers size={18} color={Colors.primary} />
+              <Layers size={18} color={colors.primary} />
               <Text style={styles.templateButtonText}>Browse Workout Splits</Text>
             </TouchableOpacity>
           </View>
@@ -155,7 +159,7 @@ export default function RoutinesScreen() {
                       </View>
                     )}
                   </View>
-                  <ChevronRight size={18} color={Colors.textTertiary} />
+                  <ChevronRight size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
               );
             })}
@@ -166,9 +170,9 @@ export default function RoutinesScreen() {
               activeOpacity={0.7}
               style={styles.browseSplitsCard}
             >
-              <Layers size={18} color={Colors.primary} />
+              <Layers size={18} color={colors.primary} />
               <Text style={styles.browseSplitsText}>Browse Workout Splits</Text>
-              <ChevronRight size={16} color={Colors.textTertiary} />
+              <ChevronRight size={16} color={colors.textTertiary} />
             </TouchableOpacity>
           </>
         )}
@@ -185,7 +189,7 @@ export default function RoutinesScreen() {
               onChangeText={(t) => setNewName(t.slice(0, 50))}
               placeholder="Routine name (e.g. Push Day)"
               maxLength={50}
-              placeholderTextColor={Colors.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               autoFocus
             />
 
@@ -253,7 +257,7 @@ export default function RoutinesScreen() {
               activeOpacity={0.7}
               style={styles.templateBackButton}
             >
-              <ArrowLeft size={20} color={Colors.text} />
+              <ArrowLeft size={20} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.templateModalTitle}>
               {selectedSplit ? selectedSplit.name : "Workout Splits"}
@@ -327,7 +331,7 @@ export default function RoutinesScreen() {
                 style={styles.confirmSplitButton}
               >
                 <View style={styles.confirmSplitGradient}>
-                  <Check size={18} color={Colors.white} />
+                  <Check size={18} color={colors.white} />
                   <Text style={styles.confirmSplitText}>
                     Add {selectedSplit.routines.length} Routine{selectedSplit.routines.length > 1 ? "s" : ""}
                   </Text>
@@ -341,10 +345,10 @@ export default function RoutinesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   headerRow: {
     flexDirection: "row",
@@ -357,17 +361,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -1,
   },
   addButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.indigo,
+    backgroundColor: colors.primary,
+    shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -390,13 +394,13 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 15,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     textAlign: "center",
     marginBottom: 24,
     paddingHorizontal: 20,
@@ -408,10 +412,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   emptyButtonText: {
-    color: Colors.white,
+    color: colors.white,
     fontSize: 16,
     fontWeight: "600" as const,
   },
@@ -424,25 +428,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.10)",
-    backgroundColor: "rgba(0,0,0,0.03)",
+    borderColor: colors.glassBorder,
+    backgroundColor: colors.glassBorder,
   },
   templateButtonText: {
     fontSize: 15,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
 
   // ─── Routine cards ───────────────────────────────────────
   routineCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    shadowColor: "#000",
+    borderColor: colors.glassBorder,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -455,7 +459,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: Colors.primary,
+    shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -464,7 +468,7 @@ const styles = StyleSheet.create({
   routineInitial: {
     fontSize: 22,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: colors.white,
   },
   routineInfo: {
     flex: 1,
@@ -472,14 +476,14 @@ const styles = StyleSheet.create({
   routineName: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
     marginBottom: 2,
   },
   routineDetail: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     marginBottom: 6,
   },
   tagsRow: {
@@ -491,12 +495,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
   },
   muscleTagText: {
     fontSize: 10,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
   },
@@ -510,29 +514,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     borderStyle: "dashed",
   },
   browseSplitsText: {
     flex: 1,
     fontSize: 14,
     fontWeight: "600" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
 
   // ─── Create modal ────────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: colors.overlay,
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: Colors.white,
+    backgroundColor: colors.cardBackground,
     borderRadius: 12,
     padding: 24,
     width: "85%",
-    shadowColor: Colors.shadow,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -541,17 +545,17 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     marginBottom: 16,
   },
   modalInput: {
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
     borderRadius: 8,
     padding: 14,
     fontSize: 16,
-    color: Colors.text,
-    backgroundColor: "rgba(0,0,0,0.02)",
+    color: colors.text,
+    backgroundColor: colors.surface,
     marginBottom: 12,
   },
   suggestionsWrap: {
@@ -564,21 +568,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   suggestionBubbleActive: {
-    backgroundColor: "rgba(0,0,0,0.08)",
-    borderColor: Colors.primary,
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
   },
   suggestionText: {
     fontSize: 13,
     fontWeight: "500" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   suggestionTextActive: {
-    color: Colors.primary,
+    color: colors.primary,
     fontWeight: "600" as const,
   },
   modalButtons: {
@@ -589,19 +593,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
     alignItems: "center",
   },
   modalCancelText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
   modalCreate: {
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
     alignItems: "center",
   },
   modalCreateDisabled: {
@@ -610,13 +614,13 @@ const styles = StyleSheet.create({
   modalCreateText: {
     fontSize: 16,
     fontWeight: "600" as const,
-    color: Colors.white,
+    color: colors.white,
   },
 
   // ─── Template picker modal ───────────────────────────────
   templateModalContainer: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: colors.background,
   },
   templateModalHeader: {
     flexDirection: "row",
@@ -626,17 +630,17 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   templateBackButton: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.04)",
+    backgroundColor: colors.glassBorder,
     justifyContent: "center",
     alignItems: "center",
   },
   templateModalTitle: {
     fontSize: 18,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   templateList: {
@@ -646,19 +650,19 @@ const styles = StyleSheet.create({
   },
   templateSubheading: {
     fontSize: 14,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 4,
   },
 
   // ─── Split cards ─────────────────────────────────────────
   splitCard: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 18,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    shadowColor: "#000",
+    borderColor: colors.glassBorder,
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
@@ -673,23 +677,23 @@ const styles = StyleSheet.create({
   splitName: {
     fontSize: 17,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   splitFreqBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: colors.glassBorder,
   },
   splitFreqText: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   splitDesc: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
     marginBottom: 12,
     lineHeight: 18,
   },
@@ -705,26 +709,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 6,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    backgroundColor: colors.glassBorder,
   },
   splitRoutineChipInitial: {
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   splitRoutineChipText: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textSecondary,
+    color: colors.textSecondary,
   },
 
   // ─── Preview detail ──────────────────────────────────────
   previewRoutineCard: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: colors.cardBackground,
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
+    borderColor: colors.glassBorder,
   },
   previewRoutineHeader: {
     flexDirection: "row",
@@ -733,23 +737,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.04)",
+    borderBottomColor: colors.glassBorder,
   },
   previewRoutineInitial: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.primary,
+    color: colors.primary,
   },
   previewRoutineName: {
     flex: 1,
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.text,
+    color: colors.text,
     letterSpacing: -0.3,
   },
   previewRoutineCount: {
     fontSize: 12,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontWeight: "600" as const,
   },
   previewExerciseRow: {
@@ -762,19 +766,19 @@ const styles = StyleSheet.create({
     width: 20,
     fontSize: 12,
     fontWeight: "700" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     textAlign: "center",
   },
   previewExName: {
     flex: 1,
     fontSize: 14,
     fontWeight: "500" as const,
-    color: Colors.text,
+    color: colors.text,
   },
   previewExDetail: {
     fontSize: 12,
     fontWeight: "600" as const,
-    color: Colors.textTertiary,
+    color: colors.textTertiary,
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
   confirmSplitButton: {
@@ -787,11 +791,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 16,
     borderRadius: 10,
-    backgroundColor: Colors.primary,
+    backgroundColor: colors.primary,
   },
   confirmSplitText: {
     fontSize: 16,
     fontWeight: "700" as const,
-    color: Colors.white,
+    color: colors.white,
   },
 });
