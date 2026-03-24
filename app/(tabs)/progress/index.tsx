@@ -34,7 +34,7 @@ export default function ProgressScreen() {
   const maxWeeklyCount = useMemo(() => Math.max(...weeklyCounts, 1), [weeklyCounts]);
 
   const calendarDates = useMemo(() => getMonthCalendarDates(), [streak.completedDates]);
-  const today = useMemo(() => getToday(), []);
+  const today = getToday();
   const completedDatesSet = useMemo(() => new Set(streak.completedDates), [streak.completedDates]);
 
   const totalWorkouts = history.length;
