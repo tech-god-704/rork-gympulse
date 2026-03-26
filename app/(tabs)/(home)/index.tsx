@@ -22,6 +22,8 @@ import ExerciseCard from "@/components/ExerciseCard";
 import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
 import ConfettiOverlay from "@/components/ConfettiOverlay";
+import XPBar from "@/components/XPBar";
+import { getStreakMultiplier, getLevelDefinition, getAchievementById, calculateXPGain, getLevelForXP } from "@/utils/gamification";
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
@@ -60,6 +62,7 @@ export default function TodayScreen() {
     lastPerformance,
     personalRecords,
     settings,
+    gamification,
   } = useGym();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -85,7 +88,7 @@ export default function TodayScreen() {
     return map;
   }, [activeRoutine]);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0 });
+  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0, xpGained: 0, streakMultiplier: 1, leveledUp: false, newLevel: 0, newLevelTitle: "", newAchievementNames: [] as string[] });
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -176,12 +179,30 @@ export default function TodayScreen() {
           });
         });
       }
+      // Pre-calculate XP for confetti display
+      const completedSetsCount = currentSession
+        ? currentSession.exercises.reduce((sum, ex) => {
+            return sum + (ex.setDetails || []).filter((s) => s.completed).length;
+          }, 0)
+        : 0;
+      const xpBreakdown = calculateXPGain(completedSetsCount, sessionPRs, sessionVolume, expectedStreak);
+      const previewTotalXP = gamification.totalXP + xpBreakdown.total;
+      const previewLevel = getLevelForXP(previewTotalXP);
+      const previewLeveledUp = previewLevel > gamification.level;
+      const previewLevelDef = getLevelDefinition(previewLevel);
+
       setCompletionStats({
         exercises: totalCount,
         duration: Math.max(duration, 1),
         expectedStreak,
         totalVolume: sessionVolume,
         newPRs: sessionPRs,
+        xpGained: xpBreakdown.total,
+        streakMultiplier: xpBreakdown.consistencyMultiplier,
+        leveledUp: previewLeveledUp,
+        newLevel: previewLevel,
+        newLevelTitle: previewLevelDef.title,
+        newAchievementNames: [],
       });
       setTimeout(() => {
         if (settings.showConfetti) {
@@ -195,7 +216,7 @@ export default function TodayScreen() {
         }
       }, 400);
     }
-  }, [currentSession, totalCount, streak, personalRecords, settings.showConfetti, completeWorkout]);
+  }, [currentSession, totalCount, streak, personalRecords, settings.showConfetti, completeWorkout, gamification]);
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
@@ -305,7 +326,12 @@ export default function TodayScreen() {
               <Flame size={22} color={colors.amber} />
             </View>
             <View>
-              <Text style={styles.statValue}>{streak.currentStreak}</Text>
+              <Text style={styles.statValue}>
+                {streak.currentStreak}
+                {streak.currentStreak >= 3 && (
+                  <Text style={[styles.statLabel, { color: colors.amber }]}> {getStreakMultiplier(streak.currentStreak)}x</Text>
+                )}
+              </Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
           </View>
@@ -320,6 +346,11 @@ export default function TodayScreen() {
               <Text style={styles.statLabel}>This Week</Text>
             </View>
           </View>
+        </View>
+
+        {/* XP Progress Bar */}
+        <View style={styles.xpCard}>
+          <XPBar totalXP={gamification.totalXP} level={gamification.level} compact />
         </View>
 
         {currentSession ? (
@@ -540,6 +571,12 @@ export default function TodayScreen() {
         totalVolume={completionStats.totalVolume}
         newPRs={completionStats.newPRs}
         weightUnit={settings.weightUnit}
+        xpGained={completionStats.xpGained}
+        streakMultiplier={completionStats.streakMultiplier}
+        leveledUp={completionStats.leveledUp}
+        newLevel={completionStats.newLevel}
+        newLevelTitle={completionStats.newLevelTitle}
+        newAchievementNames={completionStats.newAchievementNames}
         onDismiss={handleDismissConfetti}
       />
     </View>
@@ -613,6 +650,19 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     fontSize: 11,
     color: colors.textTertiary,
     fontWeight: "500" as const,
+  },
+  xpCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 2,
   },
   heroCard: {
     borderRadius: 12,

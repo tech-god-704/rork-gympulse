@@ -15,6 +15,9 @@ import {
   SetData,
   AppSettings,
   DEFAULT_SETTINGS,
+  GamificationData,
+  DEFAULT_GAMIFICATION,
+  XPGainEvent,
 } from "@/types";
 import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
@@ -24,6 +27,15 @@ import {
   setupNotifications,
   disableAllNotifications,
 } from "@/utils/notifications";
+import {
+  calculateXPGain,
+  getLevelForXP,
+  getLevelDefinition as getLevelDef,
+  getXPProgress as calcXPProgress,
+  buildAchievementContext,
+  checkAchievements,
+  migrateExistingData,
+} from "@/utils/gamification";
 
 const STORAGE_KEYS = {
   PROFILE: "gympulse_profile",
@@ -35,6 +47,7 @@ const STORAGE_KEYS = {
   LAST_PERFORMANCE: "gympulse_last_performance",
   PERSONAL_RECORDS: "gympulse_personal_records",
   SETTINGS: "gympulse_settings",
+  GAMIFICATION: "gympulse_gamification",
 };
 
 // Per-exercise last performance data
@@ -119,6 +132,7 @@ function useGymState() {
   const [lastPerformance, setLastPerformance] = useState<PerformanceMap>({});
   const [personalRecords, setPersonalRecords] = useState<PRMap>({});
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [gamification, setGamification] = useState<GamificationData>(DEFAULT_GAMIFICATION);
   const [isLoading, setIsLoading] = useState(true);
 
   // Use refs for values accessed in rapid-fire callbacks to avoid stale closures
@@ -128,6 +142,7 @@ function useGymState() {
   const lastPerformanceRef = useRef<PerformanceMap>({});
   const personalRecordsRef = useRef<PRMap>({});
   const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS);
+  const gamificationRef = useRef<GamificationData>(DEFAULT_GAMIFICATION);
   const completingRef = useRef(false);
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
@@ -136,6 +151,7 @@ function useGymState() {
   useEffect(() => { lastPerformanceRef.current = lastPerformance; }, [lastPerformance]);
   useEffect(() => { personalRecordsRef.current = personalRecords; }, [personalRecords]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { gamificationRef.current = gamification; }, [gamification]);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -229,6 +245,15 @@ function useGymState() {
     },
   });
 
+  const gamificationQuery = useQuery({
+    queryKey: ["gamification"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.GAMIFICATION);
+      if (!stored) return null; // null signals migration needed
+      try { return JSON.parse(stored) as GamificationData; } catch { return null; }
+    },
+  });
+
   useEffect(() => {
     if (profileQuery.data !== undefined) setProfile(profileQuery.data);
   }, [profileQuery.data]);
@@ -265,6 +290,17 @@ function useGymState() {
     if (settingsQuery.data !== undefined) setSettings(settingsQuery.data);
   }, [settingsQuery.data]);
 
+  // Gamification: load or migrate
+  const gamificationMigrated = useRef(false);
+  useEffect(() => {
+    if (gamificationQuery.data !== undefined && !gamificationMigrated.current) {
+      if (gamificationQuery.data !== null) {
+        setGamification(gamificationQuery.data);
+      }
+      // Migration happens after all data is loaded (see isLoading effect below)
+    }
+  }, [gamificationQuery.data]);
+
   useEffect(() => {
     const allDone =
       !profileQuery.isLoading &&
@@ -275,10 +311,23 @@ function useGymState() {
       !streakQuery.isLoading &&
       !perfQuery.isLoading &&
       !prQuery.isLoading &&
-      !settingsQuery.isLoading;
+      !settingsQuery.isLoading &&
+      !gamificationQuery.isLoading;
     if (allDone) {
+      // Migrate gamification data for existing users (one-time)
+      if (gamificationQuery.data === null && !gamificationMigrated.current) {
+        gamificationMigrated.current = true;
+        const migrated = migrateExistingData(
+          historyRef.current,
+          streakRef.current,
+          personalRecordsRef.current
+        );
+        setGamification(migrated);
+        gamificationRef.current = migrated;
+        void AsyncStorage.setItem(STORAGE_KEYS.GAMIFICATION, JSON.stringify(migrated)).catch(() => {});
+      }
+
       setIsLoading(false);
-      // Set up scheduled notifications on launch if enabled
       if (settingsRef.current.notificationsEnabled) {
         void setupNotifications();
       }
@@ -293,6 +342,8 @@ function useGymState() {
     perfQuery.isLoading,
     prQuery.isLoading,
     settingsQuery.isLoading,
+    gamificationQuery.isLoading,
+    gamificationQuery.data,
   ]);
 
   // ─── Mutations ────────────────────────────────────────────
@@ -777,6 +828,50 @@ function useGymState() {
     };
     saveStreakMutation.mutate(updatedStreak);
 
+    // ─── Gamification: XP + Achievements ───────────────────
+    const currentGamification = gamificationRef.current;
+    const completedSetsCount = exerciseDetails.reduce((sum, ex) => sum + ex.setsCompleted, 0);
+    const xpBreakdown = calculateXPGain(completedSetsCount, newPRCount, totalVolume, newStreak);
+    const newTotalXP = currentGamification.totalXP + xpBreakdown.total;
+    const previousLevel = currentGamification.level;
+    const newLevel = getLevelForXP(newTotalXP);
+
+    const achievementCtx = buildAchievementContext(
+      updatedHistory,
+      updatedStreak,
+      updatedPRs,
+      newLevel,
+      totalVolume,
+      newPRCount
+    );
+    const alreadyUnlockedIds = currentGamification.achievements.map((a) => a.id);
+    const newAchievementIds = checkAchievements(achievementCtx, alreadyUnlockedIds);
+    const now = new Date().toISOString();
+    const newAchievements = [
+      ...currentGamification.achievements,
+      ...newAchievementIds.map((id) => ({ id, unlockedAt: now })),
+    ];
+
+    const xpGainEvent: XPGainEvent = {
+      timestamp: now,
+      breakdown: xpBreakdown,
+      totalGained: xpBreakdown.total,
+      leveledUp: newLevel > previousLevel,
+      previousLevel,
+      newLevel,
+      newAchievements: newAchievementIds,
+    };
+
+    const updatedGamification: GamificationData = {
+      totalXP: newTotalXP,
+      level: newLevel,
+      achievements: newAchievements,
+      lastXPGain: xpGainEvent,
+    };
+    setGamification(updatedGamification);
+    gamificationRef.current = updatedGamification;
+    void AsyncStorage.setItem(STORAGE_KEYS.GAMIFICATION, JSON.stringify(updatedGamification)).catch(() => {});
+
     // Fire notifications if enabled
     if (settingsRef.current.notificationsEnabled) {
       void sendWorkoutCompleteNotification(session.exercises.length, duration, newPRCount);
@@ -863,5 +958,6 @@ function useGymState() {
     personalRecords,
     settings,
     updateSettings,
+    gamification,
   };
 }

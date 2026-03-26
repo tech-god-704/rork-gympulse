@@ -176,3 +176,80 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   core: "Core",
   cardio: "Cardio",
 };
+
+// ─── Gamification Types ────────────────────────────────────
+
+export type AchievementCategory = 'consistency' | 'strength' | 'volume' | 'variety' | 'endurance';
+export type AchievementTier = 'bronze' | 'silver' | 'gold' | 'diamond';
+
+export interface GamificationData {
+  totalXP: number;
+  level: number;
+  achievements: UnlockedAchievement[];
+  lastXPGain: XPGainEvent | null;
+}
+
+export interface XPGainEvent {
+  timestamp: string;
+  breakdown: XPBreakdown;
+  totalGained: number;
+  leveledUp: boolean;
+  previousLevel: number;
+  newLevel: number;
+  newAchievements: string[];
+}
+
+export interface XPBreakdown {
+  workoutComplete: number;
+  setsCompleted: number;
+  personalRecords: number;
+  streakBonus: number;
+  volumeBonus: number;
+  consistencyMultiplier: number;
+  total: number;
+}
+
+export interface AchievementDefinition {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  category: AchievementCategory;
+  tier: AchievementTier;
+  condition: (ctx: AchievementContext) => boolean;
+}
+
+export interface AchievementContext {
+  totalWorkouts: number;
+  currentStreak: number;
+  longestStreak: number;
+  totalVolume: number;
+  totalPRs: number;
+  uniqueMuscleGroups: number;
+  uniqueRoutines: number;
+  totalSets: number;
+  totalDuration: number;
+  singleWorkoutVolume: number;
+  singleWorkoutPRs: number;
+  level: number;
+  history: WorkoutHistory[];
+}
+
+export interface UnlockedAchievement {
+  id: string;
+  unlockedAt: string;
+}
+
+export interface LevelDefinition {
+  level: number;
+  title: string;
+  xpRequired: number;
+  emoji: string;
+}
+
+export const DEFAULT_GAMIFICATION: GamificationData = {
+  totalXP: 0,
+  level: 1,
+  achievements: [],
+  lastXPGain: null,
+};
