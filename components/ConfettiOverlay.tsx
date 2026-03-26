@@ -17,10 +17,18 @@ interface Props {
   totalVolume?: number;
   newPRs?: number;
   weightUnit?: string;
+  xpGained?: number;
+  streakMultiplier?: number;
+  leveledUp?: boolean;
+  newLevel?: number;
+  newLevelTitle?: string;
+  newAchievementNames?: string[];
   onDismiss: () => void;
 }
 
-export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, weightUnit = "lbs", onDismiss }: Props) {
+const LEVEL_UP_COLORS = ["#FFD700", "#FDE047", "#A78BFA", "#818CF8", "#FFD700", "#E879F9", "#FDE047", "#A78BFA", "#FFD700", "#818CF8"];
+
+export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, weightUnit = "lbs", xpGained = 0, streakMultiplier = 1, leveledUp = false, newLevel, newLevelTitle, newAchievementNames = [], onDismiss }: Props) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -109,7 +117,9 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
           style={[
             styles.confettiPiece,
             {
-              backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+              backgroundColor: leveledUp
+                ? LEVEL_UP_COLORS[i % LEVEL_UP_COLORS.length]
+                : CONFETTI_COLORS[i % CONFETTI_COLORS.length],
               width: anim.w,
               height: anim.h,
               borderRadius: anim.rounded ? 10 : 2,
@@ -130,11 +140,25 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
       ))}
 
       <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
-        <Text style={styles.emoji}>{celebrationEmoji}</Text>
-        <Text style={styles.title}>Workout{"\n"}Complete!</Text>
+        <Text style={styles.emoji}>{leveledUp ? "\u{2B50}" : celebrationEmoji}</Text>
+        <Text style={styles.title}>
+          {leveledUp ? `LEVEL UP!` : `Workout\nComplete!`}
+        </Text>
+        {leveledUp && newLevelTitle ? (
+          <Text style={styles.levelUpTitle}>Lv.{newLevel} {newLevelTitle}</Text>
+        ) : null}
         <Text style={styles.subtitle}>
           {newPRs > 0 ? `${newPRs} new PR${newPRs > 1 ? "s" : ""}! Keep crushing it!` : "Keep the streak alive!"}
         </Text>
+
+        {xpGained > 0 && (
+          <View style={styles.xpBadge}>
+            <Text style={styles.xpBadgeText}>+{xpGained.toLocaleString()} XP</Text>
+            {streakMultiplier > 1 && (
+              <Text style={styles.xpMultiplier}>{streakMultiplier}x streak bonus</Text>
+            )}
+          </View>
+        )}
 
         <View style={styles.statsRow}>
           {[
@@ -160,14 +184,25 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
           </View>
         )}
 
+        {newAchievementNames.length > 0 && (
+          <View style={styles.achievementRow}>
+            <Text style={styles.achievementTitle}>{"\u{1F3C6}"} New Achievement{newAchievementNames.length > 1 ? "s" : ""}!</Text>
+            {newAchievementNames.map((name) => (
+              <Text key={name} style={styles.achievementName}>{name}</Text>
+            ))}
+          </View>
+        )}
+
         <TouchableOpacity onPress={onDismiss} activeOpacity={0.8}>
           <LinearGradient
-            colors={[colors.primary, colors.indigo]}
+            colors={leveledUp ? ["#FFD700", "#F59E0B"] : [colors.primary, colors.indigo]}
             style={styles.doneButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.doneButtonText}>Done ✓</Text>
+            <Text style={[styles.doneButtonText, leveledUp && { color: "#000" }]}>
+              {leveledUp ? "Amazing!" : "Done \u{2713}"}
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -203,12 +238,57 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     letterSpacing: -1.2,
     lineHeight: 36,
   },
+  levelUpTitle: {
+    fontSize: 18,
+    fontWeight: "800" as const,
+    color: colors.amber,
+    marginTop: 6,
+    textAlign: "center",
+    letterSpacing: -0.3,
+  },
   subtitle: {
     fontSize: 15,
     color: colors.textSecondary,
     marginTop: 10,
-    marginBottom: 28,
+    marginBottom: 16,
     textAlign: "center",
+  },
+  xpBadge: {
+    backgroundColor: colors.primaryUltraLight,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.xpBarFill + "30",
+  },
+  xpBadgeText: {
+    fontSize: 20,
+    fontWeight: "900" as const,
+    color: colors.xpBarFill,
+    letterSpacing: -0.5,
+  },
+  xpMultiplier: {
+    fontSize: 11,
+    fontWeight: "600" as const,
+    color: colors.amber,
+    marginTop: 2,
+  },
+  achievementRow: {
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 4,
+  },
+  achievementTitle: {
+    fontSize: 14,
+    fontWeight: "800" as const,
+    color: colors.tierGold,
+  },
+  achievementName: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: colors.textSecondary,
   },
   statsRow: {
     flexDirection: "row",

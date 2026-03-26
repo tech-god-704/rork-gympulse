@@ -17,6 +17,9 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, GOAL_LABELS, LEVEL_LABELS, WeightUnit, AppTheme } from "@/types";
+import XPBar from "@/components/XPBar";
+import AchievementGrid from "@/components/AchievementGrid";
+import { getLevelDefinition } from "@/utils/gamification";
 
 const GOALS: FitnessGoal[] = ["build_muscle", "lose_weight", "stay_active", "get_stronger"];
 const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
@@ -24,7 +27,7 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { profile, streak, history, saveProfile, refreshData, settings, updateSettings } = useGym();
+  const { profile, streak, history, saveProfile, refreshData, settings, updateSettings, gamification } = useGym();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -143,6 +146,11 @@ export default function ProfileScreen() {
             )}
             <Text style={styles.memberText}>Member since {memberSince}</Text>
             <View style={styles.badgesRow}>
+              <View style={styles.levelBadge}>
+                <Text style={styles.levelBadgeText}>
+                  {getLevelDefinition(gamification.level).emoji} Lv.{gamification.level}
+                </Text>
+              </View>
               <View style={styles.badgeActive}>
                 <Text style={styles.badgeActiveText}>{GOAL_LABELS[profile.fitnessGoal]}</Text>
               </View>
@@ -173,6 +181,16 @@ export default function ProfileScreen() {
               <Text style={styles.statGridLabel}>{s.l}</Text>
             </View>
           ))}
+        </View>
+
+        {/* XP Progress */}
+        <View style={styles.xpSection}>
+          <XPBar totalXP={gamification.totalXP} level={gamification.level} />
+        </View>
+
+        {/* Achievements */}
+        <View style={styles.achievementSection}>
+          <AchievementGrid unlockedAchievements={gamification.achievements} />
         </View>
 
         {/* Extended Stats */}
@@ -561,6 +579,20 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     gap: 6,
     marginTop: 6,
   },
+  levelBadge: {
+    backgroundColor: colors.xpBarFill + "18",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.xpBarFill + "30",
+  },
+  levelBadgeText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: colors.xpBarFill,
+    letterSpacing: 0.3,
+  },
   badgeActive: {
     backgroundColor: colors.primaryUltraLight,
     paddingHorizontal: 10,
@@ -625,6 +657,30 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     color: colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 3,
+  },
+  xpSection: {
+    backgroundColor: colors.glass,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    padding: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  achievementSection: {
+    backgroundColor: colors.glass,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    padding: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 2,
   },
   extendedStats: {
     backgroundColor: colors.glass,

@@ -68,6 +68,17 @@ const LightColors = {
   muscleLegs: "#3B82F6",
   muscleCore: "#10B981",
   muscleCardio: "#06B6D4",
+
+  // Achievement tier colors
+  tierBronze: "#CD7F32",
+  tierSilver: "#C0C0C0",
+  tierGold: "#FFD700",
+  tierDiamond: "#B9F2FF",
+
+  // XP bar
+  xpBarBackground: "#E5E7EB",
+  xpBarFill: "#6366F1",
+  xpText: "#6366F1",
 };
 
 const DarkColors: ColorScheme = {
@@ -138,6 +149,17 @@ const DarkColors: ColorScheme = {
   muscleLegs: "#60A5FA",
   muscleCore: "#34D399",
   muscleCardio: "#22D3EE",
+
+  // Achievement tier colors
+  tierBronze: "#D4956A",
+  tierSilver: "#D1D5DB",
+  tierGold: "#FDE047",
+  tierDiamond: "#67E8F9",
+
+  // XP bar
+  xpBarBackground: "#374151",
+  xpBarFill: "#818CF8",
+  xpText: "#818CF8",
 };
 
 // Default export for backward compatibility (light mode)
