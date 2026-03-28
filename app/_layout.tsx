@@ -13,6 +13,7 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   const { profile, isLoading, premium } = useGym();
+  const { colors } = useTheme();
   const router = useRouter();
   const segments = useSegments();
   const hasShownPostOnboardingPaywall = React.useRef(false);
@@ -46,7 +47,7 @@ function RootLayoutNav() {
   }, [isLoading]);
 
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerBackTitle: "Back", contentStyle: { backgroundColor: colors.background } }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal", gestureEnabled: true }} />

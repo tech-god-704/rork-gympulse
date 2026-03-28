@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Plus, Dumbbell, ChevronRight, Layers, ArrowLeft, Check } from "lucide-react-native";
+import { Plus, Dumbbell, ChevronRight, Layers, ArrowLeft, Check, ChevronUp, ChevronDown } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -35,7 +35,7 @@ export default function RoutinesScreen() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { routines, addRoutine, addRoutinesFromTemplates } = useGym();
+  const { routines, addRoutine, addRoutinesFromTemplates, reorderRoutine } = useGym();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
@@ -159,6 +159,34 @@ export default function RoutinesScreen() {
                       </View>
                     )}
                   </View>
+                  {routines.length > 1 && (
+                    <View style={styles.reorderButtons}>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          reorderRoutine(routine.id, "up");
+                          if (Platform.OS !== "web") void Haptics.selectionAsync();
+                        }}
+                        style={[styles.reorderBtn, idx === 0 && styles.reorderBtnDisabled]}
+                        disabled={idx === 0}
+                        hitSlop={{ top: 8, bottom: 4, left: 8, right: 8 }}
+                      >
+                        <ChevronUp size={16} color={idx === 0 ? colors.glassBorder : colors.textTertiary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          reorderRoutine(routine.id, "down");
+                          if (Platform.OS !== "web") void Haptics.selectionAsync();
+                        }}
+                        style={[styles.reorderBtn, idx === routines.length - 1 && styles.reorderBtnDisabled]}
+                        disabled={idx === routines.length - 1}
+                        hitSlop={{ top: 4, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <ChevronDown size={16} color={idx === routines.length - 1 ? colors.glassBorder : colors.textTertiary} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
                   <ChevronRight size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
               );
@@ -503,6 +531,19 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     color: colors.textTertiary,
     textTransform: "uppercase" as const,
     letterSpacing: 0.3,
+  },
+
+  reorderButtons: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 2,
+    marginRight: 4,
+  },
+  reorderBtn: {
+    padding: 2,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.3,
   },
 
   // ─── Browse splits link ──────────────────────────────────

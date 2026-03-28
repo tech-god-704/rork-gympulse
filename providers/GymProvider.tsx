@@ -594,6 +594,19 @@ function useGymState() {
     [routines, saveRoutinesMutation]
   );
 
+  const reorderRoutine = useCallback(
+    (routineId: string, direction: "up" | "down") => {
+      const idx = routines.findIndex((r) => r.id === routineId);
+      if (idx < 0) return;
+      const newIdx = direction === "up" ? idx - 1 : idx + 1;
+      if (newIdx < 0 || newIdx >= routines.length) return;
+      const updated = [...routines];
+      [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
+      saveRoutinesMutation.mutate(updated);
+    },
+    [routines, saveRoutinesMutation]
+  );
+
   const addExerciseToRoutine = useCallback(
     (routineId: string, exercise: RoutineExercise) => {
       const updated = routines.map((r) =>
@@ -1021,6 +1034,7 @@ function useGymState() {
     addRoutinesFromTemplates,
     updateRoutine,
     deleteRoutine,
+    reorderRoutine,
     addExerciseToRoutine,
     removeExerciseFromRoutine,
     addCustomExercise,
