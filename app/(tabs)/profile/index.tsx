@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp } from "lucide-react-native";
+import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp, Crown } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
@@ -27,7 +28,8 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
-  const { profile, streak, history, saveProfile, refreshData, settings, updateSettings, gamification } = useGym();
+  const { profile, streak, history, saveProfile, refreshData, settings, updateSettings, gamification, premium } = useGym();
+  const router = useRouter();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -187,6 +189,38 @@ export default function ProfileScreen() {
         <View style={styles.xpSection}>
           <XPBar totalXP={gamification.totalXP} level={gamification.level} />
         </View>
+
+        {/* Upgrade to Pro */}
+        {!premium.isPremium && (
+          <TouchableOpacity
+            style={styles.proCard}
+            onPress={() => router.push("/paywall")}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[colors.primary, colors.indigo, colors.violet]}
+              style={styles.proCardGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Crown size={22} color="#fff" />
+              <View style={styles.proCardInfo}>
+                <Text style={styles.proCardTitle}>Upgrade to Pro</Text>
+                <Text style={styles.proCardDesc}>Unlock advanced analytics, unlimited routines & more</Text>
+              </View>
+              <ChevronRight size={18} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+        {premium.isPremium && (
+          <View style={styles.proActiveCard}>
+            <Crown size={18} color={colors.amber} />
+            <Text style={styles.proActiveText}>GymPulse Pro</Text>
+            <View style={styles.proActiveBadge}>
+              <Text style={styles.proActiveBadgeText}>ACTIVE</Text>
+            </View>
+          </View>
+        )}
 
         {/* Achievements */}
         <View style={styles.achievementSection}>
@@ -669,6 +703,63 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 20,
     elevation: 2,
+  },
+  proCard: {
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: colors.indigo,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  proCardGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 18,
+    gap: 12,
+  },
+  proCardInfo: {
+    flex: 1,
+  },
+  proCardTitle: {
+    fontSize: 16,
+    fontWeight: "800" as const,
+    color: "#fff",
+    letterSpacing: -0.3,
+  },
+  proCardDesc: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 2,
+  },
+  proActiveCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.glass,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    padding: 16,
+  },
+  proActiveText: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: colors.text,
+    flex: 1,
+  },
+  proActiveBadge: {
+    backgroundColor: colors.emerald,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  proActiveBadgeText: {
+    fontSize: 10,
+    fontWeight: "800" as const,
+    color: "#fff",
+    letterSpacing: 0.5,
   },
   achievementSection: {
     backgroundColor: colors.glass,
