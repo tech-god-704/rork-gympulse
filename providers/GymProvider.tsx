@@ -18,6 +18,9 @@ import {
   GamificationData,
   DEFAULT_GAMIFICATION,
   XPGainEvent,
+  PremiumStatus,
+  DEFAULT_PREMIUM,
+  SubscriptionPlan,
 } from "@/types";
 import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
 import { generateId, getToday, formatDate } from "@/utils/helpers";
@@ -48,6 +51,7 @@ const STORAGE_KEYS = {
   PERSONAL_RECORDS: "gympulse_personal_records",
   SETTINGS: "gympulse_settings",
   GAMIFICATION: "gympulse_gamification",
+  PREMIUM: "gympulse_premium",
 };
 
 // Per-exercise last performance data
@@ -133,6 +137,7 @@ function useGymState() {
   const [personalRecords, setPersonalRecords] = useState<PRMap>({});
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [gamification, setGamification] = useState<GamificationData>(DEFAULT_GAMIFICATION);
+  const [premium, setPremium] = useState<PremiumStatus>(DEFAULT_PREMIUM);
   const [isLoading, setIsLoading] = useState(true);
 
   // Use refs for values accessed in rapid-fire callbacks to avoid stale closures
@@ -143,6 +148,7 @@ function useGymState() {
   const personalRecordsRef = useRef<PRMap>({});
   const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS);
   const gamificationRef = useRef<GamificationData>(DEFAULT_GAMIFICATION);
+  const premiumRef = useRef<PremiumStatus>(DEFAULT_PREMIUM);
   const completingRef = useRef(false);
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
@@ -152,6 +158,7 @@ function useGymState() {
   useEffect(() => { personalRecordsRef.current = personalRecords; }, [personalRecords]);
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   useEffect(() => { gamificationRef.current = gamification; }, [gamification]);
+  useEffect(() => { premiumRef.current = premium; }, [premium]);
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
@@ -254,6 +261,15 @@ function useGymState() {
     },
   });
 
+  const premiumQuery = useQuery({
+    queryKey: ["premium"],
+    queryFn: async () => {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.PREMIUM);
+      if (!stored) return DEFAULT_PREMIUM;
+      try { return { ...DEFAULT_PREMIUM, ...JSON.parse(stored) } as PremiumStatus; } catch { return DEFAULT_PREMIUM; }
+    },
+  });
+
   useEffect(() => {
     if (profileQuery.data !== undefined) setProfile(profileQuery.data);
   }, [profileQuery.data]);
@@ -290,6 +306,10 @@ function useGymState() {
     if (settingsQuery.data !== undefined) setSettings(settingsQuery.data);
   }, [settingsQuery.data]);
 
+  useEffect(() => {
+    if (premiumQuery.data !== undefined) setPremium(premiumQuery.data);
+  }, [premiumQuery.data]);
+
   // Gamification: load or migrate
   const gamificationMigrated = useRef(false);
   useEffect(() => {
@@ -312,7 +332,8 @@ function useGymState() {
       !perfQuery.isLoading &&
       !prQuery.isLoading &&
       !settingsQuery.isLoading &&
-      !gamificationQuery.isLoading;
+      !gamificationQuery.isLoading &&
+      !premiumQuery.isLoading;
     if (allDone) {
       // Migrate gamification data for existing users (one-time)
       if (gamificationQuery.data === null && !gamificationMigrated.current) {
@@ -344,6 +365,7 @@ function useGymState() {
     settingsQuery.isLoading,
     gamificationQuery.isLoading,
     gamificationQuery.data,
+    premiumQuery.isLoading,
   ]);
 
   // ─── Mutations ────────────────────────────────────────────
@@ -443,6 +465,61 @@ function useGymState() {
     },
     [saveSettingsMutation]
   );
+
+  // ─── Premium / Paywall ──────────────────────────────────
+  const savePremium = useCallback((p: PremiumStatus) => {
+    setPremium(p);
+    premiumRef.current = p;
+    void AsyncStorage.setItem(STORAGE_KEYS.PREMIUM, JSON.stringify(p)).catch(() => {});
+  }, []);
+
+  const subscribeToPlan = useCallback((plan: SubscriptionPlan) => {
+    const updated: PremiumStatus = {
+      ...premiumRef.current,
+      isPremium: true,
+      plan,
+      subscribedAt: new Date().toISOString(),
+    };
+    savePremium(updated);
+  }, [savePremium]);
+
+  const dismissPaywall = useCallback(() => {
+    const updated: PremiumStatus = {
+      ...premiumRef.current,
+      paywallDismissCount: premiumRef.current.paywallDismissCount + 1,
+      lastPaywallShown: new Date().toISOString(),
+      workoutsSinceLastPaywall: 0,
+    };
+    savePremium(updated);
+  }, [savePremium]);
+
+  const recordPaywallWorkout = useCallback(() => {
+    if (premiumRef.current.isPremium) return;
+    const updated: PremiumStatus = {
+      ...premiumRef.current,
+      workoutsSinceLastPaywall: premiumRef.current.workoutsSinceLastPaywall + 1,
+    };
+    savePremium(updated);
+  }, [savePremium]);
+
+  const shouldShowPaywall = useCallback((): boolean => {
+    const p = premiumRef.current;
+    if (p.isPremium) return false;
+
+    // After onboarding (first time) — always show
+    // This is handled in _layout.tsx routing, not here
+
+    // After every 3rd workout
+    if (p.workoutsSinceLastPaywall >= 3) return true;
+
+    // Don't nag too frequently — at least 24 hours between paywalls
+    if (p.lastPaywallShown) {
+      const hoursSince = (Date.now() - new Date(p.lastPaywallShown).getTime()) / (1000 * 60 * 60);
+      if (hoursSince < 24) return false;
+    }
+
+    return false;
+  }, []);
 
   const saveProfile = useCallback(
     (p: UserProfile) => {
@@ -878,11 +955,14 @@ function useGymState() {
       void sendStreakMilestoneNotification(newStreak);
     }
 
+    // Track workout for paywall trigger
+    recordPaywallWorkout();
+
     saveSession(null);
     } finally {
       completingRef.current = false;
     }
-  }, [saveHistoryMutation, saveStreakMutation, saveSession]);
+  }, [saveHistoryMutation, saveStreakMutation, saveSession, recordPaywallWorkout]);
 
   const cancelWorkout = useCallback(() => {
     saveSession(null);
@@ -959,5 +1039,9 @@ function useGymState() {
     settings,
     updateSettings,
     gamification,
+    premium,
+    subscribeToPlan,
+    dismissPaywall,
+    shouldShowPaywall,
   };
 }

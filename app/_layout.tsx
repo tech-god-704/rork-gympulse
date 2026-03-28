@@ -12,22 +12,32 @@ void SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 function RootLayoutNav() {
-  const { profile, isLoading } = useGym();
+  const { profile, isLoading, premium } = useGym();
   const router = useRouter();
   const segments = useSegments();
+  const hasShownPostOnboardingPaywall = React.useRef(false);
 
   useEffect(() => {
     if (isLoading) return;
 
     const onOnboarding = segments[0] === "onboarding";
+    const onPaywall = segments[0] === "paywall";
     const needsOnboarding = !profile?.onboardingComplete;
 
     if (needsOnboarding && !onOnboarding) {
       router.replace("/onboarding");
     } else if (!needsOnboarding && onOnboarding) {
-      router.replace("/(tabs)/(home)");
+      // After onboarding completes, show paywall if not premium
+      if (!premium.isPremium && !hasShownPostOnboardingPaywall.current) {
+        hasShownPostOnboardingPaywall.current = true;
+        router.replace("/(tabs)/(home)");
+        // Small delay to let the home screen mount first
+        setTimeout(() => router.push("/paywall"), 500);
+      } else {
+        router.replace("/(tabs)/(home)");
+      }
     }
-  }, [isLoading, profile, segments, router]);
+  }, [isLoading, profile, segments, router, premium]);
 
   useEffect(() => {
     if (!isLoading) {
@@ -39,6 +49,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="paywall" options={{ headerShown: false, presentation: "modal", gestureEnabled: true }} />
     </Stack>
   );
 }

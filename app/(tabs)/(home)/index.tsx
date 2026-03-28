@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Flame, Target, Play, X, Clock, Dumbbell, ChevronRight } from "lucide-react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { type ColorScheme } from "@/constants/colors";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -63,6 +63,7 @@ export default function TodayScreen() {
     personalRecords,
     settings,
     gamification,
+    shouldShowPaywall,
   } = useGym();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -260,7 +261,11 @@ export default function TodayScreen() {
   const handleDismissConfetti = useCallback(() => {
     setShowConfetti(false);
     completeWorkout();
-  }, [completeWorkout]);
+    // Show paywall after workout if conditions are met
+    if (shouldShowPaywall()) {
+      setTimeout(() => router.push("/paywall"), 600);
+    }
+  }, [completeWorkout, shouldShowPaywall, router]);
 
   const handleStartWorkout = useCallback(
     (routineId: string) => {
@@ -493,8 +498,29 @@ export default function TodayScreen() {
               );
             })() : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No workout scheduled</Text>
-                <Text style={styles.emptySubtitle}>Select a routine to begin</Text>
+                {history.length > 0 && (() => {
+                  const lastDate = new Date(history[0].completedAt);
+                  const isToday = lastDate.toDateString() === new Date().toDateString();
+                  if (isToday) {
+                    return (
+                      <>
+                        <Text style={styles.emptyTitle}>Today's workout done!</Text>
+                        <Text style={styles.emptySubtitle}>Rest up or start another routine below</Text>
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      <Text style={styles.emptyTitle}>No workout scheduled</Text>
+                      <Text style={styles.emptySubtitle}>Select a routine to begin</Text>
+                    </>
+                  );
+                })() || (
+                  <>
+                    <Text style={styles.emptyTitle}>No workout scheduled</Text>
+                    <Text style={styles.emptySubtitle}>Select a routine to begin</Text>
+                  </>
+                )}
               </View>
             )}
 

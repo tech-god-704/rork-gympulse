@@ -1,9 +1,11 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { View, Text, StyleSheet, ScrollView, Platform, RefreshControl, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Flame, TrendingUp, Minus, Trophy, Clock, Dumbbell, Calendar, Target, ChevronDown, ChevronUp } from "lucide-react-native";
+import { Flame, TrendingUp, Minus, Trophy, Clock, Dumbbell, Calendar, Target, ChevronDown, ChevronUp, Crown, Lock } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import { useRouter } from "expo-router";
 import { useGym } from "@/providers/GymProvider";
 import { getMonthCalendarDates, getToday } from "@/utils/helpers";
 import { MuscleGroup, MUSCLE_GROUP_LABELS } from "@/types";
@@ -25,7 +27,8 @@ export default function ProgressScreen() {
     cardio: colors.muscleCardio,
   };
   const insets = useSafeAreaInsets();
-  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance, settings } = useGym();
+  const { streak, history, getWorkoutsThisWeek, getWeeklyWorkoutCounts, profile, refreshData, personalRecords, routines, lastPerformance, settings, premium } = useGym();
+  const progressRouter = useRouter();
   const wu = settings.weightUnit;
   const [refreshing, setRefreshing] = useState(false);
   const [prExpanded, setPrExpanded] = useState(true);
@@ -580,6 +583,33 @@ export default function ProgressScreen() {
             </View>
           </View>
         )}
+
+        {/* Pro Analytics Upsell */}
+        {!premium.isPremium && history.length >= 3 && (
+          <TouchableOpacity
+            style={styles.proAnalyticsCard}
+            onPress={() => progressRouter.push("/paywall")}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={[colors.primary, colors.indigo]}
+              style={styles.proAnalyticsGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <View style={styles.proAnalyticsContent}>
+                <Crown size={20} color="#fff" />
+                <View style={styles.proAnalyticsInfo}>
+                  <Text style={styles.proAnalyticsTitle}>Unlock Pro Analytics</Text>
+                  <Text style={styles.proAnalyticsDesc}>Muscle heatmaps, volume trends, progressive overload insights</Text>
+                </View>
+              </View>
+              <View style={styles.proAnalyticsLock}>
+                <Lock size={14} color="rgba(255,255,255,0.6)" />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -1113,5 +1143,37 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     color: colors.textTertiary,
     textAlign: "center",
     lineHeight: 20,
+  },
+  proAnalyticsCard: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 16,
+  },
+  proAnalyticsGradient: {
+    padding: 16,
+  },
+  proAnalyticsContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  proAnalyticsInfo: {
+    flex: 1,
+  },
+  proAnalyticsTitle: {
+    fontSize: 15,
+    fontWeight: "700" as const,
+    color: "#fff",
+    letterSpacing: -0.2,
+  },
+  proAnalyticsDesc: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 2,
+  },
+  proAnalyticsLock: {
+    position: "absolute",
+    top: 16,
+    right: 16,
   },
 });
