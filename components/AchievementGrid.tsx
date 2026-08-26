@@ -141,7 +141,6 @@ function createStyles(colors: ColorScheme) {
     },
     sectionLabel: {
       ...Type.overline,
-      fontSize: 11,
       color: colors.textSecondary,
     },
     sectionCount: {

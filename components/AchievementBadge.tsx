@@ -84,7 +84,6 @@ function createStyles(colors: ColorScheme, accent: string, unlocked: boolean, co
     },
     name: {
       ...Type.caption,
-      fontSize: 11,
       lineHeight: 13,
       fontWeight: unlocked ? "800" : "500",
       color: unlocked ? colors.text : colors.textTertiary,

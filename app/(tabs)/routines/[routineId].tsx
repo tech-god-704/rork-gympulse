@@ -27,6 +27,7 @@ import {
   RoutineSetConfig,
   WeekDay,
   WEEKDAY_SHORT,
+  WEEKDAY_LABELS,
   ALL_WEEKDAYS,
   RestTimerAlert,
   WeightUnit,
@@ -138,7 +139,13 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
     <View style={swStyles.container}>
       {/* Delete action behind */}
       <View style={swStyles.deleteAction}>
-        <TouchableOpacity style={swStyles.deleteButton} onPress={handleDelete} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={swStyles.deleteButton}
+          onPress={handleDelete}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${exercise.exerciseName} from this routine`}
+        >
           <Trash2 size={18} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -153,6 +160,8 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
       >
         <TouchableOpacity
           style={swStyles.rowContent}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${exercise.exerciseName}, exercise ${index + 1}`}
           onPress={() => {
             if (isOpen.current) {
               closeSwipe();
@@ -388,7 +397,12 @@ function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave
         <View style={editStyles.card}>
           <View style={editStyles.header}>
             <Text style={editStyles.title}>{exercise.exerciseName}</Text>
-            <TouchableOpacity onPress={onClose} style={editStyles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={editStyles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close without saving"
+            >
               <X size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
@@ -434,6 +448,9 @@ function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave
                     setRows.length > 1 && { backgroundColor: colors.error },
                   ]}
                   disabled={setRows.length <= 1}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: setRows.length <= 1 }}
+                  accessibilityLabel={`Remove set ${index + 1}`}
                 >
                   <Trash2 size={12} color={setRows.length <= 1 ? colors.textTertiary : colors.white} />
                 </TouchableOpacity>
@@ -442,7 +459,13 @@ function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave
           </ScrollView>
 
           {/* Add set button */}
-          <TouchableOpacity style={editStyles.addSetBtn} onPress={handleAddSet} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={editStyles.addSetBtn}
+            onPress={handleAddSet}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Add another set"
+          >
             <Plus size={14} color={colors.primary} />
             <Text style={editStyles.addSetText}>Add Set</Text>
           </TouchableOpacity>
@@ -460,6 +483,9 @@ function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave
                       setExerciseColor(c.value);
                       if (Platform.OS !== "web") void Haptics.selectionAsync();
                     }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${c.label} card colour`}
                     style={[
                       editStyles.colorDot,
                       c.value ? { backgroundColor: c.value } : editStyles.colorDotDefault,
@@ -483,10 +509,20 @@ function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave
           </View>
 
           <View style={editStyles.buttons}>
-            <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
+            <TouchableOpacity
+              style={editStyles.cancelBtn}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+            >
               <Text style={editStyles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
+            <TouchableOpacity
+              onPress={handleSave}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Save changes to ${exercise.exerciseName}`}
+            >
               <View style={[editStyles.saveBtn, { backgroundColor: colors.primary }]}>
                 <Check size={18} color="#fff" />
                 <Text style={editStyles.saveText}>Save</Text>
@@ -925,7 +961,12 @@ export default function RoutineDetailScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back to routines"
+        >
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         {editingName ? (
@@ -938,11 +979,21 @@ export default function RoutineDetailScreen() {
             autoFocus
           />
         ) : (
-          <TouchableOpacity onPress={() => { setRoutineName(routine.name); setEditingName(true); }} style={styles.titleContainer}>
+          <TouchableOpacity
+            onPress={() => { setRoutineName(routine.name); setEditingName(true); }}
+            style={styles.titleContainer}
+            accessibilityRole="button"
+            accessibilityLabel={`Routine name, ${routine.name}. Tap to rename.`}
+          >
             <Text style={styles.headerTitle}>{routine.name}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleDeleteRoutine} style={styles.deleteButton}>
+        <TouchableOpacity
+          onPress={handleDeleteRoutine}
+          style={styles.deleteButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete the ${routine.name} routine`}
+        >
           <Trash2 size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
@@ -956,6 +1007,9 @@ export default function RoutineDetailScreen() {
               key={day}
               onPress={() => handleToggleDay(day)}
               activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: active }}
+              accessibilityLabel={`Schedule on ${WEEKDAY_LABELS[day]}`}
             >
               {active ? (
                 <View style={[styles.dayChip, { backgroundColor: colors.primary }]}>
@@ -977,6 +1031,9 @@ export default function RoutineDetailScreen() {
           style={styles.restTimerToggleRow}
           onPress={handleToggleRestTimer}
           activeOpacity={0.7}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: routine.restTimerEnabled !== false }}
+          accessibilityLabel="Rest timer for this routine"
         >
           <Timer size={14} color={colors.textTertiary} />
           <Text style={styles.colorPickerLabel}>Rest Timer</Text>
@@ -1002,6 +1059,9 @@ export default function RoutineDetailScreen() {
                     onPress={() => handleSetRestDuration(dur)}
                     activeOpacity={0.7}
                     style={[styles.restDurPill, isActive && styles.restDurPillActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`${dur} second rest between sets`}
                   >
                     <Text style={[styles.restDurText, isActive && styles.restDurTextActive]}>
                       {dur < 60 ? `${dur}s` : dur % 60 === 0 ? `${dur / 60}m` : `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`}
@@ -1021,6 +1081,9 @@ export default function RoutineDetailScreen() {
                     onPress={() => handleSetRestAlert(opt.value)}
                     activeOpacity={0.7}
                     style={[styles.restAlertChip, isActive && styles.restAlertChipActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Alert with ${opt.label.toLowerCase()} when rest ends`}
                   >
                     <Text style={[styles.restAlertChipText, isActive && styles.restAlertChipTextActive]}>
                       {opt.label}
@@ -1077,6 +1140,8 @@ export default function RoutineDetailScreen() {
           style={styles.addExerciseButton}
           onPress={() => setShowAddModal(true)}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Add an exercise to this routine"
         >
           <Plus size={20} color={colors.primary} />
           <Text style={styles.addExerciseText}>Add Exercise</Text>
@@ -1097,7 +1162,11 @@ export default function RoutineDetailScreen() {
       <Modal visible={showAddModal} animationType="slide">
         <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => { setShowAddModal(false); setSearchQuery(""); }}>
+            <TouchableOpacity
+              onPress={() => { setShowAddModal(false); setSearchQuery(""); }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel adding an exercise"
+            >
               <Text style={styles.modalClose}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Add Exercise</Text>
@@ -1145,6 +1214,9 @@ export default function RoutineDetailScreen() {
               <TouchableOpacity
                 key={mg}
                 onPress={() => setSelectedMuscle(mg)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: selectedMuscle === mg }}
+                accessibilityLabel={MUSCLE_GROUP_LABELS[mg]}
               >
                 {selectedMuscle === mg ? (
                   <View style={[styles.musclePill, { backgroundColor: muscleColor(mg, colors) }]}>
@@ -1275,7 +1347,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   groupPickerLabel: {
     ...Type.overline,
-    fontSize: 10,
     color: colors.textTertiary,
     paddingHorizontal: Layout.gutter,
     paddingBottom: Space.xs + 2,

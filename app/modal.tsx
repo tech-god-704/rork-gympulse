@@ -22,7 +22,12 @@ export default function ModalScreen() {
       visible
       onRequestClose={() => router.back()}
     >
-      <Pressable style={styles.overlay} onPress={() => router.back()}>
+      <Pressable
+        style={styles.overlay}
+        onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss"
+      >
         <View style={styles.modalContent}>
           <Text style={styles.title}>Nothing here yet</Text>
           <Text style={styles.description}>

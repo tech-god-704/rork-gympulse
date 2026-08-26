@@ -459,14 +459,12 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   pillarLabel: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "700",
     color: colors.textSecondary,
     textAlign: "center",
   },
   fieldLabel: {
     ...Type.overline,
-    fontSize: 11,
     color: colors.textTertiary,
     alignSelf: "flex-start",
     marginBottom: Space.sm,
@@ -592,7 +590,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   recapTitle: {
     ...Type.overline,
-    fontSize: 11,
     color: colors.textTertiary,
     marginBottom: Space.xxs,
   },

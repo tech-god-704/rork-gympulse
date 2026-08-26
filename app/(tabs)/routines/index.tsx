@@ -566,7 +566,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   suggestLabel: {
     ...Type.overline,
-    fontSize: 11,
     color: colors.textTertiary,
     marginTop: Space.lg,
     marginBottom: Space.sm,

@@ -776,7 +776,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   heroEyebrow: {
     ...Type.overline,
-    fontSize: 11,
     color: "rgba(255,255,255,0.8)",
   },
   heroTitle: {
@@ -808,7 +807,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   // ── Up next ──
   upNextEyebrow: {
     ...Type.overline,
-    fontSize: 11,
     color: colors.textTertiary,
     marginBottom: Space.xs,
   },
@@ -835,7 +833,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   recapEyebrow: {
     ...Type.overline,
-    fontSize: 11,
     color: colors.textTertiary,
   },
   recapDate: {

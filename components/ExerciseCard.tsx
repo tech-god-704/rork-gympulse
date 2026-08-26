@@ -572,7 +572,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   skipText: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "800",
     color: "#fff",
   },
@@ -639,7 +638,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   skippedBadge: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "800",
     color: colors.amberDark,
     backgroundColor: tint(colors.amber, 0.2),
@@ -677,7 +675,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   muscleTagText: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "800",
     color: colors.primary,
     textTransform: "uppercase",
@@ -693,7 +690,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   prBadgeText: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "900",
     color: colors.amberDark,
     letterSpacing: 0.5,
@@ -842,7 +838,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   editUnit: {
     ...Type.caption,
-    fontSize: 11,
     color: colors.textTertiary,
     fontWeight: "700",
   },

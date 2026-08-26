@@ -971,7 +971,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   weekdayText: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "800",
     color: colors.textTertiary,
     letterSpacing: 0.5,
@@ -1143,7 +1142,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   barLabel: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "600",
     color: colors.textTertiary,
     letterSpacing: -0.2,
@@ -1205,7 +1203,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   statsLabel: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "600",
     color: colors.textTertiary,
     letterSpacing: 0.3,
@@ -1278,7 +1275,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   pr1RMLabel: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "800",
     color: colors.textTertiary,
     letterSpacing: 0.5,
@@ -1476,7 +1472,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   sheetStatLabel: {
     ...Type.caption,
-    fontSize: 11,
     fontWeight: "700",
     color: colors.textTertiary,
     textTransform: "uppercase",

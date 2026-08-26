@@ -439,7 +439,6 @@ const createStyles = (colors: ColorScheme) =>
     },
     popularBadgeText: {
       ...Type.caption,
-      fontSize: 11,
       fontWeight: "800",
       letterSpacing: 0.6,
       color: "#fff",
@@ -456,7 +455,6 @@ const createStyles = (colors: ColorScheme) =>
     },
     savingsBadgeText: {
       ...Type.caption,
-      fontSize: 11,
       fontWeight: "800",
       letterSpacing: 0.6,
       color: "#fff",
