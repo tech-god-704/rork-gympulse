@@ -8,31 +8,47 @@ import {
   TextInput,
   Modal,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Plus, Dumbbell, ChevronRight, Layers, ArrowLeft, Check, ChevronUp, ChevronDown } from "lucide-react-native";
+import {
+  Plus,
+  Dumbbell,
+  ChevronRight,
+  Layers,
+  ArrowLeft,
+  Check,
+  ChevronUp,
+  ChevronDown,
+  CalendarDays,
+} from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import {
+  Layout,
+  Radius,
+  Space,
+  Type,
+  dominantMuscleColor,
+  glow,
+  muscleColor,
+  numeric,
+  onColor,
+  surface,
+  tint,
+} from "@/constants/theme";
 import { useGym } from "@/providers/GymProvider";
-import { ACTIVE_BAR_HEIGHT } from "@/components/ActiveWorkoutBar";
-import { MuscleGroup, MUSCLE_GROUP_LABELS, WEEKDAY_SHORT } from "@/types";
+import { MuscleGroup, MUSCLE_GROUP_LABELS, WEEKDAY_SHORT, Routine } from "@/types";
 import { estimateRoutineDuration } from "@/utils/helpers";
 import { WORKOUT_SPLITS, ROUTINE_NAME_SUGGESTIONS, type WorkoutSplit } from "@/mocks/exercises";
+import { Button, Card, EmptyState, ScreenHeader, Tag } from "@/components/ui";
+import { ACTIVE_BAR_HEIGHT } from "@/components/ActiveWorkoutBar";
 
 export default function RoutinesScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  const ROUTINE_COLORS: string[] = [
-    colors.primary,
-    colors.indigo,
-    "#06B6D4",
-    "#F59E0B",
-    "#8B5CF6",
-    "#10B981",
-  ];
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -48,22 +64,14 @@ export default function RoutinesScreen() {
     if (!routine) return;
     setNewName("");
     setShowCreate(false);
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push(`/(tabs)/routines/${routine.id}`);
   }, [newName, addRoutine, router]);
-
-  const handlePickSplit = useCallback((split: WorkoutSplit) => {
-    setSelectedSplit(split);
-  }, []);
 
   const handleConfirmSplit = useCallback(() => {
     if (!selectedSplit) return;
     const created = addRoutinesFromTemplates(selectedSplit.routines);
-    if (Platform.OS !== "web") {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setSelectedSplit(null);
     setShowTemplates(false);
     if (created.length > 0) {
@@ -71,306 +79,348 @@ export default function RoutinesScreen() {
     }
   }, [selectedSplit, addRoutinesFromTemplates, router]);
 
-  const getMuscleGroups = useCallback((routine: typeof routines[number]) => {
-    const groups = new Set<MuscleGroup>();
-    routine.exercises.forEach((e) => groups.add(e.muscleGroup));
-    return Array.from(groups);
+  const describe = useCallback((routine: Routine) => {
+    const setCount = routine.exercises.reduce((sum, e) => sum + e.sets, 0);
+    if (routine.exercises.length === 0) return "Empty — tap to add exercises";
+    const mins = estimateRoutineDuration(routine.exercises.length, setCount);
+    return `${routine.exercises.length} exercises · ${setCount} sets · ~${mins} min`;
   }, []);
 
+  const closeTemplates = useCallback(() => {
+    if (selectedSplit) setSelectedSplit(null);
+    else setShowTemplates(false);
+  }, [selectedSplit]);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Routines</Text>
-        <TouchableOpacity
-          onPress={() => setShowCreate(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.addButton}>
-            <Plus size={20} color={colors.white} />
-          </View>
-        </TouchableOpacity>
+    <View style={styles.container}>
+      <View style={{ paddingTop: insets.top }}>
+        <ScreenHeader
+          title="Routines"
+          subtitle={routines.length > 0 ? `${routines.length} saved` : undefined}
+          action={
+            <TouchableOpacity
+              onPress={() => setShowCreate(true)}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Create a new routine"
+              style={[styles.addButton, glow(colors.primary, colors)]}
+            >
+              <Plus size={21} color="#fff" />
+            </TouchableOpacity>
+          }
+        />
       </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingBottom: currentSession ? 40 + ACTIVE_BAR_HEIGHT : 40 },
+          { paddingBottom: (currentSession ? ACTIVE_BAR_HEIGHT : 0) + Space.xxxl },
         ]}
         showsVerticalScrollIndicator={false}
       >
         {routines.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Dumbbell size={48} color={colors.textTertiary} />
-            <Text style={styles.emptyTitle}>No routines yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Create a custom routine or start with a proven workout split
-            </Text>
-            <TouchableOpacity
-              onPress={() => setShowCreate(true)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.emptyButton}>
-                <Plus size={18} color={colors.white} />
-                <Text style={styles.emptyButtonText}>Create Routine</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowTemplates(true)}
-              activeOpacity={0.8}
-              style={styles.templateButton}
-            >
-              <Layers size={18} color={colors.primary} />
-              <Text style={styles.templateButtonText}>Browse Workout Splits</Text>
-            </TouchableOpacity>
-          </View>
+          <Card padding={0}>
+            <EmptyState
+              icon={<Dumbbell size={30} color={colors.primary} />}
+              title="No routines yet"
+              body="Start from a proven split — every exercise, set and rep is pre-filled and fully editable — or build one from scratch."
+              action={
+                <Button
+                  label="Browse workout splits"
+                  onPress={() => setShowTemplates(true)}
+                  icon={<Layers size={17} color="#fff" />}
+                  haptic="medium"
+                />
+              }
+              secondaryAction={
+                <Button
+                  label="Create from scratch"
+                  variant="ghost"
+                  size="sm"
+                  icon={<Plus size={15} color={colors.primary} />}
+                  onPress={() => setShowCreate(true)}
+                />
+              }
+            />
+          </Card>
         ) : (
           <>
             {routines.map((routine, idx) => {
-              const muscleGroups = getMuscleGroups(routine);
-              const setCount = routine.exercises.reduce((sum, e) => sum + e.sets, 0);
-              const duration = estimateRoutineDuration(routine.exercises.length, setCount);
-              const routineColor = routine.color || ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
-              const initial = routine.name ? routine.name.charAt(0).toUpperCase() : "R";
+              const groups = [...new Set(routine.exercises.map((e) => e.muscleGroup))];
+              const accent = routine.color ?? dominantMuscleColor(groups, colors) ?? colors.primary;
+              const fg = onColor(accent);
+              const scheduled = routine.scheduledDays ?? [];
+
               return (
                 <TouchableOpacity
                   key={routine.id}
-                  style={styles.routineCard}
+                  style={[styles.routineCard, surface(colors, 1, Radius.md)]}
                   onPress={() => router.push(`/(tabs)/routines/${routine.id}`)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.78}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${routine.name}. ${describe(routine)}. Edit routine.`}
                 >
-                  <View
-                    style={[styles.routineIcon, { backgroundColor: routineColor }]}
-                  >
-                    <Text style={styles.routineInitial}>{initial}</Text>
-                  </View>
-                  <View style={styles.routineInfo}>
-                    <Text style={styles.routineName}>{routine.name}</Text>
-                    <Text style={styles.routineDetail}>
-                      {routine.exercises.length} exercises · {setCount} sets · ~{duration} min
-                      {routine.scheduledDays && routine.scheduledDays.length > 0
-                        ? ` · ${routine.scheduledDays.map((d) => WEEKDAY_SHORT[d]).join(", ")}`
-                        : ""}
+                  <View style={[styles.mark, { backgroundColor: accent }]}>
+                    <Text style={[styles.markText, { color: fg }]}>
+                      {routine.name ? routine.name.charAt(0).toUpperCase() : "R"}
                     </Text>
-                    {muscleGroups.length > 0 && (
-                      <View style={styles.tagsRow}>
-                        {muscleGroups.map((mg) => (
-                          <View key={mg} style={styles.muscleTag}>
-                            <Text style={styles.muscleTagText}>
-                              {MUSCLE_GROUP_LABELS[mg]}
-                            </Text>
-                          </View>
+                  </View>
+
+                  <View style={styles.info}>
+                    <Text style={styles.name} numberOfLines={1}>{routine.name}</Text>
+                    <Text style={styles.meta} numberOfLines={1}>{describe(routine)}</Text>
+
+                    {groups.length > 0 && (
+                      <View style={styles.tagRow}>
+                        {groups.slice(0, 4).map((mg) => (
+                          <Tag
+                            key={mg}
+                            label={MUSCLE_GROUP_LABELS[mg]}
+                            color={muscleColor(mg, colors)}
+                            size="sm"
+                          />
                         ))}
+                        {groups.length > 4 && <Text style={styles.moreTags}>+{groups.length - 4}</Text>}
+                      </View>
+                    )}
+
+                    {scheduled.length > 0 && (
+                      <View style={styles.scheduleRow}>
+                        <CalendarDays size={11} color={colors.textTertiary} />
+                        <Text style={styles.scheduleText}>
+                          {scheduled.map((d) => WEEKDAY_SHORT[d]).join(" · ")}
+                        </Text>
                       </View>
                     )}
                   </View>
+
                   {routines.length > 1 && (
-                    <View style={styles.reorderButtons}>
+                    <View style={styles.reorder}>
                       <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
+                        onPress={() => {
                           reorderRoutine(routine.id, "up");
                           if (Platform.OS !== "web") void Haptics.selectionAsync();
                         }}
-                        style={[styles.reorderBtn, idx === 0 && styles.reorderBtnDisabled]}
+                        style={[styles.reorderBtn, idx === 0 && styles.reorderDisabled]}
                         disabled={idx === 0}
-                        hitSlop={{ top: 8, bottom: 4, left: 8, right: 8 }}
+                        hitSlop={{ top: 10, bottom: 4, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Move ${routine.name} up`}
                       >
-                        <ChevronUp size={16} color={idx === 0 ? colors.glassBorder : colors.textTertiary} />
+                        <ChevronUp size={16} color={idx === 0 ? colors.separator : colors.textTertiary} />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={(e) => {
-                          e.stopPropagation();
+                        onPress={() => {
                           reorderRoutine(routine.id, "down");
                           if (Platform.OS !== "web") void Haptics.selectionAsync();
                         }}
-                        style={[styles.reorderBtn, idx === routines.length - 1 && styles.reorderBtnDisabled]}
+                        style={[styles.reorderBtn, idx === routines.length - 1 && styles.reorderDisabled]}
                         disabled={idx === routines.length - 1}
-                        hitSlop={{ top: 4, bottom: 8, left: 8, right: 8 }}
+                        hitSlop={{ top: 4, bottom: 10, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Move ${routine.name} down`}
                       >
-                        <ChevronDown size={16} color={idx === routines.length - 1 ? colors.glassBorder : colors.textTertiary} />
+                        <ChevronDown
+                          size={16}
+                          color={idx === routines.length - 1 ? colors.separator : colors.textTertiary}
+                        />
                       </TouchableOpacity>
                     </View>
                   )}
-                  <ChevronRight size={18} color={colors.textTertiary} />
+
+                  <ChevronRight size={17} color={colors.textTertiary} />
                 </TouchableOpacity>
               );
             })}
 
-            {/* Browse templates link at bottom */}
             <TouchableOpacity
               onPress={() => setShowTemplates(true)}
               activeOpacity={0.7}
-              style={styles.browseSplitsCard}
+              style={styles.browseCard}
+              accessibilityRole="button"
+              accessibilityLabel="Browse workout splits"
             >
-              <Layers size={18} color={colors.primary} />
-              <Text style={styles.browseSplitsText}>Browse Workout Splits</Text>
-              <ChevronRight size={16} color={colors.textTertiary} />
+              <Layers size={17} color={colors.primary} />
+              <Text style={styles.browseText}>Browse workout splits</Text>
+              <ChevronRight size={15} color={colors.textTertiary} />
             </TouchableOpacity>
           </>
         )}
       </ScrollView>
 
-      {/* ─── Create Routine Modal ──────────────────────────────── */}
-      <Modal visible={showCreate} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Routine</Text>
+      {/* ─── Create Routine ─────────────────────────────────── */}
+      <Modal visible={showCreate} transparent animationType="fade" onRequestClose={() => setShowCreate(false)}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.createCard, surface(colors, 3, Radius.lg)]}>
+            <Text style={styles.createTitle}>New routine</Text>
+            <Text style={styles.createSubtitle}>Give it a name — you can add exercises next.</Text>
+
             <TextInput
-              style={styles.modalInput}
+              style={styles.createInput}
               value={newName}
               onChangeText={(t) => setNewName(t.slice(0, 50))}
-              placeholder="Routine name (e.g. Push Day)"
+              placeholder="e.g. Push Day"
               maxLength={50}
               placeholderTextColor={colors.textTertiary}
               autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleCreate}
+              accessibilityLabel="Routine name"
             />
 
-            {/* Quick-tap name suggestions */}
-            <View style={styles.suggestionsWrap}>
-              {ROUTINE_NAME_SUGGESTIONS.map((name) => (
-                <TouchableOpacity
-                  key={name}
-                  style={[
-                    styles.suggestionBubble,
-                    newName === name && styles.suggestionBubbleActive,
-                  ]}
-                  onPress={() => {
-                    setNewName(name);
-                    if (Platform.OS !== "web") void Haptics.selectionAsync();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.suggestionText,
-                      newName === name && styles.suggestionTextActive,
-                    ]}
+            <Text style={styles.suggestLabel}>QUICK PICKS</Text>
+            <View style={styles.suggestions}>
+              {ROUTINE_NAME_SUGGESTIONS.map((name) => {
+                const active = newName === name;
+                return (
+                  <TouchableOpacity
+                    key={name}
+                    style={[styles.suggestion, active && styles.suggestionActive]}
+                    onPress={() => {
+                      setNewName(name);
+                      if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    }}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
                   >
-                    {name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={[styles.suggestionText, active && styles.suggestionTextActive]}>
+                      {name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancel}
+            <View style={styles.createActions}>
+              <Button
+                label="Cancel"
+                variant="secondary"
                 onPress={() => {
                   setShowCreate(false);
                   setNewName("");
                 }}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalCreate, !newName.trim() && styles.modalCreateDisabled]}
+                style={styles.flexButton}
+                haptic="none"
+              />
+              <Button
+                label="Create"
                 onPress={handleCreate}
                 disabled={!newName.trim()}
-              >
-                <Text style={styles.modalCreateText}>Create</Text>
-              </TouchableOpacity>
+                style={styles.flexButton}
+                haptic="medium"
+              />
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
-      {/* ─── Workout Splits Template Picker Modal ─────────────── */}
-      <Modal visible={showTemplates} transparent animationType="slide">
-        <View style={[styles.templateModalContainer, { paddingTop: insets.top }]}>
-          <View style={styles.templateModalHeader}>
+      {/* ─── Workout Splits ─────────────────────────────────── */}
+      <Modal visible={showTemplates} animationType="slide" onRequestClose={closeTemplates}>
+        <View style={[styles.templateScreen, { paddingTop: insets.top }]}>
+          <View style={styles.templateHeader}>
             <TouchableOpacity
-              onPress={() => {
-                if (selectedSplit) {
-                  setSelectedSplit(null);
-                } else {
-                  setShowTemplates(false);
-                }
-              }}
+              onPress={closeTemplates}
               activeOpacity={0.7}
-              style={styles.templateBackButton}
+              style={styles.backButton}
+              accessibilityRole="button"
+              accessibilityLabel={selectedSplit ? "Back to splits" : "Close"}
             >
-              <ArrowLeft size={20} color={colors.text} />
+              <ArrowLeft size={19} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.templateModalTitle}>
-              {selectedSplit ? selectedSplit.name : "Workout Splits"}
+            <Text style={styles.templateTitle} numberOfLines={1}>
+              {selectedSplit ? selectedSplit.name : "Workout splits"}
             </Text>
-            <View style={{ width: 36 }} />
+            <View style={styles.backButtonSpacer} />
           </View>
 
           {!selectedSplit ? (
-            <ScrollView contentContainerStyle={styles.templateList} showsVerticalScrollIndicator={false}>
-              <Text style={styles.templateSubheading}>
-                Choose a proven split. All exercises are pre-filled — you can customize them after.
+            <ScrollView
+              contentContainerStyle={styles.templateList}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.templateIntro}>
+                Proven training structures with every exercise, set and rep filled in.
+                Pick one to preview it — nothing is added until you confirm.
               </Text>
-              {WORKOUT_SPLITS.map((split) => (
-                <TouchableOpacity
-                  key={split.id}
-                  style={styles.splitCard}
-                  onPress={() => handlePickSplit(split)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.splitCardTop}>
-                    <Text style={styles.splitName}>{split.name}</Text>
-                    <View style={styles.splitFreqBadge}>
-                      <Text style={styles.splitFreqText}>{split.daysPerWeek}×/wk</Text>
+              {WORKOUT_SPLITS.map((split) => {
+                const totalExercises = split.routines.reduce((s, r) => s + r.exercises.length, 0);
+                return (
+                  <TouchableOpacity
+                    key={split.id}
+                    style={[styles.splitCard, surface(colors, 1, Radius.md)]}
+                    onPress={() => setSelectedSplit(split)}
+                    activeOpacity={0.78}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${split.name}. ${split.shortDescription}`}
+                  >
+                    <View style={styles.splitTop}>
+                      <Text style={styles.splitName} numberOfLines={1}>{split.name}</Text>
+                      <Tag label={`${split.daysPerWeek}×/wk`} color={colors.primary} size="sm" />
                     </View>
-                  </View>
-                  <Text style={styles.splitDesc}>{split.shortDescription}</Text>
-                  <View style={styles.splitRoutinePreview}>
-                    {split.routines.map((r, i) => (
-                      <View key={i} style={styles.splitRoutineChip}>
-                        <Text style={styles.splitRoutineChipInitial}>
-                          {r.name ? r.name.charAt(0).toUpperCase() : "R"}
-                        </Text>
-                        <Text style={styles.splitRoutineChipText}>{r.name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <Text style={styles.splitDesc}>{split.shortDescription}</Text>
+                    <View style={styles.splitChips}>
+                      {split.routines.map((r, i) => (
+                        <View key={`${r.name}-${i}`} style={styles.splitChip}>
+                          <Text style={styles.splitChipText} numberOfLines={1}>{r.name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <Text style={styles.splitFooter}>
+                      {split.routines.length} routines · {totalExercises} exercises
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           ) : (
-            <ScrollView contentContainerStyle={styles.templateList} showsVerticalScrollIndicator={false}>
-              <Text style={styles.templateSubheading}>
-                {selectedSplit.shortDescription}
-              </Text>
-              {selectedSplit.routines.map((routine, rIdx) => (
-                <View key={rIdx} style={styles.previewRoutineCard}>
-                  <View style={styles.previewRoutineHeader}>
-                    <Text style={styles.previewRoutineInitial}>
-                      {routine.name ? routine.name.charAt(0).toUpperCase() : "R"}
-                    </Text>
-                    <Text style={styles.previewRoutineName}>{routine.name}</Text>
-                    <Text style={styles.previewRoutineCount}>
-                      {routine.exercises.length} exercises
-                    </Text>
-                  </View>
-                  {routine.exercises.map((ex, eIdx) => (
-                    <View key={eIdx} style={styles.previewExerciseRow}>
-                      <Text style={styles.previewExNum}>{eIdx + 1}</Text>
-                      <Text style={styles.previewExName}>{ex.name}</Text>
-                      <Text style={styles.previewExDetail}>
-                        {ex.sets}×{ex.reps}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-
-              <TouchableOpacity
-                onPress={handleConfirmSplit}
-                activeOpacity={0.8}
-                style={styles.confirmSplitButton}
+            <>
+              <ScrollView
+                contentContainerStyle={styles.templateList}
+                showsVerticalScrollIndicator={false}
               >
-                <View style={styles.confirmSplitGradient}>
-                  <Check size={18} color={colors.white} />
-                  <Text style={styles.confirmSplitText}>
-                    Add {selectedSplit.routines.length} Routine{selectedSplit.routines.length > 1 ? "s" : ""}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </ScrollView>
+                <Text style={styles.templateIntro}>{selectedSplit.shortDescription}</Text>
+                {selectedSplit.routines.map((routine, rIdx) => {
+                  const groups = [...new Set(routine.exercises.map((e) => e.muscleGroup as MuscleGroup))];
+                  const accent = dominantMuscleColor(groups, colors) ?? colors.primary;
+                  return (
+                    <View key={`${routine.name}-${rIdx}`} style={[styles.previewCard, surface(colors, 1, Radius.md)]}>
+                      <View style={styles.previewHead}>
+                        <View style={[styles.previewMark, { backgroundColor: accent }]}>
+                          <Text style={[styles.previewMarkText, { color: onColor(accent) }]}>
+                            {routine.name ? routine.name.charAt(0).toUpperCase() : "R"}
+                          </Text>
+                        </View>
+                        <Text style={styles.previewName} numberOfLines={1}>{routine.name}</Text>
+                        <Text style={styles.previewCount}>{routine.exercises.length}</Text>
+                      </View>
+                      {routine.exercises.map((ex, eIdx) => (
+                        <View key={`${ex.name}-${eIdx}`} style={styles.previewRow}>
+                          <Text style={styles.previewNum}>{eIdx + 1}</Text>
+                          <Text style={styles.previewExName} numberOfLines={1}>{ex.name}</Text>
+                          <Text style={styles.previewSets}>{ex.sets}×{ex.reps}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={[styles.confirmBar, { paddingBottom: Math.max(insets.bottom, Space.base) }]}>
+                <Button
+                  label={`Add ${selectedSplit.routines.length} routine${selectedSplit.routines.length > 1 ? "s" : ""}`}
+                  onPress={handleConfirmSplit}
+                  icon={<Check size={18} color="#fff" />}
+                  size="lg"
+                  fullWidth
+                  haptic="medium"
+                />
+              </View>
+            </>
           )}
         </View>
       </Modal>
@@ -383,465 +433,329 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "800" as const,
-    color: colors.text,
-    letterSpacing: -1,
-  },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
+    width: Layout.touchTarget,
+    height: Layout.touchTarget,
+    borderRadius: Radius.sm,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: colors.primary,
-    shadowColor: colors.indigo,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 40,
-    gap: 12,
+    paddingHorizontal: Layout.gutter,
+    gap: Space.md,
   },
-
-  // ─── Empty state ─────────────────────────────────────────
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  emptyButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-  },
-  emptyButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "600" as const,
-  },
-  templateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: colors.glassBorder,
-    backgroundColor: colors.glassBorder,
-  },
-  templateButtonText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: colors.primary,
-  },
-
-  // ─── Routine cards ───────────────────────────────────────
+  // ── Routine card ──
   routineCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-    gap: 14,
+    gap: Space.md,
+    padding: Space.base - 2,
   },
-  routineIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 10,
+  mark: {
+    width: 50,
+    height: 50,
+    borderRadius: Radius.sm,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 4,
   },
-  routineInitial: {
-    fontSize: 22,
-    fontWeight: "700" as const,
-    color: colors.white,
+  markText: {
+    ...Type.title2,
+    fontWeight: "800",
   },
-  routineInfo: {
+  info: {
     flex: 1,
+    gap: 3,
   },
-  routineName: {
-    fontSize: 16,
-    fontWeight: "700" as const,
+  name: {
+    ...Type.headline,
     color: colors.text,
-    letterSpacing: -0.3,
-    marginBottom: 2,
   },
-  routineDetail: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
+  meta: {
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "500",
     color: colors.textTertiary,
-    marginBottom: 6,
   },
-  tagsRow: {
+  tagRow: {
     flexDirection: "row",
+    alignItems: "center",
     flexWrap: "wrap",
-    gap: 4,
+    gap: Space.xs + 2,
+    marginTop: Space.xs,
   },
-  muscleTag: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: colors.glassBorder,
-  },
-  muscleTagText: {
-    fontSize: 10,
-    fontWeight: "700" as const,
+  moreTags: {
+    ...Type.caption,
     color: colors.textTertiary,
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.3,
+    fontWeight: "700",
   },
-
-  reorderButtons: {
+  scheduleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Space.xs + 1,
+    marginTop: Space.xs,
+  },
+  scheduleText: {
+    ...Type.caption,
+    fontWeight: "600",
+    color: colors.textTertiary,
+  },
+  reorder: {
     justifyContent: "center",
     alignItems: "center",
     gap: 2,
-    marginRight: 4,
   },
   reorderBtn: {
     padding: 2,
   },
-  reorderBtnDisabled: {
+  reorderDisabled: {
     opacity: 0.3,
   },
-
-  // ─── Browse splits link ──────────────────────────────────
-  browseSplitsCard: {
+  browseCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    gap: Space.md,
+    paddingVertical: Space.base,
+    paddingHorizontal: Space.base,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    borderColor: tint(colors.primary, 0.3),
     borderStyle: "dashed",
+    minHeight: Layout.touchTarget + 8,
   },
-  browseSplitsText: {
+  browseText: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: "600" as const,
+    ...Type.callout,
+    fontWeight: "700",
     color: colors.primary,
   },
-
-  // ─── Create modal ────────────────────────────────────────
+  // ── Create modal ──
   modalOverlay: {
     flex: 1,
     backgroundColor: colors.overlay,
     justifyContent: "center",
-    alignItems: "center",
+    paddingHorizontal: Space.xl,
   },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 24,
-    width: "85%",
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
+  createCard: {
+    padding: Space.xl,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700" as const,
+  createTitle: {
+    ...Type.title2,
     color: colors.text,
-    marginBottom: 16,
   },
-  modalInput: {
+  createSubtitle: {
+    ...Type.subhead,
+    color: colors.textTertiary,
+    marginTop: Space.xs,
+    marginBottom: Space.lg,
+  },
+  createInput: {
+    ...Type.body,
+    fontWeight: "600",
+    color: colors.text,
+    backgroundColor: colors.fill,
     borderWidth: 1.5,
-    borderColor: colors.glassBorder,
-    borderRadius: 8,
-    padding: 14,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.surface,
-    marginBottom: 12,
+    borderColor: colors.separator,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Space.base,
+    paddingVertical: Space.md + 2,
+    minHeight: Layout.touchTarget + 4,
   },
-  suggestionsWrap: {
+  suggestLabel: {
+    ...Type.overline,
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: Space.lg,
+    marginBottom: Space.sm,
+  },
+  suggestions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 20,
+    gap: Space.sm,
+    marginBottom: Space.xl,
   },
-  suggestionBubble: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: colors.glassBorder,
+  suggestion: {
+    paddingHorizontal: Space.md,
+    paddingVertical: Space.sm,
+    borderRadius: Radius.xs + 2,
+    backgroundColor: colors.fill,
     borderWidth: 1,
-    borderColor: colors.glassBorder,
+    borderColor: "transparent",
   },
-  suggestionBubbleActive: {
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
+  suggestionActive: {
+    backgroundColor: tint(colors.primary, 0.12),
+    borderColor: tint(colors.primary, 0.45),
   },
   suggestionText: {
-    fontSize: 13,
-    fontWeight: "500" as const,
+    ...Type.subhead,
+    fontWeight: "600",
     color: colors.textSecondary,
   },
   suggestionTextActive: {
     color: colors.primary,
-    fontWeight: "600" as const,
+    fontWeight: "700",
   },
-  modalButtons: {
+  createActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: Space.md,
   },
-  modalCancel: {
+  flexButton: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: colors.glassBorder,
-    alignItems: "center",
   },
-  modalCancelText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
-  },
-  modalCreate: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    alignItems: "center",
-  },
-  modalCreateDisabled: {
-    opacity: 0.4,
-  },
-  modalCreateText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: colors.white,
-  },
-
-  // ─── Template picker modal ───────────────────────────────
-  templateModalContainer: {
+  // ── Template picker ──
+  templateScreen: {
     flex: 1,
     backgroundColor: colors.background,
   },
-  templateModalHeader: {
+  templateHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    gap: Space.md,
+    paddingHorizontal: Layout.gutter,
+    paddingVertical: Space.md,
   },
-  templateBackButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: colors.glassBorder,
+  backButton: {
+    width: Layout.touchTarget,
+    height: Layout.touchTarget,
+    borderRadius: Radius.sm,
+    backgroundColor: colors.fill,
     justifyContent: "center",
     alignItems: "center",
   },
-  templateModalTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
+  backButtonSpacer: {
+    width: Layout.touchTarget,
+  },
+  templateTitle: {
+    ...Type.title3,
+    fontWeight: "800",
     color: colors.text,
-    letterSpacing: -0.3,
+    flex: 1,
+    textAlign: "center",
   },
   templateList: {
-    paddingHorizontal: 18,
-    paddingBottom: 40,
-    gap: 14,
+    paddingHorizontal: Layout.gutter,
+    paddingBottom: Space.xxxl,
+    gap: Space.md,
   },
-  templateSubheading: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 4,
+  templateIntro: {
+    ...Type.subhead,
+    color: colors.textTertiary,
+    lineHeight: 19,
+    marginBottom: Space.xs,
   },
-
-  // ─── Split cards ─────────────────────────────────────────
   splitCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
+    padding: Space.base,
+    gap: Space.sm,
   },
-  splitCardTop: {
+  splitTop: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    justifyContent: "space-between",
+    gap: Space.sm,
   },
   splitName: {
-    fontSize: 17,
-    fontWeight: "700" as const,
+    ...Type.headline,
+    fontSize: 16,
     color: colors.text,
-    letterSpacing: -0.3,
-  },
-  splitFreqBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    backgroundColor: colors.glassBorder,
-  },
-  splitFreqText: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: colors.primary,
+    flex: 1,
   },
   splitDesc: {
-    fontSize: 13,
+    ...Type.subhead,
     color: colors.textSecondary,
-    marginBottom: 12,
     lineHeight: 18,
   },
-  splitRoutinePreview: {
+  splitChips: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: Space.xs + 2,
   },
-  splitRoutineChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
+  splitChip: {
+    paddingHorizontal: Space.md - 2,
     paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: colors.glassBorder,
+    borderRadius: Radius.xs,
+    backgroundColor: colors.fill,
   },
-  splitRoutineChipInitial: {
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: colors.primary,
-  },
-  splitRoutineChipText: {
-    fontSize: 12,
-    fontWeight: "600" as const,
+  splitChipText: {
+    ...Type.caption,
+    fontWeight: "600",
     color: colors.textSecondary,
   },
-
-  // ─── Preview detail ──────────────────────────────────────
-  previewRoutineCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  previewRoutineHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
-  },
-  previewRoutineInitial: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: colors.primary,
-  },
-  previewRoutineName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  previewRoutineCount: {
-    fontSize: 12,
+  splitFooter: {
+    ...Type.caption,
+    ...numeric,
     color: colors.textTertiary,
-    fontWeight: "600" as const,
+    fontWeight: "500",
   },
-  previewExerciseRow: {
+  // ── Split preview ──
+  previewCard: {
+    padding: Space.base,
+  },
+  previewHead: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 6,
-    gap: 10,
+    gap: Space.md,
+    paddingBottom: Space.md,
+    marginBottom: Space.xs,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
   },
-  previewExNum: {
-    width: 20,
-    fontSize: 12,
-    fontWeight: "700" as const,
+  previewMark: {
+    width: 34,
+    height: 34,
+    borderRadius: Radius.xs + 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  previewMarkText: {
+    ...Type.callout,
+    fontWeight: "800",
+  },
+  previewName: {
+    flex: 1,
+    ...Type.headline,
+    color: colors.text,
+  },
+  previewCount: {
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "700",
+    color: colors.textTertiary,
+  },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Space.md,
+    paddingVertical: Space.sm - 1,
+  },
+  previewNum: {
+    ...Type.caption,
+    ...numeric,
+    width: 16,
+    fontWeight: "700",
     color: colors.textTertiary,
     textAlign: "center",
   },
   previewExName: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: "500" as const,
+    ...Type.subhead,
+    fontWeight: "600",
     color: colors.text,
   },
-  previewExDetail: {
-    fontSize: 12,
-    fontWeight: "600" as const,
+  previewSets: {
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "700",
     color: colors.textTertiary,
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
   },
-  confirmSplitButton: {
-    marginTop: 4,
-  },
-  confirmSplitGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-  },
-  confirmSplitText: {
-    fontSize: 16,
-    fontWeight: "700" as const,
-    color: colors.white,
+  confirmBar: {
+    paddingHorizontal: Layout.gutter,
+    paddingTop: Space.md,
+    borderTopWidth: Layout.hairline,
+    borderTopColor: colors.separator,
+    backgroundColor: colors.surfaceBase,
   },
 });

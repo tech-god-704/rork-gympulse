@@ -33,6 +33,8 @@ import {
 } from "@/types";
 import { generateId } from "@/utils/helpers";
 import { formatWeight, toDisplayWeight, fromDisplayWeight, trimNumber } from "@/utils/units";
+import { Layout, Space, Type, muscleColor, numeric } from "@/constants/theme";
+import { Tag } from "@/components/ui";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
@@ -304,8 +306,9 @@ const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
     letterSpacing: -0.3,
   },
   exerciseDetail: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "500",
     color: colors.textTertiary,
     marginTop: 2,
   },
@@ -539,7 +542,7 @@ const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
     marginBottom: 8,
   },
   columnLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700" as const,
     color: colors.textTertiary,
     letterSpacing: 0.8,
@@ -726,13 +729,35 @@ export default function RoutineDetailScreen() {
   const [routineName, setRoutineName] = useState(routine?.name ?? "");
   const [editingExercise, setEditingExercise] = useState<RoutineExercise | null>(null);
 
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+
+  /**
+   * Searching used to only filter within the selected muscle tab, so typing
+   * "curl" while Chest was active returned nothing even though the exercise
+   * exists. A query now searches the whole library and the tabs act as the
+   * browse mode when the field is empty.
+   */
   const filteredExercises = useMemo(() => {
-    return allExercises.filter(
-      (e) =>
-        e.muscleGroup === selectedMuscle &&
-        e.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [allExercises, selectedMuscle, searchQuery]);
+    if (trimmedQuery.length > 0) {
+      return allExercises
+        .filter((e) => e.name.toLowerCase().includes(trimmedQuery))
+        .sort((a, b) => {
+          // Prefix matches first — "bench" should surface "Bench Press"
+          // before "Close-Grip Bench Press".
+          const aStarts = a.name.toLowerCase().startsWith(trimmedQuery) ? 0 : 1;
+          const bStarts = b.name.toLowerCase().startsWith(trimmedQuery) ? 0 : 1;
+          if (aStarts !== bStarts) return aStarts - bStarts;
+          return a.name.localeCompare(b.name);
+        });
+    }
+    return allExercises.filter((e) => e.muscleGroup === selectedMuscle);
+  }, [allExercises, selectedMuscle, trimmedQuery]);
+
+  /** Exercises already in this routine can't be added twice. */
+  const addedNames = useMemo(
+    () => new Set((routine?.exercises ?? []).map((e) => e.exerciseName.toLowerCase())),
+    [routine]
+  );
 
   const handleAddExercise = useCallback(
     (exercise: Exercise) => {
@@ -1097,6 +1122,7 @@ export default function RoutineDetailScreen() {
             </View>
           </View>
 
+          {trimmedQuery.length === 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleScroll} contentContainerStyle={styles.muscleScrollContent}>
             {MUSCLE_GROUPS.map((mg) => (
               <TouchableOpacity
@@ -1104,7 +1130,7 @@ export default function RoutineDetailScreen() {
                 onPress={() => setSelectedMuscle(mg)}
               >
                 {selectedMuscle === mg ? (
-                  <View style={[styles.musclePill, { backgroundColor: colors.primary }]}>
+                  <View style={[styles.musclePill, { backgroundColor: muscleColor(mg, colors) }]}>
                     <Text style={styles.musclePillTextActive}>
                       {MUSCLE_GROUP_LABELS[mg]}
                     </Text>
@@ -1119,6 +1145,7 @@ export default function RoutineDetailScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          )}
 
           <View style={styles.searchRow}>
             <Search size={18} color={colors.textTertiary} />
@@ -1126,10 +1153,28 @@ export default function RoutineDetailScreen() {
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search or type custom exercise..."
+              placeholder="Search all exercises, or name a new one"
               placeholderTextColor={colors.textTertiary}
+              autoCorrect={false}
+              returnKeyType="search"
+              accessibilityLabel="Search exercises"
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery("")}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <X size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )}
           </View>
+          {trimmedQuery.length > 0 && (
+            <Text style={styles.searchCount}>
+              {filteredExercises.length} match{filteredExercises.length === 1 ? "" : "es"} across all muscle groups
+            </Text>
+          )}
 
           <ScrollView style={styles.exercisesList} contentContainerStyle={styles.exercisesListContent}>
             {searchQuery.trim().length > 0 && !filteredExercises.some((e) => e.name.toLowerCase() === searchQuery.toLowerCase()) && (
@@ -1146,22 +1191,45 @@ export default function RoutineDetailScreen() {
               </TouchableOpacity>
             )}
 
-            {filteredExercises.map((exercise) => (
-              <TouchableOpacity
-                key={exercise.id}
-                style={styles.exerciseListItem}
-                onPress={() => handleAddExercise(exercise)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.exerciseListName}>{exercise.name}</Text>
-                {exercise.isCustom && (
-                  <View style={styles.customBadge}>
-                    <Text style={styles.customBadgeText}>Custom</Text>
+            {filteredExercises.length === 0 && trimmedQuery.length === 0 && (
+              <Text style={styles.pickerEmpty}>
+                No exercises in this group yet. Type a name above to create one.
+              </Text>
+            )}
+
+            {filteredExercises.map((exercise) => {
+              const added = addedNames.has(exercise.name.toLowerCase());
+              return (
+                <TouchableOpacity
+                  key={exercise.id}
+                  style={[styles.exerciseListItem, added && styles.exerciseListItemAdded]}
+                  onPress={() => handleAddExercise(exercise)}
+                  activeOpacity={added ? 1 : 0.7}
+                  disabled={added}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: added }}
+                  accessibilityLabel={
+                    added
+                      ? `${exercise.name}, already in this routine`
+                      : `Add ${exercise.name}, ${MUSCLE_GROUP_LABELS[exercise.muscleGroup]}`
+                  }
+                >
+                  <View style={styles.exerciseListInfo}>
+                    <Text style={styles.exerciseListName} numberOfLines={1}>{exercise.name}</Text>
+                    {/* Searching spans every group, so name the group on each row. */}
+                    <Text style={styles.exerciseListGroup}>
+                      {MUSCLE_GROUP_LABELS[exercise.muscleGroup]}
+                    </Text>
                   </View>
-                )}
-                <Plus size={18} color={colors.primary} />
-              </TouchableOpacity>
-            ))}
+                  {exercise.isCustom && <Tag label="Custom" color={colors.violet} size="sm" />}
+                  {added ? (
+                    <Check size={18} color={colors.emerald} />
+                  ) : (
+                    <Plus size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       </Modal>
@@ -1170,6 +1238,33 @@ export default function RoutineDetailScreen() {
 }
 
 const createStyles = (colors: ColorScheme) => StyleSheet.create({
+  exerciseListInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  exerciseListGroup: {
+    ...Type.caption,
+    fontWeight: "600",
+    color: colors.textTertiary,
+  },
+  exerciseListItemAdded: {
+    opacity: 0.5,
+  },
+  searchCount: {
+    ...Type.caption,
+    ...numeric,
+    color: colors.textTertiary,
+    paddingHorizontal: Layout.gutter,
+    paddingBottom: Space.sm,
+  },
+  pickerEmpty: {
+    ...Type.subhead,
+    color: colors.textTertiary,
+    textAlign: "center",
+    paddingVertical: Space.xxl,
+    paddingHorizontal: Space.xl,
+    lineHeight: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1555,14 +1650,16 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   exerciseListItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
+    gap: Space.md,
+    paddingVertical: Space.md,
+    minHeight: Layout.rowHeight,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
   },
   exerciseListName: {
-    fontSize: 16,
+    ...Type.body,
+    fontWeight: "600",
     color: colors.text,
-    flex: 1,
   },
   customBadge: {
     backgroundColor: `${colors.primary}14`,

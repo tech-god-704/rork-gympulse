@@ -1,8 +1,11 @@
-import React, { useMemo } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useEffect, useId, useMemo, useRef } from "react";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop } from "react-native-svg";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import { Motion, Type, numeric } from "@/constants/theme";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface Props {
   progress: number;
@@ -10,21 +13,55 @@ interface Props {
   strokeWidth?: number;
   completed?: number;
   total?: number;
+  /** Render for placement on a saturated/dark surface (the workout hero). */
+  onDark?: boolean;
+  /** Solid colour instead of the brand gradient. */
+  color?: string;
 }
 
-export default function ProgressRing({ progress, size = 72, strokeWidth = 6, completed, total }: Props) {
+export default function ProgressRing({
+  progress,
+  size = 72,
+  strokeWidth = 6,
+  completed,
+  total,
+  onDark = false,
+  color,
+}: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  // SVG ids are document-global; a fixed one collides when two rings render.
+  const gradientId = `ringGradient-${useId().replace(/:/g, "")}`;
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference * (1 - Math.min(progress, 1));
+  const clamped = Math.min(Math.max(Number.isFinite(progress) ? progress : 0, 0), 1);
+
+  const anim = useRef(new Animated.Value(clamped)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: clamped,
+      duration: Motion.base,
+      useNativeDriver: false,
+    }).start();
+  }, [clamped, anim]);
+
+  const dashoffset = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
+
+  const trackColor = onDark ? "rgba(255,255,255,0.25)" : colors.fill;
+  const strokeColor = color ?? (onDark ? "#FFFFFF" : `url(#${gradientId})`);
+  const label =
+    completed != null && total != null ? `${completed}/${total}` : `${Math.round(clamped * 100)}%`;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Svg width={size} height={size}>
         <Defs>
-          <SvgLinearGradient id="ringGradient" x1="0" y1="0" x2="1" y2="1">
+          <SvgLinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
             <Stop offset="0%" stopColor={colors.primary} />
             <Stop offset="50%" stopColor={colors.indigo} />
             <Stop offset="100%" stopColor={colors.violet} />
@@ -35,29 +72,40 @@ export default function ProgressRing({ progress, size = 72, strokeWidth = 6, com
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={colors.glassBorder}
+          stroke={trackColor}
           strokeWidth={strokeWidth}
         />
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="url(#ringGradient)"
+          stroke={strokeColor}
           strokeWidth={strokeWidth}
           strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
+          strokeDashoffset={dashoffset}
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
       <View
         style={styles.centerText}
-        accessibilityLabel={completed != null && total != null ? `${completed} of ${total} exercises complete` : `${Math.round(progress * 100)} percent complete`}
         accessibilityRole="progressbar"
+        accessibilityLabel={
+          completed != null && total != null
+            ? `${completed} of ${total} sets complete`
+            : `${Math.round(clamped * 100)} percent complete`
+        }
       >
-        <Text style={styles.percentText}>
-          {completed != null && total != null ? `${completed}/${total}` : `${Math.round(progress * 100)}%`}
+        <Text
+          style={[
+            styles.label,
+            { fontSize: size < 60 ? 13 : 15, color: onDark ? "#FFFFFF" : colors.text },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+        >
+          {label}
         </Text>
       </View>
     </View>
@@ -73,11 +121,13 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     position: "absolute",
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 4,
   },
-  percentText: {
-    fontSize: 16,
-    fontWeight: "800" as const,
-    color: colors.white,
+  label: {
+    ...Type.callout,
+    ...numeric,
+    fontWeight: "800",
     letterSpacing: -0.5,
+    color: colors.text,
   },
 });

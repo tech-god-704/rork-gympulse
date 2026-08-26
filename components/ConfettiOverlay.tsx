@@ -5,6 +5,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { WeightUnit } from "@/types";
 import { formatVolume } from "@/utils/units";
+import { Layout, Radius, Space, Type, glow, numeric, statNumber, surface } from "@/constants/theme";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CONFETTI_COUNT = 60;
@@ -193,7 +194,13 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
           </View>
         )}
 
-        <TouchableOpacity onPress={onDismiss} activeOpacity={0.8}>
+        <TouchableOpacity
+          onPress={onDismiss}
+          activeOpacity={0.85}
+          style={styles.doneTouch}
+          accessibilityRole="button"
+          accessibilityLabel={leveledUp ? "Amazing, continue" : "Done, close summary"}
+        >
           <LinearGradient
             colors={leveledUp ? ["#FFD700", "#F59E0B"] : [colors.primary, colors.indigo]}
             style={styles.doneButton}
@@ -213,136 +220,136 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
 const createStyles = (colors: ColorScheme) => StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.glass,
+    backgroundColor: colors.scheme === "dark" ? "rgba(0,0,0,0.86)" : "rgba(244,244,247,0.94)",
     justifyContent: "center",
     alignItems: "center",
+    padding: Space.xl,
     zIndex: 1000,
   },
   confettiPiece: {
     position: "absolute",
   },
   card: {
+    ...surface(colors, 3, Radius.xl),
     alignItems: "center",
-    padding: 28,
-    width: "85%",
+    padding: Space.xl,
+    width: "100%",
+    maxWidth: 380,
   },
   emoji: {
-    fontSize: 72,
-    marginBottom: 12,
+    fontSize: 60,
+    marginBottom: Space.sm,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "900" as const,
+    ...Type.hero,
     color: colors.text,
     textAlign: "center",
-    letterSpacing: -1.2,
-    lineHeight: 36,
   },
   levelUpTitle: {
-    fontSize: 18,
-    fontWeight: "800" as const,
+    ...Type.headline,
     color: colors.amber,
-    marginTop: 6,
     textAlign: "center",
-    letterSpacing: -0.3,
+    marginTop: Space.xs,
   },
   subtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    marginTop: 10,
-    marginBottom: 16,
+    ...Type.body,
+    color: colors.textTertiary,
     textAlign: "center",
+    marginTop: Space.sm,
+    marginBottom: Space.lg,
   },
   xpBadge: {
-    backgroundColor: colors.primaryUltraLight,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 20,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.xpBarFill + "30",
+    paddingHorizontal: Space.lg,
+    paddingVertical: Space.sm + 2,
+    borderRadius: Radius.pill,
+    backgroundColor: colors.xpBarFill,
+    marginBottom: Space.lg,
   },
   xpBadgeText: {
-    fontSize: 20,
-    fontWeight: "900" as const,
-    color: colors.xpBarFill,
-    letterSpacing: -0.5,
+    ...statNumber(18),
+    color: "#fff",
   },
   xpMultiplier: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: colors.amber,
-    marginTop: 2,
-  },
-  achievementRow: {
-    alignItems: "center",
-    marginBottom: 20,
-    gap: 4,
-  },
-  achievementTitle: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: colors.tierGold,
-  },
-  achievementName: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 1,
   },
   statsRow: {
     flexDirection: "row",
-    marginBottom: 32,
-    gap: 20,
+    alignSelf: "stretch",
+    paddingVertical: Space.base,
+    borderTopWidth: Layout.hairline,
+    borderBottomWidth: Layout.hairline,
+    borderColor: colors.separator,
   },
   statItem: {
+    flex: 1,
     alignItems: "center",
   },
   statValue: {
-    fontSize: 30,
-    fontWeight: "900" as const,
-    letterSpacing: -1,
+    ...statNumber(22),
   },
   statLabel: {
-    fontSize: 11,
+    ...Type.caption,
+    fontWeight: "600",
     color: colors.textTertiary,
-    letterSpacing: 0.3,
-    marginTop: 4,
+    marginTop: 3,
   },
   volumeRow: {
-    alignItems: "center",
-    marginBottom: 24,
-    backgroundColor: colors.glassBorder,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: Space.xs + 2,
+    marginTop: Space.base,
   },
   volumeValue: {
-    fontSize: 20,
-    fontWeight: "900" as const,
-    color: colors.indigo,
-    letterSpacing: -0.5,
+    ...statNumber(17),
+    color: colors.text,
   },
   volumeLabel: {
-    fontSize: 10,
+    ...Type.caption,
+    fontWeight: "600",
     color: colors.textTertiary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase" as const,
-    marginTop: 2,
+  },
+  achievementRow: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    marginTop: Space.base,
+    paddingVertical: Space.md,
+    paddingHorizontal: Space.base,
+    borderRadius: Radius.md,
+    backgroundColor: colors.fill,
+    gap: 3,
+  },
+  achievementTitle: {
+    ...Type.caption,
+    fontWeight: "800",
+    color: colors.amberDark,
+  },
+  achievementName: {
+    ...Type.callout,
+    fontWeight: "700",
+    color: colors.text,
+    textAlign: "center",
+  },
+  doneTouch: {
+    alignSelf: "stretch",
+    marginTop: Space.xl,
   },
   doneButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 56,
-    borderRadius: 18,
-    shadowColor: colors.indigo,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 28,
-    elevation: 6,
+    paddingVertical: Space.base,
+    paddingHorizontal: Space.xxl,
+    borderRadius: Radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 54,
+    ...glow(colors.indigo, colors, 0.3),
   },
   doneButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: "700" as const,
+    ...Type.title3,
+    fontWeight: "800",
+    color: "#fff",
   },
 });

@@ -29,7 +29,7 @@ export default function TabLayout() {
             height: 58 + insets.bottom,
           },
           tabBarLabelStyle: {
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: "600" as const,
             letterSpacing: 0.3,
           },

@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import { Layout, Radius, Space, Type, glow, numeric, statNumber, surface, tint } from "@/constants/theme";
 import { useGym } from "@/providers/GymProvider";
 import { SubscriptionPlan, PREMIUM_FEATURES } from "@/types";
 
@@ -113,7 +114,13 @@ export default function PaywallScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Close Button */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleDismiss} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={handleDismiss}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Close and continue without Pro"
+      >
         <X size={20} color={colors.textTertiary} />
       </TouchableOpacity>
 
@@ -188,7 +195,10 @@ export default function PaywallScreen() {
                       setSelectedPlan(plan.key);
                       if (Platform.OS !== "web") void Haptics.selectionAsync();
                     }}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${plan.label}, ${plan.price} ${plan.period}, ${plan.perWeek}`}
                   >
                     {plan.popular && (
                       <View style={styles.popularBadge}>
@@ -243,7 +253,10 @@ export default function PaywallScreen() {
         <TouchableOpacity
           onPress={handleSubscribe}
           disabled={isProcessing}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityState={{ busy: isProcessing }}
+          accessibilityLabel={`Start free trial, then ${selectedPlanData.price} ${selectedPlanData.period}`}
         >
           <LinearGradient
             colors={[colors.primary, colors.indigo, colors.violet]}
@@ -257,7 +270,12 @@ export default function PaywallScreen() {
             </Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleDismiss} style={styles.skipLink}>
+        <TouchableOpacity
+          onPress={handleDismiss}
+          style={styles.skipLink}
+          accessibilityRole="button"
+          accessibilityLabel="Maybe later"
+        >
           <Text style={styles.skipText}>Maybe later</Text>
         </TouchableOpacity>
       </Animated.View>
@@ -273,102 +291,94 @@ const createStyles = (colors: ColorScheme) =>
     },
     closeButton: {
       position: "absolute",
-      top: 56,
-      right: 20,
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: colors.glassBorder,
+      top: Space.sm,
+      right: Space.md,
+      zIndex: 10,
+      width: Layout.touchTarget,
+      height: Layout.touchTarget,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.fill,
       justifyContent: "center",
       alignItems: "center",
-      zIndex: 10,
     },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: 24,
-      paddingTop: 20,
+      paddingHorizontal: Space.xl,
+      paddingTop: Space.xxl,
     },
+    // ── Hero ──
     hero: {
       alignItems: "center",
-      marginBottom: 24,
+      marginBottom: Space.xl,
     },
     heroIcon: {
-      width: 80,
-      height: 80,
-      borderRadius: 24,
+      width: 84,
+      height: 84,
+      borderRadius: Radius.xl,
       justifyContent: "center",
       alignItems: "center",
-      marginBottom: 20,
-      shadowColor: colors.indigo,
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.4,
-      shadowRadius: 32,
-      elevation: 8,
+      marginBottom: Space.lg,
+      ...glow(colors.indigo, colors, 0.4),
     },
     heroTitle: {
-      fontSize: 34,
-      fontWeight: "900" as const,
+      ...Type.hero,
       color: colors.text,
       textAlign: "center",
-      letterSpacing: -1.2,
-      lineHeight: 38,
     },
     heroTitleAccent: {
-      color: colors.indigo,
+      color: colors.primary,
     },
     heroSubtitle: {
-      fontSize: 15,
-      color: colors.textSecondary,
+      ...Type.body,
+      color: colors.textTertiary,
       textAlign: "center",
-      marginTop: 10,
+      marginTop: Space.sm,
       lineHeight: 21,
-      paddingHorizontal: 10,
+      maxWidth: 320,
     },
+    // ── Social proof ──
     socialProof: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
-      marginBottom: 28,
-      backgroundColor: colors.amberTint,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 12,
+      gap: Space.sm,
+      paddingVertical: Space.md,
+      paddingHorizontal: Space.base,
+      borderRadius: Radius.pill,
+      backgroundColor: colors.fill,
       alignSelf: "center",
+      marginBottom: Space.xl,
     },
     socialProofStars: {
       flexDirection: "row",
       gap: 2,
     },
     socialProofText: {
-      fontSize: 12,
+      ...Type.footnote,
       color: colors.textSecondary,
     },
     socialProofBold: {
-      fontWeight: "800" as const,
+      fontWeight: "800",
       color: colors.text,
     },
+    // ── Features ──
     featuresList: {
-      gap: 12,
-      marginBottom: 28,
+      gap: Space.sm,
+      marginBottom: Space.xxl,
     },
     featureRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
-      backgroundColor: colors.cardBackground,
-      borderRadius: 14,
-      padding: 14,
-      borderWidth: 1,
-      borderColor: colors.glassBorder,
+      gap: Space.md,
+      paddingVertical: Space.md,
     },
     featureIconBg: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: colors.primaryUltraLight,
+      width: 42,
+      height: 42,
+      borderRadius: Radius.sm,
+      backgroundColor: colors.fill,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -379,182 +389,185 @@ const createStyles = (colors: ColorScheme) =>
       flex: 1,
     },
     featureTitle: {
-      fontSize: 14,
-      fontWeight: "700" as const,
+      ...Type.callout,
+      fontWeight: "700",
       color: colors.text,
-      letterSpacing: -0.2,
     },
     featureDesc: {
-      fontSize: 11,
+      ...Type.caption,
+      fontWeight: "500",
       color: colors.textTertiary,
-      marginTop: 1,
+      marginTop: 2,
       lineHeight: 15,
     },
+    // ── Plans ──
     plansSection: {
-      marginBottom: 16,
+      marginBottom: Space.xl,
     },
     plansTitle: {
-      fontSize: 18,
-      fontWeight: "800" as const,
+      ...Type.title3,
+      fontWeight: "800",
       color: colors.text,
-      letterSpacing: -0.5,
-      marginBottom: 12,
+      marginBottom: Space.md,
     },
     plansList: {
-      gap: 10,
+      gap: Space.md,
     },
     planCard: {
-      borderRadius: 16,
-      padding: 16,
+      ...surface(colors, 1, Radius.md),
       borderWidth: 2,
-      borderColor: colors.glassBorder,
-      backgroundColor: colors.cardBackground,
-      position: "relative",
-      overflow: "visible",
+      borderColor: colors.separator,
+      padding: Space.base,
+      paddingTop: Space.lg,
     },
     planCardSelected: {
       borderColor: colors.primary,
-      backgroundColor: colors.primaryUltraLight,
+      backgroundColor: tint(colors.primary, colors.scheme === "dark" ? 0.14 : 0.07),
     },
     planCardPopular: {
-      borderColor: colors.indigo,
+      ...glow(colors.primary, colors, 0.22),
     },
     popularBadge: {
       position: "absolute",
-      top: -10,
-      left: 16,
-      backgroundColor: colors.indigo,
-      paddingHorizontal: 10,
+      top: -1,
+      left: Space.base,
+      backgroundColor: colors.primary,
+      paddingHorizontal: Space.md - 2,
       paddingVertical: 3,
-      borderRadius: 8,
+      borderBottomLeftRadius: Radius.xs,
+      borderBottomRightRadius: Radius.xs,
     },
     popularBadgeText: {
-      fontSize: 9,
-      fontWeight: "800" as const,
+      ...Type.caption,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.6,
       color: "#fff",
-      letterSpacing: 1,
     },
     savingsBadge: {
       position: "absolute",
-      top: -10,
-      right: 16,
+      top: -1,
+      right: Space.base,
       backgroundColor: colors.emerald,
-      paddingHorizontal: 8,
+      paddingHorizontal: Space.md - 2,
       paddingVertical: 3,
-      borderRadius: 8,
+      borderBottomLeftRadius: Radius.xs,
+      borderBottomRightRadius: Radius.xs,
     },
     savingsBadgeText: {
-      fontSize: 9,
-      fontWeight: "800" as const,
+      ...Type.caption,
+      fontSize: 11,
+      fontWeight: "800",
+      letterSpacing: 0.6,
       color: "#fff",
-      letterSpacing: 0.5,
     },
     planHeader: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      gap: Space.md,
     },
     planRadio: {
       width: 22,
       height: 22,
       borderRadius: 11,
       borderWidth: 2,
-      borderColor: colors.glassBorder,
+      borderColor: colors.separator,
       justifyContent: "center",
       alignItems: "center",
     },
     planRadioSelected: {
-      borderColor: colors.indigo,
+      borderColor: colors.primary,
     },
     planRadioDot: {
-      width: 12,
-      height: 12,
+      width: 11,
+      height: 11,
       borderRadius: 6,
-      backgroundColor: colors.indigo,
+      backgroundColor: colors.primary,
     },
     planInfo: {
       flex: 1,
     },
     planLabel: {
-      fontSize: 15,
-      fontWeight: "700" as const,
+      ...Type.headline,
       color: colors.text,
     },
     planLabelSelected: {
-      color: colors.indigo,
+      color: colors.primary,
     },
     planPerWeek: {
-      fontSize: 11,
+      ...Type.caption,
+      ...numeric,
+      fontWeight: "500",
       color: colors.textTertiary,
-      marginTop: 1,
+      marginTop: 2,
     },
     planPriceCol: {
       alignItems: "flex-end",
     },
     planPrice: {
-      fontSize: 20,
-      fontWeight: "900" as const,
+      ...statNumber(19),
       color: colors.text,
-      letterSpacing: -0.5,
     },
     planPriceSelected: {
-      color: colors.indigo,
+      color: colors.primary,
     },
     planPeriod: {
-      fontSize: 11,
+      ...Type.caption,
+      fontWeight: "500",
       color: colors.textTertiary,
+      marginTop: 1,
     },
+    // ── Guarantee ──
     guarantee: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 6,
-      marginBottom: 16,
+      gap: Space.sm,
+      paddingVertical: Space.md,
     },
     guaranteeText: {
-      fontSize: 12,
-      color: colors.textSecondary,
+      ...Type.footnote,
+      color: colors.textTertiary,
+      textAlign: "center",
     },
+    // ── CTA ──
     ctaContainer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      paddingHorizontal: 24,
-      paddingTop: 12,
-      backgroundColor: colors.background,
-      borderTopWidth: 1,
-      borderTopColor: colors.glassBorder,
+      paddingHorizontal: Space.xl,
+      paddingTop: Space.md,
+      borderTopWidth: Layout.hairline,
+      borderTopColor: colors.separator,
+      backgroundColor: colors.surfaceBase,
     },
     ctaButton: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
-      paddingVertical: 18,
-      borderRadius: 18,
-      shadowColor: colors.indigo,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
-      shadowRadius: 24,
-      elevation: 8,
+      gap: Space.sm,
+      paddingVertical: Space.base + 2,
+      paddingHorizontal: Space.lg,
+      borderRadius: Radius.md,
+      minHeight: 56,
+      ...glow(colors.indigo, colors, 0.32),
     },
     ctaButtonProcessing: {
       opacity: 0.7,
     },
     ctaText: {
-      color: "#fff",
+      ...Type.headline,
       fontSize: 16,
-      fontWeight: "700" as const,
-      letterSpacing: -0.2,
+      color: "#fff",
+      textAlign: "center",
+      flexShrink: 1,
     },
     skipLink: {
       alignItems: "center",
-      paddingVertical: 12,
+      paddingVertical: Space.md,
+      minHeight: Layout.touchTarget,
+      justifyContent: "center",
     },
     skipText: {
-      fontSize: 13,
+      ...Type.subhead,
+      fontWeight: "600",
       color: colors.textTertiary,
-      fontWeight: "500" as const,
     },
   });

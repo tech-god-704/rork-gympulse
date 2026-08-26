@@ -9,6 +9,7 @@ import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { sessionProgress } from "@/utils/workoutStats";
 import { formatClock } from "@/utils/helpers";
+import { Layout, Radius, Space, Type, elevation, numeric } from "@/constants/theme";
 
 /** Height the bar occupies, so screens can pad their scroll content. */
 export const ACTIVE_BAR_HEIGHT = 62;
@@ -90,29 +91,25 @@ export default function ActiveWorkoutBar() {
 const createStyles = (colors: ColorScheme) => StyleSheet.create({
   wrapper: {
     position: "absolute",
-    left: 12,
-    right: 12,
+    left: Space.md,
+    right: Space.md,
   },
   bar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: Space.sm + 2,
     backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderRadius: Radius.md,
+    paddingVertical: Space.sm + 2,
+    paddingHorizontal: Space.md,
     minHeight: ACTIVE_BAR_HEIGHT - 10,
     overflow: "hidden",
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.22,
-    shadowRadius: 10,
-    elevation: 8,
+    ...elevation(3, colors),
   },
   iconBox: {
     width: 34,
     height: 34,
-    borderRadius: 9,
+    borderRadius: Radius.xs + 2,
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
@@ -121,27 +118,29 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     flex: 1,
   },
   name: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: colors.white,
-    letterSpacing: -0.3,
+    ...Type.callout,
+    fontWeight: "800",
+    color: "#fff",
   },
   meta: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 10,
-    color: "rgba(255,255,255,0.75)",
+    ...Type.caption,
+    ...numeric,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.78)",
     marginTop: 2,
   },
   right: {
     flexDirection: "row",
     alignItems: "center",
     gap: 2,
+    minHeight: Layout.touchTarget - 20,
   },
   pct: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 12,
-    fontWeight: "700" as const,
-    color: colors.white,
+    ...Type.footnote,
+    ...numeric,
+    fontWeight: "800",
+    color: "#fff",
   },
   progressTrack: {
     position: "absolute",
@@ -149,10 +148,10 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 3,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   progressFill: {
     height: 3,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    backgroundColor: "rgba(255,255,255,0.95)",
   },
 });

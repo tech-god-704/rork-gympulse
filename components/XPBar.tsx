@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { View, Text, Animated, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/providers/ThemeProvider";
-import { getXPProgress, getLevelDefinition } from "@/utils/gamification";
+import { getXPProgress, getLevelDefinition, LEVEL_DEFINITIONS } from "@/utils/gamification";
 import { ColorScheme } from "@/constants/colors";
+import { Motion, Radius, Space, Type, numeric, tint } from "@/constants/theme";
 
 interface XPBarProps {
   totalXP: number;
@@ -12,15 +14,17 @@ interface XPBarProps {
 
 export default function XPBar({ totalXP, level, compact = false }: XPBarProps) {
   const { colors } = useTheme();
-  const styles = React.useMemo(() => createStyles(colors, compact), [colors, compact]);
+  const styles = useMemo(() => createStyles(colors, compact), [colors, compact]);
   const progress = getXPProgress(totalXP);
   const levelDef = getLevelDefinition(level);
-  const fillAnim = useRef(new Animated.Value(0)).current;
+  const nextDef = getLevelDefinition(Math.min(level + 1, LEVEL_DEFINITIONS.length));
+  const atMax = level >= LEVEL_DEFINITIONS.length;
 
+  const fillAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(fillAnim, {
       toValue: progress.fraction,
-      duration: 800,
+      duration: Motion.celebration,
       useNativeDriver: false,
     }).start();
   }, [progress.fraction, fillAnim]);
@@ -30,24 +34,53 @@ export default function XPBar({ totalXP, level, compact = false }: XPBarProps) {
     outputRange: ["0%", "100%"],
   });
 
+  const remaining = Math.max(progress.nextLevelXP - totalXP, 0);
+  const span = Math.max(progress.nextLevelXP - progress.currentLevelXP, 1);
+
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible
+      accessibilityLabel={
+        atMax
+          ? `Level ${level}, ${levelDef.title}. Maximum level reached.`
+          : `Level ${level}, ${levelDef.title}. ${remaining.toLocaleString()} XP to level ${level + 1}.`
+      }
+    >
       <View style={styles.header}>
-        <Text style={styles.levelText}>
-          {levelDef.emoji} Lv.{level} {levelDef.title}
+        <View style={styles.levelChip}>
+          <Text style={styles.levelEmoji}>{levelDef.emoji}</Text>
+          <Text style={styles.levelNumber}>{level}</Text>
+        </View>
+        <View style={styles.titleBlock}>
+          <Text style={styles.title} numberOfLines={1}>{levelDef.title}</Text>
+          {!compact && (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {atMax ? "Max level reached" : `Next: ${nextDef.title}`}
+            </Text>
+          )}
+        </View>
+        <Text style={styles.xp} numberOfLines={1}>
+          {atMax
+            ? `${totalXP.toLocaleString()} XP`
+            : `${progress.progressXP.toLocaleString()}/${span.toLocaleString()}`}
         </Text>
-        {!compact && (
-          <Text style={styles.xpText}>
-            {totalXP.toLocaleString()} / {progress.nextLevelXP.toLocaleString()} XP
-          </Text>
-        )}
       </View>
-      <View style={styles.barBackground}>
-        <Animated.View style={[styles.barFill, { width: fillWidth }]} />
+
+      <View style={styles.track}>
+        <Animated.View style={[styles.fillWrap, { width: fillWidth }]}>
+          <LinearGradient
+            colors={[colors.primary, colors.indigo, colors.violet]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.fill}
+          />
+        </Animated.View>
       </View>
-      {compact && (
-        <Text style={styles.xpTextCompact}>
-          {progress.progressXP.toLocaleString()} / {(progress.nextLevelXP - progress.currentLevelXP).toLocaleString()} XP
+
+      {!compact && !atMax && (
+        <Text style={styles.remaining}>
+          {remaining.toLocaleString()} XP to level {level + 1}
         </Text>
       )}
     </View>
@@ -55,40 +88,72 @@ export default function XPBar({ totalXP, level, compact = false }: XPBarProps) {
 }
 
 function createStyles(colors: ColorScheme, compact: boolean) {
+  const barHeight = compact ? 7 : 9;
   return StyleSheet.create({
     container: {
-      gap: compact ? 4 : 6,
+      gap: compact ? Space.sm : Space.sm + 2,
     },
     header: {
       flexDirection: "row",
-      justifyContent: "space-between",
       alignItems: "center",
+      gap: Space.sm + 2,
     },
-    levelText: {
-      fontSize: compact ? 13 : 15,
-      fontWeight: "700",
+    levelChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: Space.sm,
+      paddingVertical: 3,
+      borderRadius: Radius.xs,
+      backgroundColor: tint(colors.xpBarFill, colors.scheme === "dark" ? 0.26 : 0.14),
+    },
+    levelEmoji: {
+      fontSize: 12,
+    },
+    levelNumber: {
+      ...Type.caption,
+      ...numeric,
+      fontWeight: "800",
+      color: colors.xpBarFill,
+    },
+    titleBlock: {
+      flex: 1,
+    },
+    title: {
+      ...(compact ? Type.callout : Type.headline),
       color: colors.text,
     },
-    xpText: {
-      fontSize: 12,
-      fontWeight: "600",
-      color: colors.xpText,
+    subtitle: {
+      ...Type.caption,
+      fontWeight: "500",
+      color: colors.textTertiary,
+      marginTop: 1,
     },
-    xpTextCompact: {
-      fontSize: 11,
-      fontWeight: "600",
+    xp: {
+      ...Type.caption,
+      ...numeric,
+      fontWeight: "700",
       color: colors.textTertiary,
     },
-    barBackground: {
-      height: compact ? 6 : 8,
-      backgroundColor: colors.xpBarBackground,
-      borderRadius: compact ? 3 : 4,
+    track: {
+      height: barHeight,
+      backgroundColor: colors.fill,
+      borderRadius: barHeight / 2,
       overflow: "hidden",
     },
-    barFill: {
-      height: "100%",
-      backgroundColor: colors.xpBarFill,
-      borderRadius: compact ? 3 : 4,
+    fillWrap: {
+      height: barHeight,
+      borderRadius: barHeight / 2,
+      overflow: "hidden",
+    },
+    fill: {
+      flex: 1,
+    },
+    remaining: {
+      ...Type.caption,
+      ...numeric,
+      fontWeight: "500",
+      color: colors.textTertiary,
     },
   });
 }

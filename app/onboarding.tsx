@@ -13,54 +13,66 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Zap, Check, ChevronLeft } from "lucide-react-native";
+import { Zap, Check, ChevronLeft, ArrowRight } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import { Layout, Motion, Radius, Space, Type, glow, numeric, tint } from "@/constants/theme";
 import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
+import { Button } from "@/components/ui";
+
+const TOTAL_STEPS = 4;
+
+interface Choice<T> {
+  key: T;
+  label: string;
+  emoji: string;
+  desc: string;
+  color: string;
+}
 
 export default function OnboardingScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
-    { key: "build_muscle", label: "Build Muscle", emoji: "💪", desc: "Hypertrophy focused", color: colors.primary },
-    { key: "lose_weight", label: "Lose Weight", emoji: "🔥", desc: "Cut & lean out", color: colors.rose },
-    { key: "stay_active", label: "Stay Active", emoji: "🏃", desc: "General fitness", color: colors.emerald },
-    { key: "get_stronger", label: "Get Stronger", emoji: "⚡", desc: "Strength & power", color: colors.amber },
-  ];
-
-  const LEVELS: { key: ExperienceLevel; label: string; emoji: string; desc: string; color: string }[] = [
-    { key: "beginner", label: "Beginner", emoji: "🌱", desc: "Just getting started", color: colors.emerald },
-    { key: "intermediate", label: "Intermediate", emoji: "⚡", desc: "1-3 years training", color: colors.amber },
-    { key: "advanced", label: "Advanced", emoji: "🏆", desc: "3+ years structured", color: colors.rose },
-  ];
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { completeOnboarding } = useGym();
+
+  const GOALS: Choice<FitnessGoal>[] = [
+    { key: "build_muscle", label: "Build muscle", emoji: "💪", desc: "Hypertrophy focused", color: colors.primary },
+    { key: "lose_weight", label: "Lose weight", emoji: "🔥", desc: "Cut and lean out", color: colors.rose },
+    { key: "stay_active", label: "Stay active", emoji: "🏃", desc: "General fitness", color: colors.emerald },
+    { key: "get_stronger", label: "Get stronger", emoji: "⚡", desc: "Strength and power", color: colors.amber },
+  ];
+
+  const LEVELS: Choice<ExperienceLevel>[] = [
+    { key: "beginner", label: "Beginner", emoji: "🌱", desc: "Just getting started", color: colors.emerald },
+    { key: "intermediate", label: "Intermediate", emoji: "⚡", desc: "1–3 years training", color: colors.amber },
+    { key: "advanced", label: "Advanced", emoji: "🏆", desc: "3+ years structured", color: colors.rose },
+  ];
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [goal, setGoal] = useState<FitnessGoal | null>(null);
   const [level, setLevel] = useState<ExperienceLevel | null>(null);
-  const [trainingDays, setTrainingDays] = useState(5);
+  const [trainingDays, setTrainingDays] = useState(4);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const animateTransition = useCallback(
-    (nextStep: number) => {
+    (nextStep: number, direction: 1 | -1) => {
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: -50, duration: 150, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: Motion.instant, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -40 * direction, duration: Motion.instant, useNativeDriver: true }),
       ]).start(() => {
         setStep(nextStep);
-        slideAnim.setValue(50);
+        slideAnim.setValue(40 * direction);
         Animated.parallel([
-          Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-          Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+          Animated.timing(fadeAnim, { toValue: 1, duration: Motion.fast, useNativeDriver: true }),
+          Animated.timing(slideAnim, { toValue: 0, duration: Motion.fast, useNativeDriver: true }),
         ]).start();
       });
     },
@@ -68,34 +80,30 @@ export default function OnboardingScreen() {
   );
 
   const handleBack = useCallback(() => {
-    if (step > 0) {
-      Keyboard.dismiss();
-      if (Platform.OS !== "web") {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      animateTransition(step - 1);
-    }
+    if (step === 0) return;
+    Keyboard.dismiss();
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    animateTransition(step - 1, -1);
   }, [step, animateTransition]);
 
   const handleNext = useCallback(() => {
     Keyboard.dismiss();
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (step < TOTAL_STEPS - 1) {
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      animateTransition(step + 1, 1);
+      return;
     }
-    if (step < 3) {
-      animateTransition(step + 1);
-    } else {
-      const profileData: UserProfile = {
-        name: name.trim() || "Athlete",
-        fitnessGoal: goal ?? "stay_active",
-        experienceLevel: level ?? "beginner",
-        trainingDaysPerWeek: trainingDays,
-        onboardingComplete: true,
-        createdAt: new Date().toISOString(),
-      };
-      completeOnboarding(profileData);
-      router.replace("/(tabs)/(home)");
-    }
+    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const profileData: UserProfile = {
+      name: name.trim() || "Athlete",
+      fitnessGoal: goal ?? "stay_active",
+      experienceLevel: level ?? "beginner",
+      trainingDaysPerWeek: trainingDays,
+      onboardingComplete: true,
+      createdAt: new Date().toISOString(),
+    };
+    completeOnboarding(profileData);
+    router.replace("/(tabs)/(home)");
   }, [step, name, goal, level, trainingDays, animateTransition, completeOnboarding, router]);
 
   const canProceed =
@@ -104,256 +112,257 @@ export default function OnboardingScreen() {
     (step === 2 && level !== null) ||
     step === 3;
 
-  const ProgressDots = () => (
-    <View style={styles.progressRow}>
-      {[0, 1, 2, 3].map((i) => (
-        <View
-          key={i}
-          style={[
-            styles.progressDot,
-            { flex: i <= step ? 2 : 1 },
-            i <= step && styles.progressDotActive,
-          ]}
-        />
-      ))}
-    </View>
-  );
+  const ctaLabel = step === 0 ? "Get started" : step === TOTAL_STEPS - 1 ? "Start training" : "Continue";
 
-  // Step 0: Welcome
-  const renderStep0 = () => (
-    <View style={styles.stepCenter}>
-      <LinearGradient
-        colors={[colors.primary, colors.indigo, colors.violet]}
-        style={styles.logoMark}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+  /** Shared card for the goal and experience steps. */
+  function renderChoice<T extends string>(
+    choice: Choice<T>,
+    selected: boolean,
+    onSelect: (key: T) => void,
+    testID: string
+  ) {
+    return (
+      <TouchableOpacity
+        key={choice.key}
+        style={[
+          styles.choice,
+          selected && {
+            borderColor: choice.color,
+            borderWidth: 2,
+            backgroundColor: tint(choice.color, colors.scheme === "dark" ? 0.16 : 0.09),
+          },
+        ]}
+        onPress={() => {
+          onSelect(choice.key);
+          if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }}
+        activeOpacity={0.8}
+        testID={testID}
+        accessibilityRole="radio"
+        accessibilityState={{ selected }}
+        accessibilityLabel={`${choice.label}. ${choice.desc}`}
       >
-        <Zap size={48} color="#fff" fill="#fff" />
-      </LinearGradient>
-      <Text style={styles.appName}>
-        Gym<Text style={styles.appNameAccent}>Pulse</Text>
-      </Text>
-      <Text style={styles.tagline}>
-        Track it. Check it. <Text style={styles.taglineBold}>Crush it.</Text>
-      </Text>
-      <View style={styles.welcomeFeatures}>
-        {[
-          { emoji: "📊", label: "Track Progress" },
-          { emoji: "🏋️", label: "Log Workouts" },
-          { emoji: "🏆", label: "Crush PRs" },
-        ].map((f) => (
-          <View key={f.label} style={styles.welcomeFeature}>
-            <Text style={styles.welcomeFeatureEmoji}>{f.emoji}</Text>
-            <Text style={styles.welcomeFeatureLabel}>{f.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.nameLabel}>What should we call you?</Text>
-      <TextInput
-        style={styles.nameInput}
-        value={name}
-        onChangeText={setName}
-        placeholder="Your first name"
-        placeholderTextColor={colors.textTertiary}
-        autoCapitalize="words"
-        autoFocus
-        testID="name-input"
-      />
-    </View>
-  );
-
-  // Step 1: Goal
-  const renderStep1 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>
-        What&apos;s your{"\n"}
-        <Text style={styles.stepTitleAccent}>mission</Text>?
-      </Text>
-      <Text style={styles.stepSubtitle}>We&apos;ll shape your experience around it.</Text>
-      <View style={styles.optionList}>
-        {GOALS.map((g) => {
-          const selected = goal === g.key;
-          return (
-            <TouchableOpacity
-              key={g.key}
-              style={[
-                styles.optionCard,
-                selected && { borderColor: g.color, borderWidth: 2, backgroundColor: `${g.color}18` },
-              ]}
-              onPress={() => {
-                setGoal(g.key);
-                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              activeOpacity={0.7}
-              testID={`goal-${g.key}`}
-            >
-              <View style={[styles.optionEmoji, selected && { backgroundColor: `${g.color}20` }]}>
-                <Text style={{ fontSize: 26 }}>{g.emoji}</Text>
-              </View>
-              <View style={styles.optionInfo}>
-                <Text style={styles.optionLabel}>{g.label}</Text>
-                <Text style={styles.optionDesc}>{g.desc}</Text>
-              </View>
-              {selected && (
-                <LinearGradient
-                  colors={[g.color, `${g.color}dd`]}
-                  style={styles.optionCheck}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Check size={14} color="#fff" />
-                </LinearGradient>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  // Step 2: Experience
-  const renderStep2 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>
-        Your{"\n"}
-        <Text style={styles.stepTitleAccent2}>experience</Text>?
-      </Text>
-      <Text style={styles.stepSubtitle}>No judgment — just calibration.</Text>
-      <View style={styles.optionList}>
-        {LEVELS.map((x) => {
-          const selected = level === x.key;
-          return (
-            <TouchableOpacity
-              key={x.key}
-              style={[
-                styles.optionCard,
-                styles.optionCardLarge,
-                selected && { borderColor: x.color, borderWidth: 2, backgroundColor: `${x.color}18` },
-              ]}
-              onPress={() => {
-                setLevel(x.key);
-                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              activeOpacity={0.7}
-              testID={`level-${x.key}`}
-            >
-              <View style={[styles.optionEmojiLg, selected && { backgroundColor: `${x.color}20` }]}>
-                <Text style={{ fontSize: 30 }}>{x.emoji}</Text>
-              </View>
-              <View style={styles.optionInfo}>
-                <Text style={styles.optionLabelLg}>{x.label}</Text>
-                <Text style={styles.optionDesc}>{x.desc}</Text>
-              </View>
-              {selected && (
-                <LinearGradient
-                  colors={[x.color, `${x.color}dd`]}
-                  style={styles.optionCheck}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Check size={14} color="#fff" />
-                </LinearGradient>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-
-  // Step 3: Training days
-  const renderStep3 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>
-        How many{"\n"}
-        <Text style={styles.stepTitleAccent3}>days</Text> a week?
-      </Text>
-      <Text style={styles.stepSubtitle}>Pick your rhythm. You can always change this.</Text>
-      <View style={styles.daysRow}>
-        {[2, 3, 4, 5, 6, 7].map((d) => (
-          <TouchableOpacity
-            key={d}
-            onPress={() => {
-              setTrainingDays(d);
-              if (Platform.OS !== "web") void Haptics.selectionAsync();
-            }}
-            testID={`days-${d}`}
-          >
-            {trainingDays === d ? (
-              <LinearGradient
-                colors={[colors.primary, colors.indigo]}
-                style={[styles.dayButton, styles.dayButtonActive]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text style={styles.dayButtonTextActive}>{d}</Text>
-                <Text style={styles.dayButtonSubtext}>days</Text>
-              </LinearGradient>
-            ) : (
-              <View style={styles.dayButton}>
-                <Text style={styles.dayButtonText}>{d}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
+        <View
+          style={[
+            styles.choiceEmoji,
+            { backgroundColor: tint(choice.color, selected ? 0.2 : 0.1) },
+          ]}
+        >
+          <Text style={styles.choiceEmojiText}>{choice.emoji}</Text>
+        </View>
+        <View style={styles.choiceInfo}>
+          <Text style={styles.choiceLabel}>{choice.label}</Text>
+          <Text style={styles.choiceDesc}>{choice.desc}</Text>
+        </View>
+        <View
+          style={[
+            styles.choiceCheck,
+            selected ? { backgroundColor: choice.color } : styles.choiceCheckEmpty,
+          ]}
+        >
+          {selected && <Check size={13} color="#fff" strokeWidth={3} />}
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-      {step > 0 && (
-        <View style={styles.topRow}>
-          <TouchableOpacity onPress={handleBack} style={styles.backButton} activeOpacity={0.7}>
-            <ChevronLeft size={20} color={colors.text} />
-          </TouchableOpacity>
-          <View style={styles.progressRowWrap}>
-            <ProgressDots />
-          </View>
-          <View style={{ width: 36 }} />
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + Space.md, paddingBottom: Math.max(insets.bottom, Space.base) },
+      ]}
+    >
+      {/* ── Progress ── */}
+      <View style={styles.topRow}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={[styles.backButton, step === 0 && styles.backButtonHidden]}
+          activeOpacity={0.7}
+          disabled={step === 0}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ChevronLeft size={20} color={colors.text} />
+        </TouchableOpacity>
+
+        <View style={styles.progressTrack}>
+          {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.progressSegment,
+                i <= step && { backgroundColor: colors.primary },
+              ]}
+            />
+          ))}
         </View>
-      )}
+
+        <Text style={styles.stepCount}>
+          {step + 1}/{TOTAL_STEPS}
+        </Text>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.content}
+        style={styles.flex}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateX: slideAnim }] }}>
-            {step === 0 && renderStep0()}
-            {step === 1 && renderStep1()}
-            {step === 2 && renderStep2()}
-            {step === 3 && renderStep3()}
+          <Animated.View
+            style={{ opacity: fadeAnim, transform: [{ translateX: slideAnim }] }}
+          >
+            {/* ── Step 0: welcome + name ── */}
+            {step === 0 && (
+              <View style={styles.welcome}>
+                <LinearGradient
+                  colors={[colors.primary, colors.indigo, colors.violet]}
+                  style={[styles.logo, glow(colors.indigo, colors, 0.4)]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Zap size={42} color="#fff" fill="#fff" />
+                </LinearGradient>
+
+                <Text style={styles.appName}>
+                  Gym<Text style={{ color: colors.primary }}>Pulse</Text>
+                </Text>
+                <Text style={styles.tagline}>Track it. Check it. Crush it.</Text>
+
+                <View style={styles.pillars}>
+                  {[
+                    { emoji: "📊", label: "Track every set" },
+                    { emoji: "🏆", label: "Chase real PRs" },
+                    { emoji: "🔥", label: "Build the streak" },
+                  ].map((f) => (
+                    <View key={f.label} style={styles.pillar}>
+                      <Text style={styles.pillarEmoji}>{f.emoji}</Text>
+                      <Text style={styles.pillarLabel}>{f.label}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                <Text style={styles.fieldLabel}>WHAT SHOULD WE CALL YOU?</Text>
+                <TextInput
+                  style={styles.nameInput}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Your first name"
+                  placeholderTextColor={colors.textTertiary}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  maxLength={40}
+                  returnKeyType="next"
+                  onSubmitEditing={() => canProceed && handleNext()}
+                  autoFocus
+                  testID="name-input"
+                  accessibilityLabel="Your first name"
+                />
+              </View>
+            )}
+
+            {/* ── Step 1: goal ── */}
+            {step === 1 && (
+              <View style={styles.step}>
+                <Text style={styles.stepTitle}>What&apos;s the mission?</Text>
+                <Text style={styles.stepSubtitle}>
+                  We&apos;ll shape your plan and stats around it.
+                </Text>
+                <View style={styles.choiceList} accessibilityRole="radiogroup">
+                  {GOALS.map((g) => renderChoice(g, goal === g.key, setGoal, `goal-${g.key}`))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Step 2: experience ── */}
+            {step === 2 && (
+              <View style={styles.step}>
+                <Text style={styles.stepTitle}>How much lifting have you done?</Text>
+                <Text style={styles.stepSubtitle}>No judgment — just calibration.</Text>
+                <View style={styles.choiceList} accessibilityRole="radiogroup">
+                  {LEVELS.map((l) => renderChoice(l, level === l.key, setLevel, `level-${l.key}`))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Step 3: frequency + recap ── */}
+            {step === 3 && (
+              <View style={styles.step}>
+                <Text style={styles.stepTitle}>How many days a week?</Text>
+                <Text style={styles.stepSubtitle}>Pick a rhythm you can keep. Change it any time.</Text>
+
+                <View style={styles.daysGrid} accessibilityRole="radiogroup">
+                  {[2, 3, 4, 5, 6, 7].map((d) => {
+                    const active = trainingDays === d;
+                    return (
+                      <TouchableOpacity
+                        key={d}
+                        onPress={() => {
+                          setTrainingDays(d);
+                          if (Platform.OS !== "web") void Haptics.selectionAsync();
+                        }}
+                        style={[styles.dayButton, active && styles.dayButtonActive]}
+                        testID={`days-${d}`}
+                        activeOpacity={0.8}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: active }}
+                        accessibilityLabel={`${d} days per week`}
+                      >
+                        <Text style={[styles.dayNumber, active && styles.dayNumberActive]}>{d}</Text>
+                        <Text style={[styles.dayUnit, active && styles.dayUnitActive]}>
+                          {d === 1 ? "day" : "days"}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Recap so the last tap confirms rather than surprises. */}
+                <View style={styles.recap}>
+                  <Text style={styles.recapTitle}>YOUR SETUP</Text>
+                  <RecapRow label="Name" value={name.trim() || "Athlete"} colors={colors} />
+                  <RecapRow
+                    label="Goal"
+                    value={GOALS.find((g) => g.key === goal)?.label ?? "Stay active"}
+                    colors={colors}
+                  />
+                  <RecapRow
+                    label="Experience"
+                    value={LEVELS.find((l) => l.key === level)?.label ?? "Beginner"}
+                    colors={colors}
+                  />
+                  <RecapRow label="Training" value={`${trainingDays} days / week`} colors={colors} />
+                </View>
+              </View>
+            )}
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <TouchableOpacity
+      <Button
+        label={ctaLabel}
         onPress={handleNext}
         disabled={!canProceed}
-        testID="next-button"
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={
-            step === 3
-              ? [colors.primary, colors.indigo, colors.violet]
-              : [colors.primary, colors.indigo]
-          }
-          style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.nextButtonText}>
-            {step === 0 ? "Get Started →" : step === 3 ? "Let's Crush It 🔥" : "Continue"}
-          </Text>
-        </LinearGradient>
-      </TouchableOpacity>
+        size="lg"
+        fullWidth
+        haptic="none"
+        trailingIcon={<ArrowRight size={18} color="#fff" />}
+        style={styles.cta}
+        accessibilityLabel={ctaLabel}
+      />
+    </View>
+  );
+}
+
+function RecapRow({ label, value, colors }: { label: string; value: string; colors: ColorScheme }) {
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  return (
+    <View style={styles.recapRow}>
+      <Text style={styles.recapLabel}>{label}</Text>
+      <Text style={styles.recapValue} numberOfLines={1}>{value}</Text>
     </View>
   );
 }
@@ -362,269 +371,249 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: 24,
+    paddingHorizontal: Space.xl,
   },
+  flex: {
+    flex: 1,
+  },
+  // ── Progress ──
   topRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 28,
+    gap: Space.md,
+    marginBottom: Space.xl,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: colors.glassBorder,
+    width: 38,
+    height: 38,
+    borderRadius: Radius.sm,
+    backgroundColor: colors.fill,
     justifyContent: "center",
     alignItems: "center",
   },
-  progressRowWrap: {
-    flex: 1,
+  backButtonHidden: {
+    opacity: 0,
   },
-  progressRow: {
+  progressTrack: {
+    flex: 1,
     flexDirection: "row",
-    gap: 8,
+    gap: Space.xs + 2,
   },
-  progressDot: {
-    height: 4,
-    borderRadius: 3,
-    backgroundColor: colors.glassBorder,
-  },
-  progressDotActive: {
-    backgroundColor: colors.indigo,
-  },
-  content: {
+  progressSegment: {
     flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.fillStrong,
+  },
+  stepCount: {
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "700",
+    color: colors.textTertiary,
+    minWidth: 26,
+    textAlign: "right",
   },
   scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    paddingBottom: 20,
+    paddingBottom: Space.xl,
   },
-  stepCenter: {
+  // ── Welcome ──
+  welcome: {
     alignItems: "center",
-    justifyContent: "center",
   },
-  stepContainer: {
-    flex: 1,
-  },
-  logoMark: {
-    width: 96,
-    height: 96,
-    borderRadius: 30,
+  logo: {
+    width: 92,
+    height: 92,
+    borderRadius: Radius.xl,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 32,
-    shadowColor: colors.indigo,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 48,
-    elevation: 8,
+    marginBottom: Space.lg,
   },
   appName: {
-    fontSize: 42,
-    fontWeight: "800" as const,
+    ...Type.hero,
     color: colors.text,
-    letterSpacing: -1.5,
-    lineHeight: 44,
-  },
-  appNameAccent: {
-    color: colors.indigo,
   },
   tagline: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginTop: 12,
-    lineHeight: 22,
-    letterSpacing: -0.2,
-  },
-  taglineBold: {
-    fontWeight: "700" as const,
-    color: colors.text,
-  },
-  welcomeFeatures: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 36,
-    marginBottom: 36,
-  },
-  welcomeFeature: {
-    alignItems: "center",
-    backgroundColor: colors.glassBorder,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  welcomeFeatureEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  welcomeFeatureLabel: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: colors.text,
-    letterSpacing: -0.2,
-  },
-  nameLabel: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
-    marginBottom: 10,
-    letterSpacing: -0.2,
-  },
-  nameInput: {
-    width: "100%",
-    borderWidth: 1.5,
-    borderColor: colors.glassBorder,
-    borderRadius: 18,
-    padding: 16,
-    fontSize: 17,
-    color: colors.text,
-    backgroundColor: colors.cardBackground,
+    ...Type.body,
+    color: colors.textTertiary,
+    marginTop: Space.xs,
     textAlign: "center",
   },
-  stepTitle: {
-    fontSize: 32,
-    fontWeight: "800" as const,
+  pillars: {
+    flexDirection: "row",
+    gap: Space.sm,
+    marginTop: Space.xl,
+    marginBottom: Space.xxl,
+    alignSelf: "stretch",
+  },
+  pillar: {
+    flex: 1,
+    alignItems: "center",
+    gap: Space.xs + 2,
+    paddingVertical: Space.md,
+    paddingHorizontal: Space.xs,
+    borderRadius: Radius.sm,
+    backgroundColor: colors.fill,
+  },
+  pillarEmoji: {
+    fontSize: 20,
+  },
+  pillarLabel: {
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.textSecondary,
+    textAlign: "center",
+  },
+  fieldLabel: {
+    ...Type.overline,
+    fontSize: 11,
+    color: colors.textTertiary,
+    alignSelf: "flex-start",
+    marginBottom: Space.sm,
+  },
+  nameInput: {
+    ...Type.title3,
+    alignSelf: "stretch",
     color: colors.text,
-    letterSpacing: -1,
-    lineHeight: 36,
-    marginBottom: 4,
+    backgroundColor: colors.fill,
+    borderWidth: 1.5,
+    borderColor: colors.separator,
+    borderRadius: Radius.md,
+    paddingHorizontal: Space.base,
+    paddingVertical: Space.base,
+    minHeight: 56,
   },
-  stepTitleAccent: {
-    color: colors.primary,
+  // ── Steps ──
+  step: {
+    gap: Space.sm,
   },
-  stepTitleAccent2: {
-    color: colors.violet,
-  },
-  stepTitleAccent3: {
-    color: colors.cyan,
+  stepTitle: {
+    ...Type.title1,
+    color: colors.text,
   },
   stepSubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 22,
+    ...Type.body,
+    color: colors.textTertiary,
+    marginBottom: Space.lg,
   },
-  optionList: {
-    gap: 10,
+  choiceList: {
+    gap: Space.md,
   },
-  optionCard: {
+  choice: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    backgroundColor: colors.cardBackground,
-    borderRadius: 20,
-    padding: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    gap: Space.base,
+    padding: Space.base,
+    borderRadius: Radius.md,
+    borderWidth: 2,
+    borderColor: colors.separator,
+    backgroundColor: colors.surfaceBase,
+    minHeight: 76,
   },
-  optionCardLarge: {
-    padding: 18,
-  },
-  optionEmoji: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: colors.glassBorder,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  optionEmojiLg: {
+  choiceEmoji: {
     width: 50,
     height: 50,
-    borderRadius: 16,
-    backgroundColor: colors.glassBorder,
+    borderRadius: Radius.sm,
     justifyContent: "center",
     alignItems: "center",
   },
-  optionInfo: {
+  choiceEmojiText: {
+    fontSize: 24,
+  },
+  choiceInfo: {
     flex: 1,
   },
-  optionLabel: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  optionLabelLg: {
-    fontSize: 16,
-    fontWeight: "700" as const,
+  choiceLabel: {
+    ...Type.headline,
     color: colors.text,
   },
-  optionDesc: {
-    fontSize: 12,
+  choiceDesc: {
+    ...Type.subhead,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  choiceCheck: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  choiceCheckEmpty: {
+    borderWidth: 2,
+    borderColor: colors.separator,
+  },
+  // ── Days ──
+  daysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Space.md,
+    marginBottom: Space.xl,
+  },
+  dayButton: {
+    flexGrow: 1,
+    flexBasis: "28%",
+    paddingVertical: Space.base,
+    borderRadius: Radius.md,
+    backgroundColor: colors.fill,
+    borderWidth: 2,
+    borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 72,
+  },
+  dayButtonActive: {
+    backgroundColor: tint(colors.primary, colors.scheme === "dark" ? 0.2 : 0.12),
+    borderColor: colors.primary,
+  },
+  dayNumber: {
+    ...Type.title1,
+    ...numeric,
+    color: colors.textSecondary,
+  },
+  dayNumberActive: {
+    color: colors.primary,
+  },
+  dayUnit: {
+    ...Type.caption,
+    fontWeight: "600",
     color: colors.textTertiary,
     marginTop: 1,
   },
-  optionCheck: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    justifyContent: "center",
-    alignItems: "center",
+  dayUnitActive: {
+    color: colors.primary,
   },
-  daysRow: {
+  // ── Recap ──
+  recap: {
+    borderRadius: Radius.md,
+    backgroundColor: colors.fill,
+    padding: Space.base,
+    gap: Space.sm,
+  },
+  recapTitle: {
+    ...Type.overline,
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginBottom: Space.xxs,
+  },
+  recapRow: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 14,
-  },
-  dayButton: {
-    width: 50,
-    height: 62,
-    borderRadius: 18,
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
+    justifyContent: "space-between",
+    gap: Space.md,
   },
-  dayButtonActive: {
-    borderWidth: 0,
-    shadowColor: colors.indigo,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 6,
-    transform: [{ scale: 1.1 }],
+  recapLabel: {
+    ...Type.subhead,
+    color: colors.textTertiary,
   },
-  dayButtonText: {
-    fontSize: 22,
-    fontWeight: "800" as const,
+  recapValue: {
+    ...Type.callout,
+    fontWeight: "700",
     color: colors.text,
+    flexShrink: 1,
   },
-  dayButtonTextActive: {
-    fontSize: 22,
-    fontWeight: "800" as const,
-    color: "#fff",
-  },
-  dayButtonSubtext: {
-    fontSize: 9,
-    fontWeight: "600" as const,
-    color: "rgba(255,255,255,0.8)",
-    letterSpacing: 0.8,
-    textTransform: "uppercase" as const,
-  },
-  nextButton: {
-    paddingVertical: 18,
-    borderRadius: 18,
-    alignItems: "center",
-    shadowColor: colors.indigo,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 28,
-    elevation: 6,
-  },
-  nextButtonDisabled: {
-    opacity: 0.4,
-  },
-  nextButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700" as const,
-    letterSpacing: -0.3,
+  cta: {
+    marginTop: Space.md,
+    minHeight: Layout.touchTarget + 10,
   },
 });

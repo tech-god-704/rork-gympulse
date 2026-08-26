@@ -61,7 +61,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     minWidth: 280,
   },
   title: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: "800" as const,
     color: colors.text,
     marginBottom: 10,

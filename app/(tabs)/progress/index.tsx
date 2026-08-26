@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Platform,
   RefreshControl,
   TouchableOpacity,
   Modal,
@@ -31,6 +30,18 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import {
+  Layout,
+  Radius,
+  Space,
+  Type,
+  elevation,
+  muscleColor,
+  numeric,
+  statNumber,
+  surface,
+  tint,
+} from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { useGym } from "@/providers/GymProvider";
 import {
@@ -46,6 +57,7 @@ import { MuscleGroup, MUSCLE_GROUP_LABELS, WorkoutHistory } from "@/types";
 import { formatVolume, formatWeight } from "@/utils/units";
 import { estimateOneRepMax } from "@/utils/workoutStats";
 import { ACTIVE_BAR_HEIGHT } from "@/components/ActiveWorkoutBar";
+import { Button, ProgressBar, ScreenHeader, Tag } from "@/components/ui";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -58,15 +70,6 @@ export default function ProgressScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const MUSCLE_COLORS: Record<MuscleGroup, string> = {
-    chest: colors.muscleChest,
-    back: colors.muscleBack,
-    shoulders: colors.muscleShoulders,
-    arms: colors.muscleArms,
-    legs: colors.muscleLegs,
-    core: colors.muscleCore,
-    cardio: colors.muscleCardio,
-  };
   const insets = useSafeAreaInsets();
   const {
     streak,
@@ -304,7 +307,10 @@ export default function ProgressScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.title}>Progress</Text>
+      <ScreenHeader
+        title="Progress"
+        subtitle={hasHistory ? `${history.length} workout${history.length === 1 ? "" : "s"} logged` : undefined}
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -328,16 +334,12 @@ export default function ProgressScreen() {
               Finish your first session and this page fills up with streaks, personal
               records, volume trends and your muscle split.
             </Text>
-            <TouchableOpacity
-              style={styles.emptyCta}
+            <Button
+              label="Start a workout"
               onPress={() => progressRouter.push("/(tabs)/(home)")}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Go to today's workout"
-            >
-              <Text style={styles.emptyCtaText}>Start a workout</Text>
-              <ChevronRight size={16} color={colors.white} />
-            </TouchableOpacity>
+              trailingIcon={<ChevronRight size={16} color="#fff" />}
+              haptic="medium"
+            />
             {muscleDistribution.length > 0 && (
               <Text style={styles.emptyFootnote}>
                 Your saved routines cover {muscleDistribution.length} muscle group
@@ -386,17 +388,12 @@ export default function ProgressScreen() {
                   </>
                 )}
               </View>
-              <View style={styles.weekProgressBg}>
-                <View
-                  style={[
-                    styles.weekProgressFill,
-                    {
-                      width: `${Math.min((workoutsThisWeek / Math.max(weeklyGoal, 1)) * 100, 100)}%`,
-                      backgroundColor: workoutsThisWeek >= weeklyGoal ? colors.emerald : colors.primary,
-                    },
-                  ]}
-                />
-              </View>
+              <ProgressBar
+                value={workoutsThisWeek / Math.max(weeklyGoal, 1)}
+                height={6}
+                color={workoutsThisWeek >= weeklyGoal ? colors.emerald : colors.primary}
+                style={styles.weekProgress}
+              />
             </View>
 
             {/* ─── Activity Calendar ─── */}
@@ -539,7 +536,7 @@ export default function ProgressScreen() {
                       accessible
                       accessibilityLabel={`${MUSCLE_GROUP_LABELS[item.group]}: ${item.percentage} percent, ${item.count} sets`}
                     >
-                      <View style={[styles.muscleDot, { backgroundColor: MUSCLE_COLORS[item.group] }]} />
+                      <View style={[styles.muscleDot, { backgroundColor: muscleColor(item.group, colors) }]} />
                       <Text style={styles.muscleName}>{MUSCLE_GROUP_LABELS[item.group]}</Text>
                       <View style={styles.muscleBarBg}>
                         <View
@@ -547,7 +544,7 @@ export default function ProgressScreen() {
                             styles.muscleBarFill,
                             {
                               width: `${item.percentage}%`,
-                              backgroundColor: MUSCLE_COLORS[item.group],
+                              backgroundColor: muscleColor(item.group, colors),
                             },
                           ]}
                         />
@@ -636,9 +633,7 @@ export default function ProgressScreen() {
                   <View style={styles.cardHeaderLeft}>
                     <Trophy size={16} color={colors.amber} />
                     <Text style={styles.cardTitle}>Personal Records</Text>
-                    <View style={styles.prCountBadge}>
-                      <Text style={styles.prCountText}>{prEntries.length}</Text>
-                    </View>
+                    <Tag label={String(prEntries.length)} color={colors.amber} size="sm" />
                   </View>
                   {prExpanded ? (
                     <ChevronUp size={16} color={colors.textTertiary} />
@@ -655,11 +650,7 @@ export default function ProgressScreen() {
                           <View style={styles.prInfo}>
                             <View style={styles.prNameRow}>
                               <Text style={styles.prName} numberOfLines={1}>{pr.name}</Text>
-                              {isNew && (
-                                <View style={styles.newPrBadge}>
-                                  <Text style={styles.newPrText}>NEW</Text>
-                                </View>
-                              )}
+                              {isNew && <Tag label="New" color={colors.amber} size="sm" />}
                             </View>
                             <Text style={styles.prDate}>{formatRelativeDate(pr.date)}</Text>
                           </View>
@@ -704,11 +695,11 @@ export default function ProgressScreen() {
                         <View style={styles.historyNameRow}>
                           <Text style={styles.historyName} numberOfLines={1}>{h.routineName}</Text>
                           {(h.newPRs ?? 0) > 0 && (
-                            <View style={styles.historyPrBadge}>
-                              <Text style={styles.historyPrText}>
-                                {h.newPRs} PR{(h.newPRs ?? 0) > 1 ? "s" : ""}
-                              </Text>
-                            </View>
+                            <Tag
+                              label={`${h.newPRs} PR${(h.newPRs ?? 0) > 1 ? "s" : ""}`}
+                              color={colors.amber}
+                              size="sm"
+                            />
                           )}
                         </View>
                         <Text style={styles.historyMeta}>
@@ -840,7 +831,7 @@ export default function ProgressScreen() {
                             {ex.exerciseName}
                           </Text>
                           {ex.skipped ? (
-                            <Text style={styles.sheetSkippedTag}>SKIPPED</Text>
+                            <Tag label="Skipped" color={colors.amber} size="sm" />
                           ) : (
                             <Text style={styles.sheetExerciseMeta}>
                               {ex.setsCompleted}/{ex.totalSets} sets
@@ -872,16 +863,13 @@ export default function ProgressScreen() {
                   )}
                 </ScrollView>
 
-                <TouchableOpacity
-                  style={styles.deleteButton}
+                <Button
+                  label="Delete workout"
+                  variant="danger"
                   onPress={() => handleDeleteWorkout(selectedWorkout)}
-                  activeOpacity={0.8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete this workout"
-                >
-                  <Trash2 size={16} color={colors.error} />
-                  <Text style={styles.deleteButtonText}>Delete workout</Text>
-                </TouchableOpacity>
+                  icon={<Trash2 size={16} color={colors.error} />}
+                  fullWidth
+                />
               </>
             )}
           </View>
@@ -896,128 +884,102 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "800" as const,
-    color: colors.text,
-    letterSpacing: -1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 18,
-    paddingTop: 0,
-    gap: 12,
+    paddingHorizontal: Layout.gutter,
+    gap: Space.md,
   },
-  // ─── Streak Hero ───
+  // ── Streak hero ──
   streakHero: {
-    backgroundColor: colors.amberLight,
-    borderRadius: 12,
-    padding: 28,
+    borderRadius: Radius.lg,
+    padding: Space.xl + Space.xs,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.amberBorder,
-    shadowColor: colors.amber,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: tint(colors.amber, colors.scheme === "dark" ? 0.16 : 0.12),
+    borderWidth: Layout.hairline,
+    borderColor: tint(colors.amber, 0.3),
   },
   streakContent: {
     alignItems: "center",
   },
   streakNumber: {
-    fontSize: 52,
-    fontWeight: "900" as const,
+    ...Type.display,
+    ...numeric,
     color: colors.text,
-    letterSpacing: -2,
-    lineHeight: 56,
-    marginTop: 8,
+    marginTop: Space.sm,
   },
   streakLabel: {
-    fontSize: 14,
-    fontWeight: "600" as const,
+    ...Type.callout,
+    fontWeight: "700",
     color: colors.amberDark,
-    marginTop: 4,
-    letterSpacing: -0.2,
-    textAlign: "center" as const,
+    marginTop: Space.xs,
+    textAlign: "center",
   },
   streakBest: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "500",
     color: colors.textTertiary,
-    marginTop: 8,
+    marginTop: Space.sm,
   },
-  // ─── Card ───
+  // ── Card ──
   card: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    ...surface(colors, 1, Radius.md),
     overflow: "hidden",
   },
   cardHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    padding: 16,
-    paddingBottom: 6,
+    gap: Space.sm,
+    padding: Space.base,
+    paddingBottom: Space.sm,
   },
   cardHeaderRowTouchable: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    paddingBottom: 6,
-    minHeight: 48,
+    padding: Space.base,
+    paddingBottom: Space.sm,
+    minHeight: Layout.touchTarget,
   },
   cardHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: Space.sm,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "800" as const,
+    ...Type.headline,
     color: colors.text,
-    letterSpacing: -0.3,
   },
   cardSubtitle: {
     marginLeft: "auto",
-    fontSize: 10,
+    ...Type.caption,
+    fontWeight: "500",
     color: colors.textTertiary,
-    letterSpacing: 0.2,
   },
-  // ─── Calendar ───
+  // ── Calendar ──
   weekdayRow: {
     flexDirection: "row",
-    paddingHorizontal: 10,
-    marginBottom: 2,
+    paddingHorizontal: Space.sm + 2,
+    marginBottom: Space.xxs,
   },
   weekdayCell: {
     width: "14.28%",
     alignItems: "center",
   },
   weekdayText: {
-    fontSize: 9,
-    fontWeight: "700" as const,
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: "800",
     color: colors.textTertiary,
     letterSpacing: 0.5,
   },
   calendarGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    paddingHorizontal: 10,
-    paddingBottom: 14,
+    paddingHorizontal: Space.sm + 2,
+    paddingBottom: Space.md + 2,
   },
   calendarCell: {
     width: "14.28%",
@@ -1029,101 +991,92 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   calendarDay: {
     width: "100%",
     height: "100%",
-    borderRadius: 8,
+    borderRadius: Radius.xs + 2,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.glassBorder,
+    backgroundColor: colors.fill,
     borderWidth: 1,
     borderColor: "transparent",
   },
   calendarDayCompleted: {
-    backgroundColor: `${colors.emerald}26`,
-    borderColor: `${colors.emerald}44`,
+    backgroundColor: tint(colors.emerald, 0.18),
+    borderColor: tint(colors.emerald, 0.34),
   },
   calendarDayOtherMonth: {
     opacity: 0.3,
   },
   calendarDayText: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 10,
-    fontWeight: "500" as const,
+    ...Type.caption,
+    ...numeric,
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.textTertiary,
   },
   calendarDayTextCompleted: {
     color: colors.emerald,
-    fontWeight: "800" as const,
+    fontWeight: "800",
   },
   calendarDayTextToday: {
-    color: colors.white,
-    fontWeight: "700" as const,
+    color: "#fff",
+    fontWeight: "800",
   },
   calendarDayTextOther: {
     color: colors.textTertiary,
   },
-  // ─── Week Summary ───
+  // ── Week summary ──
   weekSummary: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: Space.base,
+    paddingBottom: Space.md,
   },
   weekSummaryStat: {
     flex: 1,
     alignItems: "center",
   },
   weekSummaryValue: {
-    fontSize: 26,
-    fontWeight: "800" as const,
+    ...statNumber(24),
     color: colors.text,
-    letterSpacing: -1,
   },
   weekSummaryLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
+    ...Type.caption,
+    fontWeight: "500",
+    color: colors.textTertiary,
     marginTop: 2,
-    textAlign: "center" as const,
+    textAlign: "center",
   },
   weekSummaryDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: colors.glassBorder,
+    width: Layout.hairline,
+    height: 34,
+    backgroundColor: colors.separator,
   },
-  weekProgressBg: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.glassBorder,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    overflow: "hidden",
+  weekProgress: {
+    marginHorizontal: Space.base,
+    marginBottom: Space.base,
   },
-  weekProgressFill: {
-    height: 6,
-    borderRadius: 3,
-  },
-  // ─── Progressive Overload ───
+  // ── Progressive overload ──
   overloadList: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: Space.base,
+    paddingBottom: Space.md,
   },
   overloadRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
-    gap: 12,
+    paddingVertical: Space.md - 2,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
+    gap: Space.md,
   },
   overloadInfo: {
     flex: 1,
   },
   overloadName: {
-    fontSize: 14,
-    fontWeight: "600" as const,
+    ...Type.callout,
     color: colors.text,
-    letterSpacing: -0.2,
   },
   overloadDate: {
-    fontSize: 10,
+    ...Type.caption,
+    fontWeight: "500",
     color: colors.textTertiary,
     marginTop: 1,
   },
@@ -1131,77 +1084,79 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     alignItems: "flex-end",
   },
   overloadWeight: {
-    fontSize: 15,
-    fontWeight: "800" as const,
+    ...statNumber(16),
     color: colors.text,
-    letterSpacing: -0.5,
   },
   overload1RM: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 9,
+    ...Type.caption,
+    ...numeric,
+    fontSize: 11,
+    fontWeight: "500",
     color: colors.textTertiary,
     marginTop: 1,
   },
   overloadBadge: {
     width: 28,
     height: 28,
-    borderRadius: 9,
+    borderRadius: Radius.xs + 2,
     justifyContent: "center",
     alignItems: "center",
   },
   overloadBadgePR: {
-    backgroundColor: `${colors.emerald}1F`,
+    backgroundColor: tint(colors.emerald, 0.16),
   },
   overloadBadgeNormal: {
-    backgroundColor: colors.glassBorder,
+    backgroundColor: colors.fill,
   },
-  // ─── Bar Chart ───
+  // ── Bar chart ──
   barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingBottom: 16,
-    paddingTop: 8,
-    height: 140,
+    gap: Space.xs + 2,
+    paddingHorizontal: Space.base - 2,
+    paddingBottom: Space.base,
+    paddingTop: Space.sm,
+    height: 146,
   },
   barColumn: {
     flex: 1,
     alignItems: "center",
-    gap: 5,
+    gap: Space.xs + 1,
   },
   barValue: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 10,
-    fontWeight: "700" as const,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "700",
     color: colors.textTertiary,
   },
   barValueActive: {
-    color: colors.indigo,
+    color: colors.primary,
   },
   bar: {
     width: "100%",
-    borderRadius: 6,
+    borderRadius: Radius.xs,
     minHeight: 4,
   },
   barInactive: {
-    backgroundColor: colors.glassBorder,
+    backgroundColor: colors.fillStrong,
   },
   barLabel: {
-    fontSize: 8,
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.textTertiary,
     letterSpacing: -0.2,
   },
-  // ─── Muscle Split ───
+  // ── Muscle split ──
   muscleList: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 10,
+    paddingHorizontal: Space.base,
+    paddingBottom: Space.base,
+    gap: Space.md - 2,
   },
   muscleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: Space.md - 2,
   },
   muscleDot: {
     width: 10,
@@ -1209,16 +1164,16 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderRadius: 5,
   },
   muscleName: {
-    fontSize: 13,
-    fontWeight: "600" as const,
+    ...Type.subhead,
+    fontWeight: "600",
     color: colors.text,
-    width: 80,
+    width: 78,
   },
   muscleBarBg: {
     flex: 1,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.glassBorder,
+    backgroundColor: colors.fill,
     overflow: "hidden",
   },
   muscleBarFill: {
@@ -1226,65 +1181,54 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderRadius: 4,
   },
   musclePercent: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
-    fontWeight: "700" as const,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "700",
     color: colors.textTertiary,
-    width: 35,
-    textAlign: "right" as const,
+    width: 34,
+    textAlign: "right",
   },
-  // ─── Workout Stats ───
+  // ── Lifetime stats ──
   statsGrid: {
     flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: Space.base,
+    paddingVertical: Space.md,
   },
   statsItem: {
     flex: 1,
     alignItems: "center",
   },
   statsValue: {
-    fontSize: 18,
-    fontWeight: "800" as const,
+    ...statNumber(18),
     color: colors.text,
-    letterSpacing: -0.5,
   },
   statsLabel: {
-    fontSize: 9,
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: "600",
     color: colors.textTertiary,
     letterSpacing: 0.3,
     marginTop: 3,
-    textTransform: "uppercase" as const,
-    textAlign: "center" as const,
+    textTransform: "uppercase",
+    textAlign: "center",
   },
   statsDivider: {
-    height: 1,
-    backgroundColor: colors.glassBorder,
-    marginHorizontal: 16,
+    height: Layout.hairline,
+    backgroundColor: colors.separator,
+    marginHorizontal: Space.base,
   },
-  // ─── Personal Records ───
-  prCountBadge: {
-    backgroundColor: colors.amberTint,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  prCountText: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: colors.amberDark,
-  },
+  // ── Personal records ──
   prList: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: Space.base,
+    paddingBottom: Space.md,
   },
   prRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
-    gap: 12,
+    paddingVertical: Space.md - 2,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
+    gap: Space.md,
   },
   prInfo: {
     flex: 1,
@@ -1292,89 +1236,72 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   prNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: Space.xs + 2,
   },
   prName: {
-    fontSize: 14,
-    fontWeight: "600" as const,
+    ...Type.callout,
     color: colors.text,
-    letterSpacing: -0.2,
     flexShrink: 1,
   },
-  newPrBadge: {
-    backgroundColor: colors.amberTint,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  newPrText: {
-    fontSize: 8,
-    fontWeight: "800" as const,
-    color: colors.amberDark,
-    letterSpacing: 0.5,
-  },
   prDate: {
-    fontSize: 10,
+    ...Type.caption,
+    fontWeight: "500",
     color: colors.textTertiary,
     marginTop: 1,
   },
   prValues: {
     flexDirection: "row",
     alignItems: "baseline",
-    gap: 4,
+    gap: Space.xs,
   },
   prWeight: {
-    fontSize: 15,
-    fontWeight: "800" as const,
-    color: colors.indigo,
-    letterSpacing: -0.5,
+    ...statNumber(16),
+    color: colors.primary,
   },
   prReps: {
-    fontSize: 12,
-    fontWeight: "500" as const,
+    ...Type.footnote,
+    ...numeric,
     color: colors.textTertiary,
   },
   pr1RMBadge: {
     alignItems: "center",
-    backgroundColor: colors.glassBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    minWidth: 44,
+    backgroundColor: colors.fill,
+    paddingHorizontal: Space.sm,
+    paddingVertical: Space.xs,
+    borderRadius: Radius.xs + 2,
+    minWidth: 46,
   },
   pr1RMText: {
-    fontSize: 13,
-    fontWeight: "800" as const,
-    color: colors.indigo,
-    letterSpacing: -0.3,
+    ...statNumber(14),
+    color: colors.primary,
   },
   pr1RMLabel: {
-    fontSize: 7,
-    fontWeight: "700" as const,
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: "800",
     color: colors.textTertiary,
     letterSpacing: 0.5,
-    textTransform: "uppercase" as const,
   },
-  // ─── Recent Workouts ───
+  // ── Workout log ──
   historyList: {
-    paddingHorizontal: 16,
-    paddingBottom: 4,
+    paddingHorizontal: Space.base,
+    paddingBottom: Space.xs,
   },
   historyRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
-    gap: 6,
-    minHeight: 56,
+    paddingVertical: Space.md,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
+    gap: Space.sm - 2,
+    minHeight: Layout.rowHeight,
   },
   historyDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.indigo,
-    marginRight: 8,
+    backgroundColor: colors.primary,
+    marginRight: Space.sm,
   },
   historyInfo: {
     flex: 1,
@@ -1382,134 +1309,108 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   historyNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-  },
-  historyPrBadge: {
-    backgroundColor: colors.amberTint,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  historyPrText: {
-    fontSize: 8,
-    fontWeight: "800" as const,
-    color: colors.amberDark,
-    letterSpacing: 0.3,
+    gap: Space.xs + 2,
   },
   historyName: {
-    fontSize: 14,
-    fontWeight: "600" as const,
+    ...Type.callout,
     color: colors.text,
-    letterSpacing: -0.2,
     flexShrink: 1,
   },
   historyMeta: {
-    fontSize: 11,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "500",
     color: colors.textTertiary,
-    marginTop: 1,
+    marginTop: 2,
   },
   historyDate: {
-    fontSize: 11,
-    fontWeight: "500" as const,
+    ...Type.caption,
+    fontWeight: "600",
     color: colors.textTertiary,
   },
   showMoreButton: {
-    paddingVertical: 14,
+    paddingVertical: Space.base,
     alignItems: "center",
-    minHeight: 44,
+    minHeight: Layout.touchTarget,
     justifyContent: "center",
   },
   showMoreText: {
-    fontSize: 13,
-    fontWeight: "700" as const,
+    ...Type.subhead,
+    fontWeight: "700",
     color: colors.primary,
   },
-  // ─── Empty State ───
+  // ── Empty state ──
   emptyState: {
     alignItems: "center",
-    paddingVertical: 48,
-    paddingHorizontal: 24,
+    paddingVertical: Space.huge,
+    paddingHorizontal: Space.xl,
   },
   emptyIconBg: {
-    width: 62,
-    height: 62,
-    borderRadius: 18,
-    backgroundColor: colors.primaryUltraLight,
+    width: 68,
+    height: 68,
+    borderRadius: Radius.lg,
+    backgroundColor: tint(colors.primary, colors.scheme === "dark" ? 0.18 : 0.1),
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 18,
+    marginBottom: Space.lg,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "800" as const,
+    ...Type.title3,
+    fontWeight: "800",
     color: colors.text,
-    marginBottom: 8,
-    letterSpacing: -0.4,
-    textAlign: "center" as const,
+    marginBottom: Space.sm,
+    textAlign: "center",
   },
   emptySubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    textAlign: "center" as const,
+    ...Type.body,
+    color: colors.textTertiary,
+    textAlign: "center",
     lineHeight: 21,
-    marginBottom: 24,
-  },
-  emptyCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    minHeight: 48,
-  },
-  emptyCtaText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: colors.white,
+    marginBottom: Space.xl,
+    maxWidth: 320,
   },
   emptyFootnote: {
-    fontSize: 11,
+    ...Type.caption,
+    fontWeight: "500",
     color: colors.textTertiary,
-    marginTop: 18,
-    textAlign: "center" as const,
+    marginTop: Space.lg,
+    textAlign: "center",
   },
-  // ─── Pro upsell ───
+  // ── Pro upsell ──
   proAnalyticsCard: {
-    borderRadius: 12,
+    borderRadius: Radius.md,
     overflow: "hidden",
-    marginTop: 4,
+    marginTop: Space.xs,
   },
   proAnalyticsGradient: {
-    padding: 16,
+    padding: Space.base,
   },
   proAnalyticsContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: Space.md,
   },
   proAnalyticsInfo: {
     flex: 1,
-    paddingRight: 20,
+    paddingRight: Space.lg,
   },
   proAnalyticsTitle: {
+    ...Type.headline,
     fontSize: 15,
-    fontWeight: "700" as const,
     color: "#fff",
-    letterSpacing: -0.2,
   },
   proAnalyticsDesc: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.75)",
+    ...Type.caption,
+    fontWeight: "500",
+    color: "rgba(255,255,255,0.78)",
     marginTop: 2,
   },
   proAnalyticsLock: {
     position: "absolute",
-    top: 16,
-    right: 16,
+    top: Space.base,
+    right: Space.base,
   },
-  // ─── Detail sheet ───
+  // ── Detail sheet ──
   sheetOverlay: {
     flex: 1,
     backgroundColor: colors.overlay,
@@ -1517,154 +1418,124 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   sheet: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    paddingHorizontal: Space.lg,
+    paddingTop: Space.sm + 2,
     maxHeight: "85%",
+    ...elevation(3, colors),
   },
   sheetHandle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.glassBorder,
+    backgroundColor: colors.fillStrong,
     alignSelf: "center",
-    marginBottom: 14,
+    marginBottom: Space.md + 2,
   },
   sheetHeader: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 16,
+    gap: Space.md,
+    marginBottom: Space.base,
   },
   sheetHeaderText: {
     flex: 1,
   },
   sheetTitle: {
-    fontSize: 20,
-    fontWeight: "800" as const,
+    ...Type.title2,
     color: colors.text,
-    letterSpacing: -0.5,
   },
   sheetSubtitle: {
-    fontSize: 12,
+    ...Type.footnote,
     color: colors.textTertiary,
     marginTop: 3,
   },
   sheetClose: {
     width: 36,
     height: 36,
-    borderRadius: 12,
-    backgroundColor: colors.glassBorder,
+    borderRadius: Radius.sm,
+    backgroundColor: colors.fill,
     justifyContent: "center",
     alignItems: "center",
   },
   sheetStats: {
     flexDirection: "row",
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    paddingVertical: 14,
-    marginBottom: 16,
+    ...surface(colors, 1, Radius.md),
+    paddingVertical: Space.base - 2,
+    marginBottom: Space.base,
   },
   sheetStat: {
     flex: 1,
     alignItems: "center",
   },
   sheetStatValue: {
-    fontSize: 16,
-    fontWeight: "800" as const,
+    ...statNumber(17),
     color: colors.text,
-    letterSpacing: -0.4,
   },
   sheetStatLabel: {
-    fontSize: 9,
+    ...Type.caption,
+    fontSize: 11,
+    fontWeight: "700",
     color: colors.textTertiary,
-    textTransform: "uppercase" as const,
+    textTransform: "uppercase",
     letterSpacing: 0.3,
     marginTop: 3,
   },
   sheetScroll: {
     flexGrow: 0,
-    marginBottom: 12,
+    marginBottom: Space.md,
   },
   sheetExercise: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
+    paddingVertical: Space.md - 2,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
   },
   sheetExerciseHead: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+    gap: Space.sm,
   },
   sheetExerciseName: {
-    fontSize: 14,
-    fontWeight: "700" as const,
+    ...Type.callout,
+    fontWeight: "700",
     color: colors.text,
     flexShrink: 1,
   },
   sheetExerciseSkipped: {
     color: colors.textTertiary,
-    fontStyle: "italic" as const,
+    fontStyle: "italic",
   },
   sheetExerciseMeta: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 10,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "500",
     color: colors.textTertiary,
-  },
-  sheetSkippedTag: {
-    fontSize: 8,
-    fontWeight: "800" as const,
-    color: colors.amberDark,
-    backgroundColor: colors.amberTint,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: "hidden",
   },
   sheetSetRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
-    marginTop: 8,
+    gap: Space.xs + 2,
+    marginTop: Space.sm,
   },
   sheetSetChip: {
-    backgroundColor: colors.glassBorder,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: colors.fill,
+    paddingHorizontal: Space.sm,
+    paddingVertical: Space.xs,
+    borderRadius: Radius.xs,
   },
   sheetSetChipText: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
-    fontWeight: "600" as const,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "600",
     color: colors.textSecondary,
   },
   sheetEmpty: {
-    fontSize: 13,
+    ...Type.subhead,
     color: colors.textTertiary,
-    paddingVertical: 20,
-    textAlign: "center" as const,
-    lineHeight: 19,
-  },
-  deleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.errorBorder,
-    backgroundColor: colors.errorLight,
-    minHeight: 48,
-  },
-  deleteButtonText: {
-    fontSize: 15,
-    fontWeight: "700" as const,
-    color: colors.error,
+    paddingVertical: Space.lg,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
