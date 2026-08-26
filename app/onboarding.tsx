@@ -20,7 +20,7 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { Layout, Motion, Radius, Space, Type, glow, numeric, tint } from "@/constants/theme";
 import { useGym } from "@/providers/GymProvider";
-import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
+import { FitnessGoal, ExperienceLevel, UserProfile, DEFAULT_TRAINING_DAYS } from "@/types";
 import { Button } from "@/components/ui";
 
 const TOTAL_STEPS = 4;
@@ -57,7 +57,7 @@ export default function OnboardingScreen() {
   const [name, setName] = useState("");
   const [goal, setGoal] = useState<FitnessGoal | null>(null);
   const [level, setLevel] = useState<ExperienceLevel | null>(null);
-  const [trainingDays, setTrainingDays] = useState(4);
+  const [trainingDays, setTrainingDays] = useState(DEFAULT_TRAINING_DAYS);
 
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;

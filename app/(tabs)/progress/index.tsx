@@ -53,7 +53,7 @@ import {
   formatRelativeDate,
   formatDuration,
 } from "@/utils/helpers";
-import { MuscleGroup, MUSCLE_GROUP_LABELS, WorkoutHistory } from "@/types";
+import { MuscleGroup, MUSCLE_GROUP_LABELS, WorkoutHistory, DEFAULT_TRAINING_DAYS } from "@/types";
 import { formatVolume, formatWeight } from "@/utils/units";
 import { estimateOneRepMax } from "@/utils/workoutStats";
 import { ACTIVE_BAR_HEIGHT } from "@/components/ActiveWorkoutBar";
@@ -97,7 +97,7 @@ export default function ProgressScreen() {
   const hasHistory = history.length > 0;
 
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
-  const weeklyGoal = profile?.trainingDaysPerWeek ?? 4;
+  const weeklyGoal = profile?.trainingDaysPerWeek ?? DEFAULT_TRAINING_DAYS;
   const weeklyCounts = useMemo(() => getWeeklyWorkoutCounts(8), [getWeeklyWorkoutCounts]);
   const maxWeeklyCount = useMemo(
     () => Math.max(...weeklyCounts.map((w) => w.count), 1),
@@ -925,8 +925,9 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   // ── Card ──
   card: {
+    // No child paints to the card edge, so no clip is needed — and clipping
+    // here would drop the surface shadow on iOS.
     ...surface(colors, 1, Radius.md),
-    overflow: "hidden",
   },
   cardHeaderRow: {
     flexDirection: "row",

@@ -33,7 +33,7 @@ import {
 } from "@/types";
 import { generateId } from "@/utils/helpers";
 import { formatWeight, toDisplayWeight, fromDisplayWeight, trimNumber } from "@/utils/units";
-import { Layout, Space, Type, muscleColor, numeric } from "@/constants/theme";
+import { Layout, Radius, Space, Type, muscleColor, numeric, tint } from "@/constants/theme";
 import { Tag } from "@/components/ui";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
@@ -753,6 +753,18 @@ export default function RoutineDetailScreen() {
     return allExercises.filter((e) => e.muscleGroup === selectedMuscle);
   }, [allExercises, selectedMuscle, trimmedQuery]);
 
+  /**
+   * Whether the query names something that doesn't exist yet, i.e. the
+   * "create a custom exercise" path is live. Compared against the *trimmed*
+   * query so a trailing space doesn't defeat the exact-match check.
+   */
+  const canCreateCustom = useMemo(
+    () =>
+      trimmedQuery.length > 0 &&
+      !filteredExercises.some((e) => e.name.toLowerCase() === trimmedQuery),
+    [trimmedQuery, filteredExercises]
+  );
+
   /** Exercises already in this routine can't be added twice. */
   const addedNames = useMemo(
     () => new Set((routine?.exercises ?? []).map((e) => e.exerciseName.toLowerCase())),
@@ -981,7 +993,9 @@ export default function RoutineDetailScreen() {
               contentContainerStyle={styles.colorPickerRow}
             >
               {REST_TIMER_DURATIONS.map((dur) => {
-                const isActive = (routine.restTimerDuration ?? 60) === dur;
+                // Falls back to the user's configured default, not a hardcoded
+                // 60s — otherwise the highlighted pill disagrees with the timer.
+                const isActive = (routine.restTimerDuration ?? settings.defaultRestTimer) === dur;
                 return (
                   <TouchableOpacity
                     key={dur}
@@ -1122,7 +1136,10 @@ export default function RoutineDetailScreen() {
             </View>
           </View>
 
-          {trimmedQuery.length === 0 && (
+          {canCreateCustom && (
+            <Text style={styles.groupPickerLabel}>MUSCLE GROUP FOR THE NEW EXERCISE</Text>
+          )}
+          {(trimmedQuery.length === 0 || canCreateCustom) && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleScroll} contentContainerStyle={styles.muscleScrollContent}>
             {MUSCLE_GROUPS.map((mg) => (
               <TouchableOpacity
@@ -1177,17 +1194,23 @@ export default function RoutineDetailScreen() {
           )}
 
           <ScrollView style={styles.exercisesList} contentContainerStyle={styles.exercisesListContent}>
-            {searchQuery.trim().length > 0 && !filteredExercises.some((e) => e.name.toLowerCase() === searchQuery.toLowerCase()) && (
+            {canCreateCustom && (
               <TouchableOpacity
                 style={styles.customExerciseRow}
-                onPress={() => {
-                  handleAddCustom(searchQuery.trim());
-                }}
+                onPress={() => handleAddCustom(searchQuery.trim())}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Create ${searchQuery.trim()} as a custom ${MUSCLE_GROUP_LABELS[selectedMuscle]} exercise and add it`}
               >
                 <Plus size={18} color={colors.primary} />
-                <Text style={styles.customExerciseText}>
-                  Add &ldquo;{searchQuery.trim()}&rdquo; as custom exercise
-                </Text>
+                <View style={styles.exerciseListInfo}>
+                  <Text style={styles.customExerciseText} numberOfLines={1}>
+                    Create &ldquo;{searchQuery.trim()}&rdquo;
+                  </Text>
+                  <Text style={styles.exerciseListGroup}>
+                    New custom exercise · {MUSCLE_GROUP_LABELS[selectedMuscle]}
+                  </Text>
+                </View>
               </TouchableOpacity>
             )}
 
@@ -1249,6 +1272,13 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   exerciseListItemAdded: {
     opacity: 0.5,
+  },
+  groupPickerLabel: {
+    ...Type.overline,
+    fontSize: 10,
+    color: colors.textTertiary,
+    paddingHorizontal: Layout.gutter,
+    paddingBottom: Space.xs + 2,
   },
   searchCount: {
     ...Type.caption,
@@ -1632,14 +1662,15 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   customExerciseRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: `${colors.primary}0F`,
-    borderRadius: 8,
-    marginBottom: 8,
+    gap: Space.md,
+    paddingVertical: Space.md,
+    paddingHorizontal: Space.base,
+    backgroundColor: tint(colors.primary, 0.08),
+    borderRadius: Radius.sm,
+    marginBottom: Space.sm,
     borderWidth: 1,
-    borderColor: `${colors.primary}26`,
+    borderColor: tint(colors.primary, 0.22),
+    minHeight: Layout.rowHeight,
   },
   customExerciseText: {
     fontSize: 15,

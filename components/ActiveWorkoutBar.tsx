@@ -93,6 +93,10 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     position: "absolute",
     left: Space.md,
     right: Space.md,
+    // Holds the shadow, because `bar` has to clip its progress track.
+    borderRadius: Radius.md,
+    backgroundColor: colors.primary,
+    ...elevation(3, colors),
   },
   bar: {
     flexDirection: "row",
@@ -104,7 +108,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingHorizontal: Space.md,
     minHeight: ACTIVE_BAR_HEIGHT - 10,
     overflow: "hidden",
-    ...elevation(3, colors),
   },
   iconBox: {
     width: 34,

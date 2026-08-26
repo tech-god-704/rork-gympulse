@@ -7,7 +7,7 @@
     "start-web": "bunx rork start -p 9g2myz6gzt5epfyladwym --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p 9g2myz6gzt5epfyladwym --web --tunnel",
     "lint": "expo lint",
-    "test": "bun run utils/workoutStats.test.ts",
+    "test": "bun utils/workoutStats.test.ts && bun constants/theme.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

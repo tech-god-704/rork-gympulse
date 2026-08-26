@@ -255,7 +255,8 @@ function ExerciseCard({
     : `${completedSets} of ${totalSets} sets complete`;
 
   return (
-    <View style={styles.swipeWrapper}>
+    <View style={styles.shadowHost}>
+      <View style={styles.swipeWrapper}>
       {/* Skip action behind */}
       <View style={[styles.skipAction, isSkipped && styles.skipActionRestore]}>
         <TouchableOpacity
@@ -525,6 +526,7 @@ function ExerciseCard({
           </View>
         )}
       </Animated.View>
+      </View>
     </View>
   );
 }
@@ -532,6 +534,16 @@ function ExerciseCard({
 export default React.memo(ExerciseCard);
 
 const createStyles = (colors: ColorScheme) => StyleSheet.create({
+  /**
+    * Carries the elevation. It must not clip: on iOS `overflow: hidden` sets
+    * masksToBounds, which clips the layer's own shadow as well as its children,
+    * so a card that both rounds and clips loses its shadow entirely.
+    */
+  shadowHost: {
+    borderRadius: Radius.md,
+    backgroundColor: colors.surfaceBase,
+    ...elevation(1, colors),
+  },
   swipeWrapper: {
     borderRadius: Radius.md,
     overflow: "hidden",
@@ -570,8 +582,9 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   container: {
     borderRadius: Radius.md,
     borderWidth: Layout.hairline,
+    // Clipping stays here so the expand bar respects the rounded bottom
+    // corners; the shadow lives on `shadowHost` above.
     overflow: "hidden",
-    ...elevation(1, colors),
   },
   content: {
     flexDirection: "row",

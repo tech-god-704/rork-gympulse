@@ -210,6 +210,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dataVersion: CURRENT_DATA_VERSION,
 };
 
+/** Fallback weekly training goal when a profile somehow has none. */
+export const DEFAULT_TRAINING_DAYS = 4;
+
 export const GOAL_LABELS: Record<FitnessGoal, string> = {
   build_muscle: "Build Muscle",
   lose_weight: "Lose Weight",

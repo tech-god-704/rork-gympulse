@@ -37,7 +37,14 @@ import {
   formatRelativeDate,
   formatClock,
 } from "@/utils/helpers";
-import { WeekDay, Routine, WorkoutHistory, MUSCLE_GROUP_LABELS, MuscleGroup } from "@/types";
+import {
+  WeekDay,
+  Routine,
+  WorkoutHistory,
+  MUSCLE_GROUP_LABELS,
+  MuscleGroup,
+  DEFAULT_TRAINING_DAYS,
+} from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
 import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
@@ -142,7 +149,7 @@ export default function TodayScreen() {
   }, [currentSession, activeRoutine, colors]);
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
-  const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
+  const weeklyGoal = profile?.trainingDaysPerWeek ?? DEFAULT_TRAINING_DAYS;
   const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
 
   const todayWeekDay = getTodayWeekDay() as WeekDay;

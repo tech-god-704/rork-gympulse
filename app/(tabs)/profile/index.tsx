@@ -540,7 +540,7 @@ export default function ProfileScreen() {
                     options={[
                       { value: 8, label: "8a" },
                       { value: 12, label: "12p" },
-                      { value: 17, label: "5p" },
+                      { value: 18, label: "6p" },
                       { value: 20, label: "8p" },
                     ]}
                     value={settings.reminderHour}
