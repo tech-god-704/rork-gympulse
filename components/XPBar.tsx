@@ -23,7 +23,7 @@ export default function XPBar({ totalXP, level, compact = false }: XPBarProps) {
       duration: 800,
       useNativeDriver: false,
     }).start();
-  }, [progress.fraction]);
+  }, [progress.fraction, fillAnim]);
 
   const fillWidth = fillAnim.interpolate({
     inputRange: [0, 1],

@@ -16,12 +16,13 @@ import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
+import { ACTIVE_BAR_HEIGHT } from "@/components/ActiveWorkoutBar";
 import { MuscleGroup, MUSCLE_GROUP_LABELS, WEEKDAY_SHORT } from "@/types";
 import { estimateRoutineDuration } from "@/utils/helpers";
 import { WORKOUT_SPLITS, ROUTINE_NAME_SUGGESTIONS, type WorkoutSplit } from "@/mocks/exercises";
 
 export default function RoutinesScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const ROUTINE_COLORS: string[] = [
@@ -35,7 +36,7 @@ export default function RoutinesScreen() {
 
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { routines, addRoutine, addRoutinesFromTemplates, reorderRoutine } = useGym();
+  const { routines, addRoutine, addRoutinesFromTemplates, reorderRoutine, currentSession } = useGym();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
@@ -92,7 +93,10 @@ export default function RoutinesScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: currentSession ? 40 + ACTIVE_BAR_HEIGHT : 40 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {routines.length === 0 ? (
@@ -124,7 +128,8 @@ export default function RoutinesScreen() {
           <>
             {routines.map((routine, idx) => {
               const muscleGroups = getMuscleGroups(routine);
-              const duration = estimateRoutineDuration(routine.exercises.length);
+              const setCount = routine.exercises.reduce((sum, e) => sum + e.sets, 0);
+              const duration = estimateRoutineDuration(routine.exercises.length, setCount);
               const routineColor = routine.color || ROUTINE_COLORS[idx % ROUTINE_COLORS.length];
               const initial = routine.name ? routine.name.charAt(0).toUpperCase() : "R";
               return (
@@ -142,7 +147,7 @@ export default function RoutinesScreen() {
                   <View style={styles.routineInfo}>
                     <Text style={styles.routineName}>{routine.name}</Text>
                     <Text style={styles.routineDetail}>
-                      {routine.exercises.length} exercises · ~{duration + 10} min
+                      {routine.exercises.length} exercises · {setCount} sets · ~{duration} min
                       {routine.scheduledDays && routine.scheduledDays.length > 0
                         ? ` · ${routine.scheduledDays.map((d) => WEEKDAY_SHORT[d]).join(", ")}`
                         : ""}

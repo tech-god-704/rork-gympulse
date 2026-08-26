@@ -22,7 +22,7 @@ import { useGym } from "@/providers/GymProvider";
 import { FitnessGoal, ExperienceLevel, UserProfile } from "@/types";
 
 export default function OnboardingScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const GOALS: { key: FitnessGoal; label: string; emoji: string; desc: string; color: string }[] = [
@@ -167,10 +167,10 @@ export default function OnboardingScreen() {
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <Text style={styles.stepTitle}>
-        What's your{"\n"}
+        What&apos;s your{"\n"}
         <Text style={styles.stepTitleAccent}>mission</Text>?
       </Text>
-      <Text style={styles.stepSubtitle}>We'll shape your experience around it.</Text>
+      <Text style={styles.stepSubtitle}>We&apos;ll shape your experience around it.</Text>
       <View style={styles.optionList}>
         {GOALS.map((g) => {
           const selected = goal === g.key;

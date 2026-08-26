@@ -7,7 +7,6 @@ import {
   ScrollView,
   Platform,
   Animated,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,8 +17,6 @@ import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
 import { SubscriptionPlan, PREMIUM_FEATURES } from "@/types";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface PlanOption {
   key: SubscriptionPlan;
@@ -60,8 +57,8 @@ const PLANS: PlanOption[] = [
 export default function PaywallScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors, isDark } = useTheme();
-  const { premium, subscribeToPlan, dismissPaywall } = useGym();
+  const { colors } = useTheme();
+  const { subscribeToPlan, dismissPaywall } = useGym();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("yearly");
@@ -87,7 +84,7 @@ export default function PaywallScreen() {
     );
     pulse.start();
     return () => pulse.stop();
-  }, []);
+  }, [fadeAnim, slideAnim, pulseAnim]);
 
   const handleSubscribe = async () => {
     if (Platform.OS !== "web") {

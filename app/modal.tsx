@@ -1,83 +1,92 @@
-// template
+import React, { useMemo } from "react";
 import { router } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import {
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTheme } from "@/providers/ThemeProvider";
+import { type ColorScheme } from "@/constants/colors";
 
 export default function ModalScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <Modal
       animationType="fade"
-      transparent={true}
-      visible={true}
+      transparent
+      visible
       onRequestClose={() => router.back()}
     >
       <Pressable style={styles.overlay} onPress={() => router.back()}>
         <View style={styles.modalContent}>
-          <Text style={styles.title}>Modal</Text>
+          <Text style={styles.title}>Nothing here yet</Text>
           <Text style={styles.description}>
-            This is an example modal with proper fade animation. You can edit it
-            in app/modal.tsx.
+            This screen is a placeholder. Head back to keep training.
           </Text>
 
           <TouchableOpacity
             style={styles.closeButton}
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
           >
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
       </Pressable>
-
-      {/* Use a light status bar on iOS to account for the black space above the modal */}
-      <StatusBar style={Platform.OS === "ios" ? "light" : "auto"} />
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ColorScheme) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: colors.overlay,
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "white",
-    borderRadius: 20,
+    backgroundColor: colors.cardBackground,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
     padding: 24,
     margin: 20,
     alignItems: "center",
-    minWidth: 300,
+    minWidth: 280,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
+    fontSize: 19,
+    fontWeight: "800" as const,
+    color: colors.text,
+    marginBottom: 10,
+    letterSpacing: -0.3,
   },
   description: {
-    textAlign: "center",
-    marginBottom: 24,
-    color: "#666",
+    textAlign: "center" as const,
+    marginBottom: 22,
+    color: colors.textSecondary,
+    fontSize: 14,
     lineHeight: 20,
   },
   closeButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: colors.primary,
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 10,
-    minWidth: 100,
+    minWidth: 120,
+    minHeight: 48,
+    justifyContent: "center",
   },
   closeButtonText: {
-    color: "white",
-    fontWeight: "600",
-    textAlign: "center",
+    color: colors.white,
+    fontWeight: "700" as const,
+    fontSize: 15,
+    textAlign: "center" as const,
   },
 });

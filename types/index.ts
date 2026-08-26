@@ -78,8 +78,11 @@ export interface Routine {
 export interface SetData {
   setNumber: number;
   reps: number;
+  /** Stored in pounds. See utils/units.ts — display unit is a presentation concern. */
   weight: number;
   completed: boolean;
+  /** When this specific set was checked off. Drives accurate workout duration. */
+  completedAt?: string;
 }
 
 export interface WorkoutSessionExercise {
@@ -89,8 +92,15 @@ export interface WorkoutSessionExercise {
   sets: number;
   reps: number;
   weight: number;
+  /** "Resolved" — either genuinely finished or deliberately skipped. Drives progress UI. */
   completed: boolean;
   completedAt?: string;
+  /**
+   * Explicitly skipped by the user. A skipped exercise resolves the card but
+   * contributes nothing to volume, PRs, sets or XP — previously skipping marked
+   * every set complete, which silently inflated all four.
+   */
+  skipped?: boolean;
   setDetails?: SetData[];
 }
 
@@ -104,13 +114,21 @@ export interface WorkoutSession {
   isComplete: boolean;
 }
 
+export interface LoggedSet {
+  weight: number;
+  reps: number;
+}
+
 export interface WorkoutHistoryExercise {
   exerciseName: string;
   muscleGroup: MuscleGroup;
   setsCompleted: number;
   totalSets: number;
   volume: number; // weight × reps summed across completed sets
-  bestSet: { weight: number; reps: number };
+  bestSet: LoggedSet;
+  /** Every completed set, so history is self-sufficient and can be recomputed exactly. */
+  sets?: LoggedSet[];
+  skipped?: boolean;
 }
 
 export interface WorkoutHistory {
@@ -118,13 +136,38 @@ export interface WorkoutHistory {
   routineId: string;
   routineName: string;
   completedAt: string;
+  /** Exercises in the routine. Kept for backwards compatibility with old entries. */
   exerciseCount: number;
   duration: number;
   totalVolume?: number; // total lbs lifted in this workout
   muscleGroups?: MuscleGroup[]; // unique muscle groups hit
   exercises?: WorkoutHistoryExercise[]; // per-exercise breakdown
   newPRs?: number; // count of new PRs set in this workout
+  /** Exercises actually worked (excludes skipped and untouched). */
+  completedExercises?: number;
+  skippedExercises?: number;
+  totalSets?: number;
+  completedSets?: number;
+  /** XP awarded at the time, so history stays replayable after a deletion. */
+  xpAwarded?: number;
 }
+
+/** A personal record for one exercise. Weight in pounds. */
+export interface PersonalRecord {
+  weight: number;
+  reps: number;
+  estimated1RM: number;
+  date: string;
+}
+
+/** The most recent completed sets for one exercise, used to pre-fill next time. */
+export interface ExercisePerformance {
+  sets: LoggedSet[];
+  date: string;
+}
+
+export type PerformanceMap = Record<string, ExercisePerformance>;
+export type PRMap = Record<string, PersonalRecord>;
 
 export interface StreakData {
   currentStreak: number;
@@ -135,6 +178,10 @@ export interface StreakData {
 
 export type WeightUnit = "lbs" | "kg";
 export type AppTheme = "light" | "dark" | "system";
+export type WeekStart = "sunday" | "monday";
+
+/** Bumped when stored data needs a one-time migration. */
+export const CURRENT_DATA_VERSION = 2;
 
 export interface AppSettings {
   weightUnit: WeightUnit;
@@ -143,15 +190,24 @@ export interface AppSettings {
   showConfetti: boolean;
   autoStartRestTimer: boolean;
   notificationsEnabled: boolean;
+  /** Weekly stats and the activity calendar both honour this. */
+  weekStartsOn: WeekStart;
+  /** Hour of day (0-23) for the daily training reminder. */
+  reminderHour: number;
+  dataVersion: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   weightUnit: "lbs",
   defaultRestTimer: 60,
-  theme: "light",
+  // app.json declares userInterfaceStyle "automatic", so follow the system by default.
+  theme: "system",
   showConfetti: true,
   autoStartRestTimer: true,
   notificationsEnabled: true,
+  weekStartsOn: "monday",
+  reminderHour: 18,
+  dataVersion: CURRENT_DATA_VERSION,
 };
 
 export const GOAL_LABELS: Record<FitnessGoal, string> = {

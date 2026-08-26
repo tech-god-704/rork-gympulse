@@ -10,20 +10,36 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Flame, Target, Play, X, Clock, Dumbbell, ChevronRight } from "lucide-react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { Flame, Target, Play, X, Clock, Dumbbell, ChevronRight, CheckCircle2 } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { type ColorScheme } from "@/constants/colors";
 import { useTheme } from "@/providers/ThemeProvider";
 import { useGym } from "@/providers/GymProvider";
-import { getTodayWeekDay, getToday, formatDate } from "@/utils/helpers";
-import { WeekDay } from "@/types";
+import {
+  getTodayWeekDay,
+  getToday,
+  estimateRoutineDuration,
+  formatRelativeDate,
+  formatClock,
+} from "@/utils/helpers";
+import { WeekDay, Routine, WorkoutHistory } from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
 import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
 import ConfettiOverlay from "@/components/ConfettiOverlay";
 import XPBar from "@/components/XPBar";
-import { getStreakMultiplier, getLevelDefinition, getAchievementById, calculateXPGain, getLevelForXP } from "@/utils/gamification";
+import {
+  getStreakMultiplier,
+  getLevelDefinition,
+  getAchievementById,
+  calculateXPGain,
+  getLevelForXP,
+  buildAchievementContext,
+  checkAchievements,
+} from "@/utils/gamification";
+import { summarizeSession, sessionProgress, streakFromDates } from "@/utils/workoutStats";
+import { formatVolume } from "@/utils/units";
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace("#", "");
@@ -40,10 +56,38 @@ function isBlueish(hex: string): boolean {
   return b > 150 && b > r * 1.3 && b > g * 1.2;
 }
 
+interface CompletionStats {
+  exercises: number;
+  duration: number;
+  expectedStreak: number;
+  totalVolume: number;
+  newPRs: number;
+  xpGained: number;
+  streakMultiplier: number;
+  leveledUp: boolean;
+  newLevel: number;
+  newLevelTitle: string;
+  newAchievementNames: string[];
+}
+
+const EMPTY_STATS: CompletionStats = {
+  exercises: 0,
+  duration: 0,
+  expectedStreak: 0,
+  totalVolume: 0,
+  newPRs: 0,
+  xpGained: 0,
+  streakMultiplier: 1,
+  leveledUp: false,
+  newLevel: 0,
+  newLevelTitle: "",
+  newAchievementNames: [],
+};
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const {
     profile,
     routines,
@@ -54,8 +98,12 @@ export default function TodayScreen() {
     skipExercise,
     toggleSetComplete,
     updateSetWeight,
+    updateSetReps,
+    addSetToExercise,
+    removeSetFromExercise,
     completeWorkout,
     cancelWorkout,
+    getLiveSession,
     getWorkoutsThisWeek,
     refreshData,
     history,
@@ -70,6 +118,10 @@ export default function TodayScreen() {
 
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restTimerDuration, setRestTimerDuration] = useState(settings.defaultRestTimer);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [completionStats, setCompletionStats] = useState<CompletionStats>(EMPTY_STATS);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Per-routine rest timer overrides
   const activeRoutine = useMemo(() => {
@@ -88,10 +140,6 @@ export default function TodayScreen() {
     });
     return map;
   }, [activeRoutine]);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [completionStats, setCompletionStats] = useState({ exercises: 0, duration: 0, expectedStreak: 0, totalVolume: 0, newPRs: 0, xpGained: 0, streakMultiplier: 1, leveledUp: false, newLevel: 0, newLevelTitle: "", newAchievementNames: [] as string[] });
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
   const weeklyGoal = profile?.trainingDaysPerWeek ?? 5;
@@ -103,23 +151,9 @@ export default function TodayScreen() {
     return routines.find((r) => r.scheduledDays?.includes(todayWeekDay));
   }, [routines, todayWeekDay]);
 
-  const completedCount = useMemo(
-    () => currentSession?.exercises.filter((e) => e.completed).length ?? 0,
-    [currentSession]
-  );
-  const totalCount = currentSession?.exercises.length ?? 0;
-  const progress = totalCount > 0 ? completedCount / totalCount : 0;
-
-  // Total volume lifted (weight x reps for completed sets)
-  const totalVolume = useMemo(() => {
-    if (!currentSession) return 0;
-    return currentSession.exercises.reduce((vol, ex) => {
-      const sets = ex.setDetails || [];
-      return vol + sets
-        .filter((s) => s.completed)
-        .reduce((sum, s) => sum + s.weight * s.reps, 0);
-    }, 0);
-  }, [currentSession]);
+  // Progress is measured in sets, not exercises — a 5-exercise workout with
+  // 3 of 4 sets done on each is 75% through, not 0%.
+  const progress = useMemo(() => sessionProgress(currentSession), [currentSession]);
 
   const today = new Date();
   const dayName = today.toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
@@ -135,149 +169,179 @@ export default function TodayScreen() {
     }
     const startTime = new Date(sessionStartedAt).getTime();
     const updateElapsed = () => {
-      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTime) / 1000)));
     };
     updateElapsed();
     const interval = setInterval(updateElapsed, 1000);
     return () => clearInterval(interval);
   }, [sessionStartedAt]);
 
-  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  /**
+   * Preview the exact figures `completeWorkout` is about to record.
+   * Both paths run `summarizeSession`, so the celebration can no longer
+   * advertise volume, PRs or XP that were never awarded.
+   */
+  const triggerCompletionCheck = useCallback(
+    (allComplete: boolean) => {
+      // Read through the ref: `currentSession` is still the pre-toggle value on
+      // the tick where the final set is checked off, which would drop that set
+      // from every number shown in the celebration.
+      const session = getLiveSession() ?? currentSession;
+      if (!allComplete || !session) return;
 
-  const triggerCompletionCheck = useCallback((allComplete: boolean) => {
-    if (allComplete) {
-      const startTime = currentSession ? new Date(currentSession.startedAt).getTime() : Date.now();
-      const duration = Math.round((Date.now() - startTime) / 60000);
-      // Calculate expected streak after this workout completes
-      const today = getToday();
-      const yd = new Date(); yd.setDate(yd.getDate() - 1);
-      const yesterday = formatDate(yd);
-      let expectedStreak = streak.currentStreak;
-      if (streak.lastWorkoutDate === today) {
-        // already counted today
-      } else if (streak.lastWorkoutDate === yesterday || streak.lastWorkoutDate === null) {
-        expectedStreak = streak.currentStreak + 1;
-      } else {
-        expectedStreak = 1;
+      const todayIso = getToday();
+      const summary = summarizeSession(session, personalRecords, { today: todayIso });
+
+      // Every exercise skipped: nothing was performed, so there is nothing to
+      // celebrate and nothing gets logged.
+      if (summary.completedSets === 0) {
+        completeWorkout();
+        Alert.alert(
+          "Nothing logged",
+          "Every exercise was skipped, so this session wasn't added to your history."
+        );
+        return;
       }
-      // Calculate volume and PR count for this workout
-      let sessionVolume = 0;
-      let sessionPRs = 0;
-      if (currentSession) {
-        currentSession.exercises.forEach((ex) => {
-          const sets = ex.setDetails || [];
-          sets.forEach((s) => {
-            if (s.completed) {
-              sessionVolume += s.weight * s.reps;
-              if (s.weight > 0) {
-                const est1RM = s.weight * (1 + s.reps / 30);
-                const existing = personalRecords[ex.exerciseName];
-                if (!existing || est1RM > existing.estimated1RM) {
-                  sessionPRs++;
-                }
-              }
-            }
-          });
-        });
-      }
-      // Pre-calculate XP for confetti display
-      const completedSetsCount = currentSession
-        ? currentSession.exercises.reduce((sum, ex) => {
-            return sum + (ex.setDetails || []).filter((s) => s.completed).length;
-          }, 0)
-        : 0;
-      const xpBreakdown = calculateXPGain(completedSetsCount, sessionPRs, sessionVolume, expectedStreak);
+
+      const projectedDates = [...new Set([...streak.completedDates, todayIso])];
+      const expectedStreak = streakFromDates(projectedDates, todayIso).currentStreak;
+
+      const xpBreakdown = calculateXPGain(
+        summary.completedSets,
+        summary.newPRCount,
+        summary.totalVolume,
+        expectedStreak
+      );
       const previewTotalXP = gamification.totalXP + xpBreakdown.total;
       const previewLevel = getLevelForXP(previewTotalXP);
-      const previewLeveledUp = previewLevel > gamification.level;
-      const previewLevelDef = getLevelDefinition(previewLevel);
+
+      // Same provisional entry the provider will persist, so achievement
+      // unlocks shown here are the ones that actually fire.
+      const provisionalEntry: WorkoutHistory = {
+        id: "preview",
+        routineId: session.routineId,
+        routineName: session.routineName,
+        completedAt: new Date().toISOString(),
+        exerciseCount: summary.exerciseCount,
+        completedExercises: summary.completedExercises,
+        duration: summary.durationMinutes,
+        totalVolume: summary.totalVolume,
+        muscleGroups: summary.muscleGroups,
+        exercises: summary.exercises,
+        newPRs: summary.newPRCount,
+      };
+      const ctx = buildAchievementContext(
+        [provisionalEntry, ...history],
+        {
+          currentStreak: expectedStreak,
+          longestStreak: Math.max(streak.longestStreak, expectedStreak),
+          lastWorkoutDate: todayIso,
+          completedDates: projectedDates,
+        },
+        { ...personalRecords, ...summary.prUpdates },
+        previewLevel,
+        summary.totalVolume,
+        summary.newPRCount
+      );
+      const unlockedNames = checkAchievements(
+        ctx,
+        gamification.achievements.map((a) => a.id)
+      )
+        .map((id) => getAchievementById(id)?.name)
+        .filter((n): n is string => Boolean(n));
 
       setCompletionStats({
-        exercises: totalCount,
-        duration: Math.max(duration, 1),
+        exercises: summary.completedExercises,
+        duration: summary.durationMinutes,
         expectedStreak,
-        totalVolume: sessionVolume,
-        newPRs: sessionPRs,
+        totalVolume: summary.totalVolume,
+        newPRs: summary.newPRCount,
         xpGained: xpBreakdown.total,
         streakMultiplier: xpBreakdown.consistencyMultiplier,
-        leveledUp: previewLeveledUp,
+        leveledUp: previewLevel > gamification.level,
         newLevel: previewLevel,
-        newLevelTitle: previewLevelDef.title,
-        newAchievementNames: [],
+        newLevelTitle: getLevelDefinition(previewLevel).title,
+        newAchievementNames: unlockedNames,
       });
+
       setTimeout(() => {
         if (settings.showConfetti) {
           setShowConfetti(true);
         } else {
-          // Skip confetti, go straight to completing
           completeWorkout();
         }
         if (Platform.OS !== "web") {
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
       }, 400);
-    }
-  }, [currentSession, totalCount, streak, personalRecords, settings.showConfetti, completeWorkout, gamification]);
+    },
+    [currentSession, getLiveSession, streak, personalRecords, history, settings.showConfetti, completeWorkout, gamification]
+  );
 
   const handleToggleExercise = useCallback(
     (routineExerciseId: string) => {
-      const allComplete = toggleExerciseComplete(routineExerciseId);
-      triggerCompletionCheck(allComplete);
+      triggerCompletionCheck(toggleExerciseComplete(routineExerciseId));
     },
     [toggleExerciseComplete, triggerCompletionCheck]
   );
 
   const handleToggleSet = useCallback(
     (routineExerciseId: string, setNumber: number) => {
-      const allComplete = toggleSetComplete(routineExerciseId, setNumber);
-      triggerCompletionCheck(allComplete);
+      triggerCompletionCheck(toggleSetComplete(routineExerciseId, setNumber));
     },
     [toggleSetComplete, triggerCompletionCheck]
-  );
-
-  const handleUpdateSetWeight = useCallback(
-    (routineExerciseId: string, setNumber: number, weight: number) => {
-      updateSetWeight(routineExerciseId, setNumber, weight);
-    },
-    [updateSetWeight]
-  );
-
-  const handleSkipExercise = useCallback(
-    (routineExerciseId: string) => {
-      skipExercise(routineExerciseId);
-    },
-    [skipExercise]
   );
 
   const handleRestTimer = useCallback(
     (seconds?: number) => {
       if (!routineRestEnabled) return;
-      setRestTimerDuration(seconds ?? activeRoutine?.restTimerDuration ?? 60);
+      setRestTimerDuration(seconds ?? activeRoutine?.restTimerDuration ?? settings.defaultRestTimer);
       setShowRestTimer(true);
     },
-    [routineRestEnabled, activeRoutine?.restTimerDuration]
+    [routineRestEnabled, activeRoutine?.restTimerDuration, settings.defaultRestTimer]
   );
 
   const handleDismissConfetti = useCallback(() => {
     setShowConfetti(false);
     completeWorkout();
-    // Show paywall after workout if conditions are met
     if (shouldShowPaywall()) {
       setTimeout(() => router.push("/paywall"), 600);
     }
   }, [completeWorkout, shouldShowPaywall, router]);
 
+  const beginWorkout = useCallback(
+    (routine: Routine) => {
+      const started = startWorkout(routine);
+      if (!started) {
+        Alert.alert("Nothing to do yet", "Add at least one exercise to this routine before starting it.");
+        return;
+      }
+      if (Platform.OS !== "web") {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+    },
+    [startWorkout]
+  );
+
   const handleStartWorkout = useCallback(
     (routineId: string) => {
       const routine = routines.find((r) => r.id === routineId);
-      if (routine) {
-        startWorkout(routine);
-        if (Platform.OS !== "web") {
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        }
+      if (!routine) return;
+      // Starting a second workout would silently discard the first.
+      if (currentSession) {
+        Alert.alert(
+          "Workout in progress",
+          `“${currentSession.routineName}” is still running. Starting a new one discards it.`,
+          [
+            { text: "Keep current", style: "cancel" },
+            { text: "Discard & start", style: "destructive", onPress: () => beginWorkout(routine) },
+          ]
+        );
+        return;
       }
+      beginWorkout(routine);
     },
-    [routines, startWorkout]
+    [routines, currentSession, beginWorkout]
   );
 
   const handleCancelWorkout = useCallback(() => {
@@ -306,12 +370,25 @@ export default function TodayScreen() {
     setTimeout(() => setRefreshing(false), 600);
   }, [refreshData]);
 
+  const routineMeta = useCallback((routine: Routine) => {
+    const setCount = routine.exercises.reduce((sum, e) => sum + e.sets, 0);
+    const mins = estimateRoutineDuration(routine.exercises.length, setCount);
+    return `${routine.exercises.length} exercises · ${setCount} sets · ~${mins} min`;
+  }, []);
+
+  const lastWorkout = history[0];
+  const trainedToday =
+    lastWorkout != null &&
+    new Date(lastWorkout.completedAt).toDateString() === new Date().toDateString();
+  const otherRoutines = routines.filter((r) => r.id !== todaysRoutine?.id && r.exercises.length > 0);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.indigo} />
         }
@@ -324,30 +401,36 @@ export default function TodayScreen() {
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <View
-              style={[styles.statIconBg, { backgroundColor: colors.amberLight }]}
-            >
+          <View
+            style={styles.statCard}
+            accessible
+            accessibilityLabel={`Current streak: ${streak.currentStreak} days`}
+          >
+            <View style={[styles.statIconBg, { backgroundColor: colors.amberLight }]}>
               <Flame size={22} color={colors.amber} />
             </View>
-            <View>
-              <Text style={styles.statValue}>
+            <View style={styles.statText}>
+              <Text style={styles.statValue} numberOfLines={1}>
                 {streak.currentStreak}
                 {streak.currentStreak >= 3 && (
-                  <Text style={[styles.statLabel, { color: colors.amber }]}> {getStreakMultiplier(streak.currentStreak)}x</Text>
+                  <Text style={[styles.statMultiplier, { color: colors.amber }]}>
+                    {" "}{getStreakMultiplier(streak.currentStreak)}x
+                  </Text>
                 )}
               </Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
           </View>
-          <View style={styles.statCard}>
-            <View
-              style={[styles.statIconBg, { backgroundColor: colors.primaryUltraLight }]}
-            >
+          <View
+            style={styles.statCard}
+            accessible
+            accessibilityLabel={`${workoutsThisWeek} of ${weeklyGoal} training days this week`}
+          >
+            <View style={[styles.statIconBg, { backgroundColor: colors.primaryUltraLight }]}>
               <Target size={22} color={colors.indigo} />
             </View>
-            <View>
-              <Text style={styles.statValue}>{workoutsThisWeek}/{weeklyGoal}</Text>
+            <View style={styles.statText}>
+              <Text style={styles.statValue} numberOfLines={1}>{workoutsThisWeek}/{weeklyGoal}</Text>
               <Text style={styles.statLabel}>This Week</Text>
             </View>
           </View>
@@ -361,37 +444,43 @@ export default function TodayScreen() {
         {currentSession ? (
           <View>
             {/* Hero Workout Card */}
-            <View
-              style={[styles.heroCard, { backgroundColor: colors.primary }]}
-            >
+            <View style={[styles.heroCard, { backgroundColor: colors.primary }]}>
               <View style={styles.heroContent}>
                 <View style={styles.heroLeft}>
-                  <Text style={styles.heroLabel}>TODAY'S WORKOUT</Text>
-                  <Text style={styles.heroTitle}>{currentSession.routineName}</Text>
+                  <Text style={styles.heroLabel}>TODAY&apos;S WORKOUT</Text>
+                  <Text style={styles.heroTitle} numberOfLines={2}>{currentSession.routineName}</Text>
                   <View style={styles.heroProgressRow}>
                     <View style={styles.heroProgressBg}>
-                      <View style={[styles.heroProgressFill, { width: `${progress * 100}%` }]} />
+                      <View style={[styles.heroProgressFill, { width: `${progress.fraction * 100}%` }]} />
                     </View>
-                    <Text style={styles.heroProgressText}>{completedCount}/{totalCount}</Text>
+                    <Text style={styles.heroProgressText}>
+                      {progress.completedSets}/{progress.totalSets}
+                    </Text>
                   </View>
                   <View style={styles.heroMetaRow}>
-                    {elapsedSeconds > 0 && (
-                      <View style={styles.heroTimerRow}>
-                        <Clock size={12} color="rgba(255,255,255,0.5)" />
-                        <Text style={styles.heroTimerText}>
-                          {elapsedMinutes > 0 ? `${elapsedMinutes} min` : `${elapsedSeconds}s`}
-                        </Text>
-                      </View>
-                    )}
-                    {totalVolume > 0 && (
+                    <View style={styles.heroTimerRow}>
+                      <Clock size={12} color="rgba(255,255,255,0.55)" />
+                      <Text style={styles.heroTimerText}>{formatClock(elapsedSeconds)}</Text>
+                    </View>
+                    <View style={styles.heroTimerRow}>
+                      <CheckCircle2 size={12} color="rgba(255,255,255,0.55)" />
                       <Text style={styles.heroTimerText}>
-                        {totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} {settings.weightUnit}
+                        {progress.completedExercises}/{progress.totalExercises} done
+                      </Text>
+                    </View>
+                    {progress.volume > 0 && (
+                      <Text style={styles.heroTimerText}>
+                        {formatVolume(progress.volume, settings.weightUnit)}
                       </Text>
                     )}
                   </View>
                 </View>
                 <View style={styles.heroRingContainer}>
-                  <ProgressRing progress={progress} completed={completedCount} total={totalCount} />
+                  <ProgressRing
+                    progress={progress.fraction}
+                    completed={progress.completedSets}
+                    total={progress.totalSets}
+                  />
                 </View>
               </View>
             </View>
@@ -400,7 +489,9 @@ export default function TodayScreen() {
             <View style={styles.exerciseSection}>
               <View style={styles.exerciseHeader}>
                 <Text style={styles.exerciseSectionTitle}>Exercises</Text>
-                <Text style={styles.exerciseCount}>{completedCount} of {totalCount}</Text>
+                <Text style={styles.exerciseCount}>
+                  {progress.completedExercises} of {progress.totalExercises}
+                </Text>
               </View>
               <View style={styles.exerciseList}>
                 {currentSession.exercises.map((exercise, index) => (
@@ -410,10 +501,13 @@ export default function TodayScreen() {
                     exerciseId={exercise.routineExerciseId}
                     index={index}
                     onToggle={handleToggleExercise}
-                    onSkip={handleSkipExercise}
+                    onSkip={skipExercise}
                     onRestTimer={handleRestTimer}
                     onToggleSet={handleToggleSet}
-                    onUpdateSetWeight={handleUpdateSetWeight}
+                    onUpdateSetWeight={updateSetWeight}
+                    onUpdateSetReps={updateSetReps}
+                    onAddSet={addSetToExercise}
+                    onRemoveSet={removeSetFromExercise}
                     previousPerformance={lastPerformance[exercise.exerciseName]}
                     personalRecord={personalRecords[exercise.exerciseName]}
                     weightUnit={settings.weightUnit}
@@ -429,6 +523,8 @@ export default function TodayScreen() {
               style={styles.cancelButton}
               onPress={handleCancelWorkout}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel this workout"
             >
               <X size={16} color={colors.error} />
               <Text style={styles.cancelText}>Cancel Workout</Text>
@@ -437,25 +533,23 @@ export default function TodayScreen() {
         ) : (
           <View>
             {/* Last Workout Summary */}
-            {history.length > 0 && (() => {
-              const last = history[0];
-              const lastVol = last.totalVolume ?? 0;
-              const lastVolStr = lastVol >= 1000 ? `${(lastVol / 1000).toFixed(1)}k ${settings.weightUnit}` : lastVol > 0 ? `${lastVol} ${settings.weightUnit}` : "";
-              return (
+            {lastWorkout && (
               <View style={styles.lastWorkoutCard}>
                 <Text style={styles.lastWorkoutLabel}>LAST WORKOUT</Text>
-                <Text style={styles.lastWorkoutName}>{last.routineName}</Text>
+                <Text style={styles.lastWorkoutName}>{lastWorkout.routineName}</Text>
                 <View style={styles.lastWorkoutMeta}>
                   <Text style={styles.lastWorkoutDetail}>
-                    {last.exerciseCount} exercises · {last.duration}min{lastVolStr ? ` · ${lastVolStr}` : ""}
+                    {lastWorkout.completedExercises ?? lastWorkout.exerciseCount} exercises · {lastWorkout.duration}min
+                    {lastWorkout.totalVolume
+                      ? ` · ${formatVolume(lastWorkout.totalVolume, settings.weightUnit)}`
+                      : ""}
                   </Text>
                   <Text style={styles.lastWorkoutDate}>
-                    {new Date(last.completedAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                    {formatRelativeDate(lastWorkout.completedAt)}
                   </Text>
                 </View>
               </View>
-              );
-            })()}
+            )}
 
             {/* Today's Scheduled Routine */}
             {todaysRoutine && todaysRoutine.exercises.length > 0 ? (() => {
@@ -465,104 +559,89 @@ export default function TodayScreen() {
               const tStartBg = tAltPlay ? "#FFFFFF" : colors.primary;
               const tStartTextColor = tAltPlay ? (tbg ?? colors.primary) : "#fff";
               return (
-              <View>
-                <Text style={styles.scheduledLabel}>TODAY'S PLAN</Text>
-                <TouchableOpacity
-                  style={[
-                    styles.scheduledCard,
-                    tbg ? { backgroundColor: tbg, borderColor: tbg } : undefined,
-                  ]}
-                  onPress={() => handleStartWorkout(todaysRoutine.id)}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
-                  accessibilityRole="button"
-                >
-                  <View style={[styles.routineInitialBg, { backgroundColor: tbg ? "rgba(255,255,255,0.25)" : colors.primaryUltraLight }]}>
-                    <Text style={[styles.routineInitialText, { color: tDark ? "#fff" : colors.primary }]}>
-                      {todaysRoutine.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.routineCardLeft}>
-                    <Text style={[styles.scheduledName, tDark && { color: "#fff" }]}>{todaysRoutine.name}</Text>
-                    <Text style={[styles.routineCardDetail, tDark && { color: "rgba(255,255,255,0.75)" }]}>
-                      {todaysRoutine.exercises.length} exercises · ~{todaysRoutine.exercises.length * 5 + 10}min
-                    </Text>
-                  </View>
-                  <View
-                    style={[styles.startButton, { backgroundColor: tStartBg }]}
+                <View>
+                  <Text style={styles.scheduledLabel}>TODAY&apos;S PLAN</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.scheduledCard,
+                      tbg ? { backgroundColor: tbg, borderColor: tbg } : undefined,
+                    ]}
+                    onPress={() => handleStartWorkout(todaysRoutine.id)}
+                    activeOpacity={0.7}
+                    accessibilityLabel={`Start workout: ${todaysRoutine.name}`}
+                    accessibilityRole="button"
                   >
-                    <Text style={[styles.startButtonText, { color: tStartTextColor }]}>Start</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                    <View style={[styles.routineInitialBg, { backgroundColor: tbg ? "rgba(255,255,255,0.25)" : colors.primaryUltraLight }]}>
+                      <Text style={[styles.routineInitialText, { color: tDark ? "#fff" : colors.primary }]}>
+                        {todaysRoutine.name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.routineCardLeft}>
+                      <Text style={[styles.scheduledName, tDark && { color: "#fff" }]}>{todaysRoutine.name}</Text>
+                      <Text style={[styles.routineCardDetail, tDark && { color: "rgba(255,255,255,0.75)" }]}>
+                        {routineMeta(todaysRoutine)}
+                      </Text>
+                    </View>
+                    <View style={[styles.startButton, { backgroundColor: tStartBg }]}>
+                      <Text style={[styles.startButtonText, { color: tStartTextColor }]}>Start</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
               );
             })() : (
               <View style={styles.emptyState}>
-                {history.length > 0 && (() => {
-                  const lastDate = new Date(history[0].completedAt);
-                  const isToday = lastDate.toDateString() === new Date().toDateString();
-                  if (isToday) {
-                    return (
-                      <>
-                        <Text style={styles.emptyTitle}>Today's workout done!</Text>
-                        <Text style={styles.emptySubtitle}>Rest up or start another routine below</Text>
-                      </>
-                    );
-                  }
-                  return (
-                    <>
-                      <Text style={styles.emptyTitle}>No workout scheduled</Text>
-                      <Text style={styles.emptySubtitle}>Select a routine to begin</Text>
-                    </>
-                  );
-                })() || (
-                  <>
-                    <Text style={styles.emptyTitle}>No workout scheduled</Text>
-                    <Text style={styles.emptySubtitle}>Select a routine to begin</Text>
-                  </>
-                )}
+                <Text style={styles.emptyTitle}>
+                  {trainedToday ? "Today's workout done" : "No workout scheduled"}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {trainedToday
+                    ? "Rest up, or start another routine below."
+                    : routines.length > 0
+                      ? "Pick a routine below to begin."
+                      : "Create a routine to get started."}
+                </Text>
               </View>
             )}
 
-            {routines.length > 0 ? (
+            {otherRoutines.length > 0 ? (
               <View style={styles.routinesList}>
-                {routines.filter((r) => r.id !== todaysRoutine?.id && r.exercises.length > 0).map((routine) => {
+                {otherRoutines.map((routine) => {
                   const bg = routine.color;
                   const isRoutineDark = bg ? getLuminance(bg) < 0.55 : false;
                   const useAltPlay = bg ? isBlueish(bg) : false;
                   const playBg = useAltPlay ? "#FFFFFF" : colors.primary;
                   const playIconColor = useAltPlay ? (bg ?? colors.white) : colors.white;
                   return (
-                  <TouchableOpacity
-                    key={routine.id}
-                    style={[
-                      styles.routineCard,
-                      bg ? { backgroundColor: bg, borderColor: bg } : undefined,
-                    ]}
-                    onPress={() => handleStartWorkout(routine.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={[styles.routineInitialBg, { backgroundColor: bg ? "rgba(255,255,255,0.25)" : colors.primaryUltraLight }]}>
-                      <Text style={[styles.routineInitialText, { color: isRoutineDark ? "#fff" : colors.primary }]}>
-                        {routine.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.routineCardLeft}>
-                      <Text style={[styles.routineCardName, isRoutineDark && { color: "#fff" }]}>{routine.name}</Text>
-                      <Text style={[styles.routineCardDetail, isRoutineDark && { color: "rgba(255,255,255,0.75)" }]}>
-                        {routine.exercises.length} exercises · ~{routine.exercises.length * 5 + 10}min
-                      </Text>
-                    </View>
-                    <View
-                      style={[styles.playButton, { backgroundColor: playBg }]}
+                    <TouchableOpacity
+                      key={routine.id}
+                      style={[
+                        styles.routineCard,
+                        bg ? { backgroundColor: bg, borderColor: bg } : undefined,
+                      ]}
+                      onPress={() => handleStartWorkout(routine.id)}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Start workout: ${routine.name}`}
                     >
-                      <Play size={18} color={playIconColor} fill={playIconColor} />
-                    </View>
-                  </TouchableOpacity>
+                      <View style={[styles.routineInitialBg, { backgroundColor: bg ? "rgba(255,255,255,0.25)" : colors.primaryUltraLight }]}>
+                        <Text style={[styles.routineInitialText, { color: isRoutineDark ? "#fff" : colors.primary }]}>
+                          {routine.name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.routineCardLeft}>
+                        <Text style={[styles.routineCardName, isRoutineDark && { color: "#fff" }]}>{routine.name}</Text>
+                        <Text style={[styles.routineCardDetail, isRoutineDark && { color: "rgba(255,255,255,0.75)" }]}>
+                          {routineMeta(routine)}
+                        </Text>
+                      </View>
+                      <View style={[styles.playButton, { backgroundColor: playBg }]}>
+                        <Play size={18} color={playIconColor} fill={playIconColor} />
+                      </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
-            ) : (
+            ) : routines.length === 0 ? (
               <View style={styles.emptyStateCard}>
                 <View style={styles.emptyStateIconRow}>
                   <View style={styles.emptyStateIconBg}>
@@ -577,17 +656,24 @@ export default function TodayScreen() {
                   style={styles.emptyStateCta}
                   onPress={() => router.push("/(tabs)/routines")}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Get started building a routine"
                 >
                   <Text style={styles.emptyStateCtaText}>Get Started</Text>
                   <ChevronRight size={18} color="#fff" />
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
           </View>
         )}
       </ScrollView>
 
-      <RestTimer visible={showRestTimer} onClose={() => setShowRestTimer(false)} initialDuration={restTimerDuration} alertType={routineRestAlert} />
+      <RestTimer
+        visible={showRestTimer}
+        onClose={() => setShowRestTimer(false)}
+        initialDuration={restTimerDuration}
+        alertType={routineRestAlert}
+      />
 
       <ConfettiOverlay
         visible={showConfetti}
@@ -619,7 +705,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   scrollContent: {
     padding: 18,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   header: {
     marginBottom: 16,
@@ -665,12 +751,19 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  statText: {
+    flex: 1,
+  },
   statValue: {
     fontSize: 24,
     fontWeight: "900" as const,
     color: colors.text,
     letterSpacing: -1,
     lineHeight: 28,
+  },
+  statMultiplier: {
+    fontSize: 12,
+    fontWeight: "700" as const,
   },
   statLabel: {
     fontSize: 11,
@@ -712,7 +805,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   heroLabel: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.55)",
     fontWeight: "700" as const,
     letterSpacing: 2,
   },
@@ -744,14 +837,15 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   heroProgressText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 12,
-    color: "rgba(255,255,255,0.8)",
+    color: "rgba(255,255,255,0.85)",
     fontWeight: "600" as const,
   },
   heroMetaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginTop: 6,
+    marginTop: 8,
+    flexWrap: "wrap",
   },
   heroTimerRow: {
     flexDirection: "row",
@@ -761,12 +855,10 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   heroTimerText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
-    color: "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.6)",
     fontWeight: "500" as const,
   },
-  heroRingContainer: {
-    // ProgressRing renders here
-  },
+  heroRingContainer: {},
   exerciseSection: {
     marginBottom: 16,
   },
@@ -800,6 +892,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.errorBorder,
     backgroundColor: colors.errorLight,
+    minHeight: 48,
   },
   cancelText: {
     fontSize: 15,
@@ -837,11 +930,13 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 8,
   },
   lastWorkoutDetail: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 11,
     color: colors.textTertiary,
+    flexShrink: 1,
   },
   lastWorkoutDate: {
     fontSize: 11,
@@ -877,6 +972,8 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
+    minHeight: 44,
+    justifyContent: "center",
     shadowColor: colors.indigo,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -897,10 +994,12 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     fontWeight: "700" as const,
     color: colors.text,
     marginBottom: 8,
+    textAlign: "center" as const,
   },
   emptySubtitle: {
     fontSize: 15,
     color: colors.textSecondary,
+    textAlign: "center" as const,
   },
   routinesList: {
     gap: 12,
@@ -943,7 +1042,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     letterSpacing: -0.3,
   },
   routineCardDetail: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textSecondary,
   },
   playButton: {
@@ -1005,6 +1104,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 10,
     gap: 6,
+    minHeight: 48,
   },
   emptyStateCtaText: {
     fontSize: 15,

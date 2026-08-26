@@ -13,7 +13,7 @@ import {
   PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell } from "lucide-react-native";
+import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell, ChevronUp, ChevronDown } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -29,8 +29,10 @@ import {
   WEEKDAY_SHORT,
   ALL_WEEKDAYS,
   RestTimerAlert,
+  WeightUnit,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
+import { formatWeight, toDisplayWeight, fromDisplayWeight, trimNumber } from "@/utils/units";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
@@ -63,11 +65,14 @@ interface SwipeableRowProps {
   index: number;
   onDelete: () => void;
   onTap: () => void;
-  weightUnit: string;
+  weightUnit: WeightUnit;
   accentColor?: string;
+  onMove?: (direction: "up" | "down") => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
-function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor }: SwipeableRowProps) {
+function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor, onMove, canMoveUp, canMoveDown }: SwipeableRowProps) {
   const { colors } = useTheme();
   const swStyles = useMemo(() => createSwStyles(colors), [colors]);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -168,27 +173,50 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
               {(() => {
                 const configs = exercise.setConfigs;
                 if (!configs || configs.length === 0) {
-                  return `${exercise.sets}×${exercise.reps}${exercise.weight > 0 ? ` @ ${exercise.weight} ${weightUnit}` : ""}`;
+                  return `${exercise.sets}×${exercise.reps} @ ${formatWeight(exercise.weight, weightUnit)}`;
                 }
                 // Check if all sets are identical
                 const allSame = configs.every(
                   (s) => s.weight === configs[0].weight && s.reps === configs[0].reps
                 );
                 if (allSame) {
-                  const w = configs[0].weight;
-                  return `${configs.length} sets · ${w > 0 ? w + " " + weightUnit : "BW"} × ${configs[0].reps} reps`;
+                  return `${configs.length} sets · ${formatWeight(configs[0].weight, weightUnit)} × ${configs[0].reps} reps`;
                 }
                 // Mixed sets: show compact summary
                 const weights = [...new Set(configs.map((s) => s.weight))];
                 const reps = [...new Set(configs.map((s) => s.reps))];
                 const wStr = weights.length === 1
-                  ? (weights[0] > 0 ? `${weights[0]} ${weightUnit}` : "BW")
-                  : `${Math.min(...weights)}-${Math.max(...weights)} ${weightUnit}`;
+                  ? formatWeight(weights[0], weightUnit)
+                  : `${formatWeight(Math.min(...weights), weightUnit, { withUnit: false, bodyweightLabel: false })}-${formatWeight(Math.max(...weights), weightUnit)}`;
                 const rStr = reps.length === 1 ? `${reps[0]}` : `${Math.min(...reps)}-${Math.max(...reps)}`;
                 return `${configs.length} sets · ${wStr} × ${rStr} reps`;
               })()}
             </Text>
           </View>
+          {onMove && (
+            <View style={swStyles.reorderColumn}>
+              <TouchableOpacity
+                onPress={() => onMove("up")}
+                disabled={!canMoveUp}
+                style={[swStyles.reorderBtn, !canMoveUp && swStyles.reorderBtnDisabled]}
+                hitSlop={{ top: 8, bottom: 4, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Move ${exercise.exerciseName} earlier`}
+              >
+                <ChevronUp size={15} color={canMoveUp ? colors.textTertiary : colors.glassBorder} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onMove("down")}
+                disabled={!canMoveDown}
+                style={[swStyles.reorderBtn, !canMoveDown && swStyles.reorderBtnDisabled]}
+                hitSlop={{ top: 4, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Move ${exercise.exerciseName} later`}
+              >
+                <ChevronDown size={15} color={canMoveDown ? colors.textTertiary : colors.glassBorder} />
+              </TouchableOpacity>
+            </View>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -196,6 +224,18 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
 }
 
 const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
+  reorderColumn: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 2,
+    paddingLeft: 4,
+  },
+  reorderBtn: {
+    padding: 2,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.3,
+  },
   container: {
     marginBottom: 10,
     borderRadius: 10,
@@ -281,11 +321,12 @@ interface EditModalProps {
   visible: boolean;
   exercise: RoutineExercise | null;
   routineColor?: string;
+  weightUnit: WeightUnit;
   onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], color?: string) => void;
   onClose: () => void;
 }
 
-function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }: EditModalProps) {
+function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave, onClose }: EditModalProps) {
   const { colors } = useTheme();
   const editStyles = useMemo(() => createEditStyles(colors), [colors]);
   const [setRows, setSetRows] = useState<SetRow[]>([]);
@@ -297,13 +338,15 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
       for (let i = 0; i < exercise.sets; i++) {
         rows.push({
           reps: (exercise.setConfigs?.[i]?.reps ?? exercise.reps).toString(),
-          weight: (exercise.setConfigs?.[i]?.weight ?? exercise.weight).toString(),
+          weight: trimNumber(
+            toDisplayWeight(exercise.setConfigs?.[i]?.weight ?? exercise.weight, weightUnit)
+          ),
         });
       }
       setSetRows(rows);
       setExerciseColor(exercise.color ?? null);
     }
-  }, [exercise]);
+  }, [exercise, weightUnit]);
 
   const handleAddSet = () => {
     const lastRow = setRows[setRows.length - 1];
@@ -321,9 +364,10 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
 
   const handleSave = () => {
     if (!exercise) return;
+    // Inputs are in the user's display unit; storage is always pounds.
     const configs: RoutineSetConfig[] = setRows.map((r) => ({
       reps: parseInt(r.reps, 10) || 1,
-      weight: parseFloat(r.weight) || 0,
+      weight: fromDisplayWeight(parseFloat(r.weight) || 0, weightUnit),
     }));
     const firstReps = configs[0]?.reps ?? 10;
     const firstWeight = configs[0]?.weight ?? 0;
@@ -350,7 +394,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
           <View style={editStyles.columnHeaders}>
             <Text style={[editStyles.columnLabel, { width: 36 }]}>SET</Text>
             <Text style={[editStyles.columnLabel, { flex: 1 }]}>REPS</Text>
-            <Text style={[editStyles.columnLabel, { flex: 1 }]}>WEIGHT</Text>
+            <Text style={[editStyles.columnLabel, { flex: 1 }]}>WEIGHT ({weightUnit})</Text>
             <View style={{ width: 28 }} />
           </View>
 
@@ -374,10 +418,11 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                   style={editStyles.setInput}
                   value={row.weight}
                   onChangeText={(v) => updateRow(index, "weight", v)}
-                  keyboardType="number-pad"
+                  keyboardType="decimal-pad"
                   selectTextOnFocus
                   placeholder="0"
                   placeholderTextColor={colors.textTertiary}
+                  accessibilityLabel={`Weight for set ${index + 1}`}
                 />
                 <TouchableOpacity
                   onPress={() => handleRemoveSet(index)}
@@ -651,7 +696,7 @@ const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
 
 // ═══ MAIN SCREEN ════════════════════════════════════════════
 export default function RoutineDetailScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -661,6 +706,7 @@ export default function RoutineDetailScreen() {
     allExercises,
     addExerciseToRoutine,
     removeExerciseFromRoutine,
+    reorderExerciseInRoutine,
     deleteRoutine,
     addCustomExercise,
     updateRoutine,
@@ -698,7 +744,7 @@ export default function RoutineDetailScreen() {
       }
       const numSets = parseInt(customSets, 10) || 3;
       const numReps = parseInt(customReps, 10) || 10;
-      const numWeight = parseFloat(customWeight) || 0;
+      const numWeight = fromDisplayWeight(parseFloat(customWeight) || 0, wu);
       const routineExercise: RoutineExercise = {
         id: generateId(),
         exerciseId: exercise.id,
@@ -719,7 +765,7 @@ export default function RoutineDetailScreen() {
       setCustomReps("10");
       setCustomWeight("0");
     },
-    [routineId, routine, customSets, customReps, customWeight, addExerciseToRoutine]
+    [routineId, routine, customSets, customReps, customWeight, wu, addExerciseToRoutine]
   );
 
   const handleAddCustom = useCallback((nameOverride?: string) => {
@@ -734,7 +780,7 @@ export default function RoutineDetailScreen() {
     if (!exercise) return;
     const numSets = parseInt(customSets, 10) || 3;
     const numReps = parseInt(customReps, 10) || 10;
-    const numWeight = parseFloat(customWeight) || 0;
+    const numWeight = fromDisplayWeight(parseFloat(customWeight) || 0, wu);
     const routineExercise: RoutineExercise = {
       id: generateId(),
       exerciseId: exercise.id,
@@ -754,7 +800,7 @@ export default function RoutineDetailScreen() {
     setCustomSets("3");
     setCustomReps("10");
     setCustomWeight("0");
-  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
+  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, wu, addCustomExercise, addExerciseToRoutine]);
 
   const handleRemoveExercise = useCallback(
     (exerciseId: string) => {
@@ -950,7 +996,7 @@ export default function RoutineDetailScreen() {
 
       {/* Hint text */}
       {routine.exercises.length > 0 && (
-        <Text style={styles.hintText}>Tap to edit · Swipe left to delete</Text>
+        <Text style={styles.hintText}>Tap to edit · Swipe left to delete · Arrows reorder</Text>
       )}
 
       <ScrollView
@@ -973,6 +1019,17 @@ export default function RoutineDetailScreen() {
               onTap={() => setEditingExercise(exercise)}
               weightUnit={wu}
               accentColor={exercise.color || routine.color}
+              onMove={
+                routine.exercises.length > 1
+                  ? (direction) => {
+                      if (!routineId) return;
+                      reorderExerciseInRoutine(routineId, exercise.id, direction);
+                      if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    }
+                  : undefined
+              }
+              canMoveUp={index > 0}
+              canMoveDown={index < routine.exercises.length - 1}
             />
           ))
         )}
@@ -992,6 +1049,7 @@ export default function RoutineDetailScreen() {
         visible={editingExercise !== null}
         exercise={editingExercise}
         routineColor={routine.color}
+        weightUnit={wu}
         onSave={handleEditSave}
         onClose={() => setEditingExercise(null)}
       />
@@ -1027,7 +1085,7 @@ export default function RoutineDetailScreen() {
               />
             </View>
             <View style={styles.setsRepsField}>
-              <Text style={styles.setsRepsLabel}>Weight</Text>
+              <Text style={styles.setsRepsLabel}>Weight ({wu})</Text>
               <TextInput
                 style={styles.setsRepsInput}
                 value={customWeight}
@@ -1083,7 +1141,7 @@ export default function RoutineDetailScreen() {
               >
                 <Plus size={18} color={colors.primary} />
                 <Text style={styles.customExerciseText}>
-                  Add "{searchQuery.trim()}" as custom exercise
+                  Add &ldquo;{searchQuery.trim()}&rdquo; as custom exercise
                 </Text>
               </TouchableOpacity>
             )}

@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity } from "
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
+import { WeightUnit } from "@/types";
+import { formatVolume } from "@/utils/units";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CONFETTI_COUNT = 60;
@@ -16,7 +18,7 @@ interface Props {
   streak: number;
   totalVolume?: number;
   newPRs?: number;
-  weightUnit?: string;
+  weightUnit?: WeightUnit;
   xpGained?: number;
   streakMultiplier?: number;
   leveledUp?: boolean;
@@ -29,7 +31,7 @@ interface Props {
 const LEVEL_UP_COLORS = ["#FFD700", "#FDE047", "#A78BFA", "#818CF8", "#FFD700", "#E879F9", "#FDE047", "#A78BFA", "#FFD700", "#818CF8"];
 
 export default function ConfettiOverlay({ visible, exerciseCount, duration, streak, totalVolume = 0, newPRs = 0, weightUnit = "lbs", xpGained = 0, streakMultiplier = 1, leveledUp = false, newLevel, newLevelTitle, newAchievementNames = [], onDismiss }: Props) {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -176,9 +178,7 @@ export default function ConfettiOverlay({ visible, exerciseCount, duration, stre
         {totalVolume > 0 && (
           <View style={styles.volumeRow}>
             <Text style={styles.volumeValue}>
-              {totalVolume >= 1000
-                ? `${Number((totalVolume / 1000).toFixed(1))}k`
-                : totalVolume} {weightUnit}
+              {formatVolume(totalVolume, weightUnit)}
             </Text>
             <Text style={styles.volumeLabel}>total volume</Text>
           </View>

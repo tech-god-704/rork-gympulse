@@ -2,6 +2,10 @@ import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 
+const DAILY_REMINDER_ID = "daily-workout-reminder";
+const REST_DAY_NUDGE_ID = "daily-workout-reminder-tomorrow";
+const WEEKLY_SUMMARY_ID = "weekly-summary";
+
 // Configure how notifications appear when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -21,6 +25,13 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   if (existing === "granted") return true;
 
   const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+}
+
+/** Whether the OS will actually deliver anything. */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (Platform.OS === "web" || !Device.isDevice) return false;
+  const { status } = await Notifications.getPermissionsAsync();
   return status === "granted";
 }
 
@@ -44,8 +55,8 @@ export async function sendWorkoutCompleteNotification(
   if (newPRs > 0) {
     body = `New personal record${newPRs > 1 ? "s" : ""}! ${body}`;
   }
-  if (duration > 0) {
-    body += ` (${exerciseCount} exercises, ${duration} min)`;
+  if (duration > 0 && exerciseCount > 0) {
+    body += ` (${exerciseCount} exercise${exerciseCount === 1 ? "" : "s"}, ${duration} min)`;
   }
 
   await Notifications.scheduleNotificationAsync({
@@ -81,36 +92,77 @@ const REMINDER_MESSAGES = [
   "Consistency beats intensity. A quick session is better than none.",
 ];
 
-export async function scheduleDailyReminder() {
-  // Cancel any existing daily reminders first
-  await cancelDailyReminder();
+function pickReminder(): string {
+  return REMINDER_MESSAGES[Math.floor(Math.random() * REMINDER_MESSAGES.length)];
+}
 
-  // Schedule for 6:00 PM every day
+export interface ReminderOptions {
+  /** Hour of day (0-23) to nudge at. */
+  reminderHour: number;
+  /** True if the user has already completed a workout today. */
+  trainedToday: boolean;
+}
+
+async function cancel(id: string) {
+  await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+}
+
+/**
+ * Schedule the training nudge.
+ *
+ * The reminder text asserts "you haven't trained yet today", but it used to be
+ * a plain repeating daily trigger — so it fired at 6pm and said that even on
+ * days the user had already finished a workout. When today is already done we
+ * cancel the repeating reminder and schedule a one-off for tomorrow instead;
+ * the repeating schedule is restored the next time the app opens untrained.
+ */
+export async function refreshDailyReminder(options: ReminderOptions) {
+  const hour = Math.min(23, Math.max(0, Math.round(options.reminderHour)));
+  await cancel(DAILY_REMINDER_ID);
+  await cancel(REST_DAY_NUDGE_ID);
+
+  if (options.trainedToday) {
+    const next = new Date();
+    next.setDate(next.getDate() + 1);
+    next.setHours(hour, 0, 0, 0);
+    await Notifications.scheduleNotificationAsync({
+      identifier: REST_DAY_NUDGE_ID,
+      content: {
+        title: "Time to Train",
+        body: pickReminder(),
+        sound: "default",
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: next },
+    });
+    return;
+  }
+
   await Notifications.scheduleNotificationAsync({
-    identifier: "daily-workout-reminder",
+    identifier: DAILY_REMINDER_ID,
     content: {
       title: "Time to Train",
-      body: REMINDER_MESSAGES[Math.floor(Math.random() * REMINDER_MESSAGES.length)],
+      body: pickReminder(),
       sound: "default",
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 18,
+      hour,
       minute: 0,
     },
   });
 }
 
 export async function cancelDailyReminder() {
-  await Notifications.cancelScheduledNotificationAsync("daily-workout-reminder").catch(() => {});
+  await cancel(DAILY_REMINDER_ID);
+  await cancel(REST_DAY_NUDGE_ID);
 }
 
 // ── Weekly summary (scheduled for Sunday evening) ───────────────
 export async function scheduleWeeklySummary() {
-  await Notifications.cancelScheduledNotificationAsync("weekly-summary").catch(() => {});
+  await cancel(WEEKLY_SUMMARY_ID);
 
   await Notifications.scheduleNotificationAsync({
-    identifier: "weekly-summary",
+    identifier: WEEKLY_SUMMARY_ID,
     content: {
       title: "Weekly Recap",
       body: "Check your progress tab to see how this week went.",
@@ -118,7 +170,7 @@ export async function scheduleWeeklySummary() {
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-      weekday: 1, // Sunday
+      weekday: 1, // Sunday (expo-notifications weekdays are 1-indexed from Sunday)
       hour: 20,
       minute: 0,
     },
@@ -126,11 +178,11 @@ export async function scheduleWeeklySummary() {
 }
 
 // ── Setup all scheduled notifications ───────────────────────────
-export async function setupNotifications() {
+export async function setupNotifications(options: ReminderOptions) {
   const granted = await requestNotificationPermissions();
   if (!granted) return false;
 
-  await scheduleDailyReminder();
+  await refreshDailyReminder(options);
   await scheduleWeeklySummary();
   return true;
 }

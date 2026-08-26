@@ -22,7 +22,6 @@ function RootLayoutNav() {
     if (isLoading) return;
 
     const onOnboarding = segments[0] === "onboarding";
-    const onPaywall = segments[0] === "paywall";
     const needsOnboarding = !profile?.onboardingComplete;
 
     if (needsOnboarding && !onOnboarding) {

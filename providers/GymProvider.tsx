@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import createContextHook from "@nkzw/create-context-hook";
@@ -9,32 +10,42 @@ import {
   Exercise,
   WorkoutSession,
   WorkoutHistory,
-  WorkoutHistoryExercise,
   StreakData,
   MuscleGroup,
   SetData,
   AppSettings,
   DEFAULT_SETTINGS,
+  CURRENT_DATA_VERSION,
   GamificationData,
   DEFAULT_GAMIFICATION,
   XPGainEvent,
   PremiumStatus,
   DEFAULT_PREMIUM,
   SubscriptionPlan,
+  PerformanceMap,
+  PRMap,
+  WeightUnit,
 } from "@/types";
 import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
-import { generateId, getToday, formatDate } from "@/utils/helpers";
+import { generateId, getToday, getStartOfWeek, formatDate } from "@/utils/helpers";
+import { fromDisplayWeight } from "@/utils/units";
+import {
+  summarizeSession,
+  rebuildPersonalRecords,
+  rebuildLastPerformance,
+  rebuildCompletedDates,
+  streakFromDates,
+} from "@/utils/workoutStats";
 import {
   sendWorkoutCompleteNotification,
   sendStreakMilestoneNotification,
   setupNotifications,
   disableAllNotifications,
+  refreshDailyReminder,
 } from "@/utils/notifications";
 import {
   calculateXPGain,
   getLevelForXP,
-  getLevelDefinition as getLevelDef,
-  getXPProgress as calcXPProgress,
   buildAchievementContext,
   checkAchievements,
   migrateExistingData,
@@ -54,70 +65,53 @@ const STORAGE_KEYS = {
   PREMIUM: "gympulse_premium",
 };
 
-// Per-exercise last performance data
-interface ExercisePerformance {
-  sets: { weight: number; reps: number }[];
-  date: string;
-}
-
-// Personal record per exercise
-interface PersonalRecord {
-  weight: number;
-  reps: number;
-  estimated1RM: number;
-  date: string;
-}
-
-type PerformanceMap = Record<string, ExercisePerformance>;
-type PRMap = Record<string, PersonalRecord>;
+const ALL_STORAGE_KEYS = Object.values(STORAGE_KEYS);
 
 function createDefaultStreak(): StreakData {
   return { currentStreak: 0, longestStreak: 0, lastWorkoutDate: null, completedDates: [] };
 }
 
-// Calculate what the streak should be right now (decays if user missed days)
+/**
+ * Recompute the streak from its completed dates. A streak decays the moment
+ * a day is missed, and this now derives every field (including `longestStreak`)
+ * from the date list rather than trusting stored counters that can drift.
+ */
 function recalculateStreak(streakData: StreakData): StreakData {
-  if (!streakData.lastWorkoutDate) return streakData;
-  const today = getToday();
-  const y = new Date(); y.setDate(y.getDate() - 1);
-  const yesterday = formatDate(y);
-
-  // If last workout was today or yesterday, streak is still alive
-  if (streakData.lastWorkoutDate === today || streakData.lastWorkoutDate === yesterday) {
-    return streakData;
-  }
-  // Streak is broken - reset to 0
+  const dates = [...new Set(streakData.completedDates ?? [])].sort();
+  const derived = streakFromDates(dates, getToday());
   return {
-    ...streakData,
-    currentStreak: 0,
+    currentStreak: derived.currentStreak,
+    // Never regress a longest-streak the user actually earned.
+    longestStreak: Math.max(derived.longestStreak, streakData.longestStreak ?? 0),
+    lastWorkoutDate: derived.lastWorkoutDate,
+    completedDates: dates,
   };
 }
 
-// Ensure setDetails exists on a session exercise (backwards compat)
+/** Ensure setDetails exists on a session exercise (backwards compat). */
 function ensureSetDetails(exercise: {
   sets: number;
   reps: number;
   weight: number;
   completed: boolean;
+  skipped?: boolean;
   setDetails?: SetData[];
 }): SetData[] {
   if (exercise.setDetails && exercise.setDetails.length > 0) {
     return exercise.setDetails;
   }
-  return Array.from({ length: exercise.sets }, (_, i) => ({
+  return Array.from({ length: Math.max(exercise.sets, 0) }, (_, i) => ({
     setNumber: i + 1,
     reps: exercise.reps,
     weight: exercise.weight,
-    completed: exercise.completed, // sync with exercise-level state
+    // A skipped exercise has no completed sets, however it was resolved.
+    completed: exercise.skipped ? false : exercise.completed,
   }));
 }
 
-// Get start of calendar week (Sunday)
-function getStartOfWeek(date: Date): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() - d.getDay());
-  d.setHours(0, 0, 0, 0);
-  return d;
+/** Renumber sets 1..n after an insert or removal. */
+function renumber(sets: SetData[]): SetData[] {
+  return sets.map((s, i) => ({ ...s, setNumber: i + 1 }));
 }
 
 export const [GymProvider, useGym] = createContextHook(() => {
@@ -149,7 +143,7 @@ function useGymState() {
   const settingsRef = useRef<AppSettings>(DEFAULT_SETTINGS);
   const gamificationRef = useRef<GamificationData>(DEFAULT_GAMIFICATION);
   const premiumRef = useRef<PremiumStatus>(DEFAULT_PREMIUM);
-  const completingRef = useRef(false);
+  const completedSessionIds = useRef<Set<string>>(new Set());
 
   useEffect(() => { sessionRef.current = currentSession; }, [currentSession]);
   useEffect(() => { historyRef.current = history; }, [history]);
@@ -160,7 +154,12 @@ function useGymState() {
   useEffect(() => { gamificationRef.current = gamification; }, [gamification]);
   useEffect(() => { premiumRef.current = premium; }, [premium]);
 
+  // Local storage is the source of truth and every write goes through this
+  // provider, so background refetching would only ever clobber fresher state.
+  const localQuery = { staleTime: Infinity, gcTime: Infinity, refetchOnMount: false } as const;
+
   const profileQuery = useQuery({
+    ...localQuery,
     queryKey: ["profile"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.PROFILE);
@@ -170,6 +169,7 @@ function useGymState() {
   });
 
   const routinesQuery = useQuery({
+    ...localQuery,
     queryKey: ["routines"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
@@ -179,6 +179,7 @@ function useGymState() {
   });
 
   const customExQuery = useQuery({
+    ...localQuery,
     queryKey: ["customExercises"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.CUSTOM_EXERCISES);
@@ -188,6 +189,7 @@ function useGymState() {
   });
 
   const sessionQuery = useQuery({
+    ...localQuery,
     queryKey: ["currentSession"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_SESSION);
@@ -205,6 +207,7 @@ function useGymState() {
   });
 
   const historyQuery = useQuery({
+    ...localQuery,
     queryKey: ["history"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.HISTORY);
@@ -214,6 +217,7 @@ function useGymState() {
   });
 
   const streakQuery = useQuery({
+    ...localQuery,
     queryKey: ["streak"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.STREAK);
@@ -226,6 +230,7 @@ function useGymState() {
   });
 
   const perfQuery = useQuery({
+    ...localQuery,
     queryKey: ["lastPerformance"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.LAST_PERFORMANCE);
@@ -235,6 +240,7 @@ function useGymState() {
   });
 
   const prQuery = useQuery({
+    ...localQuery,
     queryKey: ["personalRecords"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.PERSONAL_RECORDS);
@@ -244,15 +250,25 @@ function useGymState() {
   });
 
   const settingsQuery = useQuery({
+    ...localQuery,
     queryKey: ["settings"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.SETTINGS);
       if (!stored) return DEFAULT_SETTINGS;
-      try { return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } as AppSettings; } catch { return DEFAULT_SETTINGS; }
+      try {
+        const parsed = JSON.parse(stored) as Partial<AppSettings>;
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          // Settings saved before versioning existed are, by definition, v1.
+          dataVersion: parsed.dataVersion ?? 1,
+        } as AppSettings;
+      } catch { return DEFAULT_SETTINGS; }
     },
   });
 
   const gamificationQuery = useQuery({
+    ...localQuery,
     queryKey: ["gamification"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.GAMIFICATION);
@@ -262,6 +278,7 @@ function useGymState() {
   });
 
   const premiumQuery = useQuery({
+    ...localQuery,
     queryKey: ["premium"],
     queryFn: async () => {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.PREMIUM);
@@ -321,6 +338,8 @@ function useGymState() {
     }
   }, [gamificationQuery.data]);
 
+  const unitsMigrated = useRef(false);
+
   useEffect(() => {
     const allDone =
       !profileQuery.isLoading &&
@@ -334,25 +353,44 @@ function useGymState() {
       !settingsQuery.isLoading &&
       !gamificationQuery.isLoading &&
       !premiumQuery.isLoading;
-    if (allDone) {
-      // Migrate gamification data for existing users (one-time)
-      if (gamificationQuery.data === null && !gamificationMigrated.current) {
-        gamificationMigrated.current = true;
-        const migrated = migrateExistingData(
-          historyRef.current,
-          streakRef.current,
-          personalRecordsRef.current
-        );
-        setGamification(migrated);
-        gamificationRef.current = migrated;
-        void AsyncStorage.setItem(STORAGE_KEYS.GAMIFICATION, JSON.stringify(migrated)).catch(() => {});
-      }
+    if (!allDone) return;
 
-      setIsLoading(false);
-      if (settingsRef.current.notificationsEnabled) {
-        void setupNotifications();
+    // ── One-time unit migration ────────────────────────────
+    // Weights are now stored canonically in pounds. Users who were on kg
+    // typed kg numbers that got stored bare, so reinterpret and convert them.
+    const loadedSettings = settingsQuery.data ?? DEFAULT_SETTINGS;
+    if (!unitsMigrated.current && (loadedSettings.dataVersion ?? 1) < CURRENT_DATA_VERSION) {
+      unitsMigrated.current = true;
+      if (loadedSettings.weightUnit === "kg") {
+        void migrateStoredWeightsToPounds();
       }
+      const upgraded: AppSettings = { ...loadedSettings, dataVersion: CURRENT_DATA_VERSION };
+      setSettings(upgraded);
+      settingsRef.current = upgraded;
+      void AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(upgraded)).catch(() => {});
     }
+
+    // Migrate gamification data for existing users (one-time)
+    if (gamificationQuery.data === null && !gamificationMigrated.current) {
+      gamificationMigrated.current = true;
+      const migrated = migrateExistingData(
+        historyRef.current,
+        streakRef.current,
+        personalRecordsRef.current
+      );
+      setGamification(migrated);
+      gamificationRef.current = migrated;
+      void AsyncStorage.setItem(STORAGE_KEYS.GAMIFICATION, JSON.stringify(migrated)).catch(() => {});
+    }
+
+    setIsLoading(false);
+    if (settingsRef.current.notificationsEnabled) {
+      void setupNotifications({
+        reminderHour: settingsRef.current.reminderHour,
+        trainedToday: streakRef.current.lastWorkoutDate === getToday(),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     profileQuery.isLoading,
     routinesQuery.isLoading,
@@ -368,6 +406,99 @@ function useGymState() {
     premiumQuery.isLoading,
   ]);
 
+  /**
+   * Reinterpret every stored weight as kilograms and rewrite it in pounds.
+   * Runs once, only for users whose unit setting was already kg.
+   */
+  const migrateStoredWeightsToPounds = useCallback(async () => {
+    const toLbs = (v: number) => fromDisplayWeight(v, "kg");
+
+    const nextRoutines = routinesQuery.data?.map((r) => ({
+      ...r,
+      exercises: r.exercises.map((e) => ({
+        ...e,
+        weight: toLbs(e.weight),
+        setConfigs: e.setConfigs?.map((c) => ({ ...c, weight: toLbs(c.weight) })),
+      })),
+    }));
+
+    const rawSession = sessionQuery.data;
+    const nextSession = rawSession
+      ? {
+          ...rawSession,
+          exercises: rawSession.exercises.map((e) => ({
+            ...e,
+            weight: toLbs(e.weight),
+            setDetails: e.setDetails?.map((s) => ({ ...s, weight: toLbs(s.weight) })),
+          })),
+        }
+      : null;
+
+    const nextHistory = historyQuery.data?.map((h) => ({
+      ...h,
+      totalVolume: h.totalVolume != null ? toLbs(h.totalVolume) : h.totalVolume,
+      exercises: h.exercises?.map((e) => ({
+        ...e,
+        volume: toLbs(e.volume),
+        bestSet: { ...e.bestSet, weight: toLbs(e.bestSet.weight) },
+        sets: e.sets?.map((s) => ({ ...s, weight: toLbs(s.weight) })),
+      })),
+    }));
+
+    const nextPRs: PRMap = {};
+    Object.entries(prQuery.data ?? {}).forEach(([name, pr]) => {
+      nextPRs[name] = { ...pr, weight: toLbs(pr.weight), estimated1RM: toLbs(pr.estimated1RM) };
+    });
+
+    const nextPerf: PerformanceMap = {};
+    Object.entries(perfQuery.data ?? {}).forEach(([name, perf]) => {
+      nextPerf[name] = { ...perf, sets: perf.sets.map((s) => ({ ...s, weight: toLbs(s.weight) })) };
+    });
+
+    if (nextRoutines) {
+      setRoutines(nextRoutines);
+      await AsyncStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(nextRoutines)).catch(() => {});
+    }
+    if (nextSession) {
+      setCurrentSession(nextSession);
+      sessionRef.current = nextSession;
+      await AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(nextSession)).catch(() => {});
+    }
+    if (nextHistory) {
+      setHistory(nextHistory);
+      historyRef.current = nextHistory;
+      await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(nextHistory)).catch(() => {});
+    }
+    setPersonalRecords(nextPRs);
+    personalRecordsRef.current = nextPRs;
+    await AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(nextPRs)).catch(() => {});
+    setLastPerformance(nextPerf);
+    lastPerformanceRef.current = nextPerf;
+    await AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(nextPerf)).catch(() => {});
+  }, [routinesQuery.data, sessionQuery.data, historyQuery.data, prQuery.data, perfQuery.data]);
+
+  // Streaks decay at midnight. Without this the display stays stale for a user
+  // who leaves the app open overnight.
+  useEffect(() => {
+    let lastSeenDay = getToday();
+    const check = () => {
+      const today = getToday();
+      if (today === lastSeenDay) return;
+      lastSeenDay = today;
+      const refreshed = recalculateStreak(streakRef.current);
+      setStreak(refreshed);
+      streakRef.current = refreshed;
+    };
+    const interval = setInterval(check, 60_000);
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") check();
+    });
+    return () => {
+      clearInterval(interval);
+      sub.remove();
+    };
+  }, []);
+
   // ─── Mutations ────────────────────────────────────────────
   const saveProfileMutation = useMutation({
     mutationFn: async (p: UserProfile) => {
@@ -376,7 +507,7 @@ function useGymState() {
     },
     onSuccess: (p) => {
       setProfile(p);
-      void queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.setQueryData(["profile"], p);
     },
   });
 
@@ -387,6 +518,7 @@ function useGymState() {
     },
     onSuccess: (r) => {
       setRoutines(r);
+      queryClient.setQueryData(["routines"], r);
     },
   });
 
@@ -397,6 +529,7 @@ function useGymState() {
     },
     onSuccess: (e) => {
       setCustomExercises(e);
+      queryClient.setQueryData(["customExercises"], e);
     },
   });
 
@@ -405,14 +538,15 @@ function useGymState() {
     (s: WorkoutSession | null) => {
       setCurrentSession(s);
       sessionRef.current = s;
-      // Fire async save
+      // Keep the cache in step so a refetch can't resurrect a stale session.
+      queryClient.setQueryData(["currentSession"], s);
       if (s) {
         void AsyncStorage.setItem(STORAGE_KEYS.CURRENT_SESSION, JSON.stringify(s)).catch(() => {});
       } else {
         void AsyncStorage.removeItem(STORAGE_KEYS.CURRENT_SESSION).catch(() => {});
       }
     },
-    []
+    [queryClient]
   );
 
   const saveHistoryMutation = useMutation({
@@ -422,6 +556,7 @@ function useGymState() {
     },
     onSuccess: (h) => {
       setHistory(h);
+      queryClient.setQueryData(["history"], h);
     },
   });
 
@@ -432,6 +567,7 @@ function useGymState() {
     },
     onSuccess: (s) => {
       setStreak(s);
+      queryClient.setQueryData(["streak"], s);
     },
   });
 
@@ -442,6 +578,7 @@ function useGymState() {
     },
     onSuccess: (s) => {
       setSettings(s);
+      queryClient.setQueryData(["settings"], s);
     },
   });
 
@@ -455,9 +592,12 @@ function useGymState() {
       saveSettingsMutation.mutate(updated);
 
       // Toggle scheduled notifications when the setting changes
-      if (updates.notificationsEnabled !== undefined) {
-        if (updates.notificationsEnabled) {
-          void setupNotifications();
+      if (updates.notificationsEnabled !== undefined || updates.reminderHour !== undefined) {
+        if (updated.notificationsEnabled) {
+          void setupNotifications({
+            reminderHour: updated.reminderHour,
+            trainedToday: streakRef.current.lastWorkoutDate === getToday(),
+          });
         } else {
           void disableAllNotifications();
         }
@@ -502,23 +642,24 @@ function useGymState() {
     savePremium(updated);
   }, [savePremium]);
 
+  /**
+   * Show the upgrade prompt after every third workout, but never more than
+   * once a day. The 24-hour guard used to sit *after* the early return, so it
+   * never actually ran and the paywall could reappear the same session.
+   */
   const shouldShowPaywall = useCallback((): boolean => {
     const p = premiumRef.current;
     if (p.isPremium) return false;
+    if (p.workoutsSinceLastPaywall < 3) return false;
 
-    // After onboarding (first time) — always show
-    // This is handled in _layout.tsx routing, not here
-
-    // After every 3rd workout
-    if (p.workoutsSinceLastPaywall >= 3) return true;
-
-    // Don't nag too frequently — at least 24 hours between paywalls
     if (p.lastPaywallShown) {
       const hoursSince = (Date.now() - new Date(p.lastPaywallShown).getTime()) / (1000 * 60 * 60);
       if (hoursSince < 24) return false;
     }
+    // Back off after repeated dismissals rather than nagging indefinitely.
+    if (p.paywallDismissCount >= 5) return false;
 
-    return false;
+    return true;
   }, []);
 
   const saveProfile = useCallback(
@@ -590,8 +731,12 @@ function useGymState() {
     (routineId: string) => {
       const updated = routines.filter((r) => r.id !== routineId);
       saveRoutinesMutation.mutate(updated);
+      // Don't strand a live session pointing at a routine that no longer exists.
+      if (sessionRef.current?.routineId === routineId) {
+        saveSession(null);
+      }
     },
-    [routines, saveRoutinesMutation]
+    [routines, saveRoutinesMutation, saveSession]
   );
 
   const reorderRoutine = useCallback(
@@ -627,14 +772,44 @@ function useGymState() {
     [routines, saveRoutinesMutation]
   );
 
+  const reorderExerciseInRoutine = useCallback(
+    (routineId: string, exerciseId: string, direction: "up" | "down") => {
+      const updated = routines.map((r) => {
+        if (r.id !== routineId) return r;
+        const idx = r.exercises.findIndex((e) => e.id === exerciseId);
+        if (idx < 0) return r;
+        const newIdx = direction === "up" ? idx - 1 : idx + 1;
+        if (newIdx < 0 || newIdx >= r.exercises.length) return r;
+        const exercises = [...r.exercises];
+        [exercises[idx], exercises[newIdx]] = [exercises[newIdx], exercises[idx]];
+        return { ...r, exercises };
+      });
+      saveRoutinesMutation.mutate(updated);
+    },
+    [routines, saveRoutinesMutation]
+  );
+
   const addCustomExercise = useCallback(
     (name: string, muscleGroup: MuscleGroup) => {
       const trimmed = name.trim();
       if (!trimmed) return null;
+      // Don't create duplicates that then split a user's history in two.
+      const existing = [...BUILT_IN_EXERCISES, ...customExercises].find(
+        (e) => e.name.toLowerCase() === trimmed.toLowerCase()
+      );
+      if (existing) return existing;
       const ex: Exercise = { id: generateId(), name: trimmed, muscleGroup, isCustom: true };
       const updated = [...customExercises, ex];
       saveCustomExMutation.mutate(updated);
       return ex;
+    },
+    [customExercises, saveCustomExMutation]
+  );
+
+  const deleteCustomExercise = useCallback(
+    (exerciseId: string) => {
+      const updated = customExercises.filter((e) => e.id !== exerciseId);
+      saveCustomExMutation.mutate(updated);
     },
     [customExercises, saveCustomExMutation]
   );
@@ -645,13 +820,14 @@ function useGymState() {
 
   const startWorkout = useCallback(
     (routine: Routine) => {
+      if (routine.exercises.length === 0) return null;
       const session: WorkoutSession = {
         id: generateId(),
         routineId: routine.id,
         routineName: routine.name,
         exercises: routine.exercises.map((e) => {
           // Auto-fill from previous performance if available
-          const prev = lastPerformance[e.exerciseName];
+          const prev = lastPerformanceRef.current[e.exerciseName];
           return {
             routineExerciseId: e.id,
             exerciseName: e.exerciseName,
@@ -660,6 +836,7 @@ function useGymState() {
             reps: e.reps,
             weight: e.weight,
             completed: false,
+            skipped: false,
             setDetails: Array.from({ length: e.sets }, (_, i) => ({
               setNumber: i + 1,
               reps: prev?.sets[i]?.reps ?? e.setConfigs?.[i]?.reps ?? e.reps,
@@ -674,273 +851,292 @@ function useGymState() {
       saveSession(session);
       return session;
     },
-    [saveSession, lastPerformance]
+    [saveSession]
   );
 
-  // Toggle exercise complete — also syncs setDetails
-  const toggleExerciseComplete = useCallback(
-    (routineExerciseId: string) => {
+  /** Apply a transform to one exercise and recompute session-level completion. */
+  const mutateSessionExercise = useCallback(
+    (
+      routineExerciseId: string,
+      transform: (e: WorkoutSession["exercises"][number]) => WorkoutSession["exercises"][number]
+    ): boolean => {
       const session = sessionRef.current;
       if (!session) return false;
-      const updatedExercises = session.exercises.map((e) => {
-        if (e.routineExerciseId !== routineExerciseId) return e;
-        const newCompleted = !e.completed;
-        // Sync setDetails with exercise-level toggle
-        const updatedSets = ensureSetDetails(e).map((s) => ({
-          ...s,
-          completed: newCompleted,
-        }));
-        return {
-          ...e,
-          completed: newCompleted,
-          completedAt: newCompleted ? new Date().toISOString() : undefined,
-          setDetails: updatedSets,
-        };
-      });
-      const allComplete = updatedExercises.every((ex) => ex.completed);
-      const updatedSession: WorkoutSession = {
+      const exercises = session.exercises.map((e) =>
+        e.routineExerciseId === routineExerciseId ? transform(e) : e
+      );
+      const allComplete = exercises.length > 0 && exercises.every((ex) => ex.completed);
+      saveSession({
         ...session,
-        exercises: updatedExercises,
+        exercises,
         isComplete: allComplete,
         completedAt: allComplete ? new Date().toISOString() : undefined,
-      };
-      saveSession(updatedSession);
+      });
       return allComplete;
     },
     [saveSession]
   );
 
-  // Skip / unskip exercise
-  const skipExercise = useCallback(
+  const toggleExerciseComplete = useCallback(
     (routineExerciseId: string) => {
-      const session = sessionRef.current;
-      if (!session) return;
-      const updatedExercises = session.exercises.map((e) => {
-        if (e.routineExerciseId !== routineExerciseId) return e;
-        const wasSkipped = e.completed && e.completedAt === "skipped";
-        if (wasSkipped) {
-          // Unskip — restore to incomplete
-          return { ...e, completed: false, completedAt: undefined, setDetails: ensureSetDetails(e).map((s) => ({ ...s, completed: false })) };
-        }
-        // Skip — mark complete with sentinel
-        return { ...e, completed: true, completedAt: "skipped", setDetails: ensureSetDetails(e).map((s) => ({ ...s, completed: true })) };
+      return mutateSessionExercise(routineExerciseId, (e) => {
+        const newCompleted = !e.completed;
+        const stamp = new Date().toISOString();
+        const updatedSets = ensureSetDetails(e).map((s) => ({
+          ...s,
+          completed: newCompleted,
+          completedAt: newCompleted ? (s.completedAt ?? stamp) : undefined,
+        }));
+        return {
+          ...e,
+          completed: newCompleted,
+          // Un-completing also clears a skip, so the card returns to a clean state.
+          skipped: false,
+          completedAt: newCompleted ? stamp : undefined,
+          setDetails: updatedSets,
+        };
       });
-      const allComplete = updatedExercises.every((ex) => ex.completed);
-      const updatedSession: WorkoutSession = {
-        ...session,
-        exercises: updatedExercises,
-        isComplete: allComplete,
-        completedAt: allComplete ? new Date().toISOString() : undefined,
-      };
-      saveSession(updatedSession);
     },
-    [saveSession]
+    [mutateSessionExercise]
   );
 
-  // Toggle individual set complete
+  /**
+   * Skip / unskip. A skipped exercise resolves the card without marking its
+   * sets complete — previously it flipped every set to `completed: true`, which
+   * added phantom volume, invented personal records and paid out XP for work
+   * that never happened.
+   */
+  const skipExercise = useCallback(
+    (routineExerciseId: string) => {
+      mutateSessionExercise(routineExerciseId, (e) => {
+        if (e.skipped) {
+          return {
+            ...e,
+            completed: false,
+            skipped: false,
+            completedAt: undefined,
+            setDetails: ensureSetDetails(e).map((s) => ({ ...s, completed: false, completedAt: undefined })),
+          };
+        }
+        return {
+          ...e,
+          completed: true,
+          skipped: true,
+          completedAt: new Date().toISOString(),
+          setDetails: ensureSetDetails(e).map((s) => ({ ...s, completed: false, completedAt: undefined })),
+        };
+      });
+    },
+    [mutateSessionExercise]
+  );
+
   const toggleSetComplete = useCallback(
     (routineExerciseId: string, setNumber: number) => {
-      const session = sessionRef.current;
-      if (!session) return false;
-      const updatedExercises = session.exercises.map((e) => {
-        if (e.routineExerciseId !== routineExerciseId) return e;
-        const sets = ensureSetDetails(e);
-        const updatedSets = sets.map((s) =>
-          s.setNumber === setNumber ? { ...s, completed: !s.completed } : s
+      return mutateSessionExercise(routineExerciseId, (e) => {
+        const stamp = new Date().toISOString();
+        const updatedSets = ensureSetDetails(e).map((s) =>
+          s.setNumber === setNumber
+            ? { ...s, completed: !s.completed, completedAt: !s.completed ? stamp : undefined }
+            : s
         );
         const allSetsComplete = updatedSets.length > 0 && updatedSets.every((s) => s.completed);
         return {
           ...e,
           setDetails: updatedSets,
           completed: allSetsComplete,
-          completedAt: allSetsComplete ? new Date().toISOString() : undefined,
+          skipped: false,
+          completedAt: allSetsComplete ? stamp : undefined,
         };
       });
-      const allComplete = updatedExercises.every((ex) => ex.completed);
-      const updatedSession: WorkoutSession = {
-        ...session,
-        exercises: updatedExercises,
-        isComplete: allComplete,
-        completedAt: allComplete ? new Date().toISOString() : undefined,
-      };
-      saveSession(updatedSession);
-      return allComplete;
     },
-    [saveSession]
+    [mutateSessionExercise]
   );
 
-  // Update weight for a specific set
+  /** Weight is stored in pounds; callers convert from the display unit. */
   const updateSetWeight = useCallback(
     (routineExerciseId: string, setNumber: number, weight: number) => {
-      if (weight < 0 || !Number.isFinite(weight)) return;
-      const session = sessionRef.current;
-      if (!session) return;
-      const updatedExercises = session.exercises.map((e) => {
-        if (e.routineExerciseId !== routineExerciseId) return e;
-        const sets = ensureSetDetails(e);
-        const updatedSets = sets.map((s) =>
+      if (!Number.isFinite(weight) || weight < 0) return;
+      mutateSessionExercise(routineExerciseId, (e) => ({
+        ...e,
+        setDetails: ensureSetDetails(e).map((s) =>
           s.setNumber === setNumber ? { ...s, weight } : s
-        );
-        return { ...e, setDetails: updatedSets };
-      });
-      const updatedSession: WorkoutSession = {
-        ...session,
-        exercises: updatedExercises,
-      };
-      saveSession(updatedSession);
+        ),
+      }));
     },
-    [saveSession]
+    [mutateSessionExercise]
   );
 
-  const completeWorkout = useCallback(() => {
-    if (completingRef.current) return;
-    completingRef.current = true;
+  const updateSetReps = useCallback(
+    (routineExerciseId: string, setNumber: number, reps: number) => {
+      if (!Number.isFinite(reps) || reps < 0 || reps > 999) return;
+      mutateSessionExercise(routineExerciseId, (e) => ({
+        ...e,
+        setDetails: ensureSetDetails(e).map((s) =>
+          s.setNumber === setNumber ? { ...s, reps: Math.round(reps) } : s
+        ),
+      }));
+    },
+    [mutateSessionExercise]
+  );
 
-    try {
+  /** Add a set mid-workout — you don't always stop where the plan said to. */
+  const addSetToExercise = useCallback(
+    (routineExerciseId: string) => {
+      mutateSessionExercise(routineExerciseId, (e) => {
+        const sets = ensureSetDetails(e);
+        const last = sets[sets.length - 1];
+        const next: SetData = {
+          setNumber: sets.length + 1,
+          reps: last?.reps ?? e.reps,
+          weight: last?.weight ?? e.weight,
+          completed: false,
+        };
+        const updated = [...sets, next];
+        return {
+          ...e,
+          sets: updated.length,
+          setDetails: updated,
+          // A newly added set is unfinished, so the exercise reopens.
+          completed: false,
+          skipped: false,
+          completedAt: undefined,
+        };
+      });
+    },
+    [mutateSessionExercise]
+  );
+
+  const removeSetFromExercise = useCallback(
+    (routineExerciseId: string, setNumber: number) => {
+      mutateSessionExercise(routineExerciseId, (e) => {
+        const sets = ensureSetDetails(e);
+        if (sets.length <= 1) return e;
+        const updated = renumber(sets.filter((s) => s.setNumber !== setNumber));
+        const allComplete = updated.length > 0 && updated.every((s) => s.completed);
+        return {
+          ...e,
+          sets: updated.length,
+          setDetails: updated,
+          completed: e.skipped ? e.completed : allComplete,
+          completedAt: allComplete ? (e.completedAt ?? new Date().toISOString()) : e.completedAt,
+        };
+      });
+    },
+    [mutateSessionExercise]
+  );
+
+  /**
+   * Persist everything derived from `history` in one place, so a delete and a
+   * completion can't drift apart.
+   */
+  const persistDerived = useCallback(
+    (
+      nextHistory: WorkoutHistory[],
+      derived: {
+        performance: PerformanceMap;
+        records: PRMap;
+        streak: StreakData;
+        gamification: GamificationData;
+      }
+    ) => {
+      saveHistoryMutation.mutate(nextHistory);
+      historyRef.current = nextHistory;
+
+      setLastPerformance(derived.performance);
+      lastPerformanceRef.current = derived.performance;
+      void AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(derived.performance)).catch(() => {});
+
+      setPersonalRecords(derived.records);
+      personalRecordsRef.current = derived.records;
+      void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(derived.records)).catch(() => {});
+
+      saveStreakMutation.mutate(derived.streak);
+      streakRef.current = derived.streak;
+
+      setGamification(derived.gamification);
+      gamificationRef.current = derived.gamification;
+      void AsyncStorage.setItem(STORAGE_KEYS.GAMIFICATION, JSON.stringify(derived.gamification)).catch(() => {});
+    },
+    [saveHistoryMutation, saveStreakMutation]
+  );
+
+  /** Returns true if the session was logged, false if it was discarded. */
+  const completeWorkout = useCallback((): boolean => {
     const session = sessionRef.current;
-    if (!session) return;
-    const startTime = new Date(session.startedAt).getTime();
-    const endTime = Date.now();
-    const rawDuration = Math.round((endTime - startTime) / 60000);
-    const duration = Number.isFinite(rawDuration) && rawDuration >= 0 ? rawDuration : 0;
+    if (!session) return false;
+    // Guard against the celebration overlay and the auto-complete path both
+    // firing for the same session.
+    if (completedSessionIds.current.has(session.id)) return false;
+    completedSessionIds.current.add(session.id);
 
-    // Use refs for latest values (avoids stale closure)
+    const today = getToday();
+    const summary = summarizeSession(session, personalRecordsRef.current, { today });
+
+    // Skipping every exercise resolves the session but performs no work, so it
+    // must not log a workout, extend the streak or pay out the completion bonus.
+    if (summary.completedSets === 0) {
+      saveSession(null);
+      return false;
+    }
+
     const currentHistory = historyRef.current;
     const currentStreak = streakRef.current;
-    const currentPerf = lastPerformanceRef.current;
-    const currentPRs = personalRecordsRef.current;
 
-    // Save per-exercise performance for auto-fill next time
-    const updatedPerf = { ...currentPerf };
-    const updatedPRs = { ...currentPRs };
-    const today = getToday();
+    const updatedPerf: PerformanceMap = { ...lastPerformanceRef.current, ...summary.performanceUpdates };
+    const updatedPRs: PRMap = { ...personalRecordsRef.current, ...summary.prUpdates };
 
-    // Build enriched per-exercise data
-    const exerciseDetails: WorkoutHistoryExercise[] = [];
-    let totalVolume = 0;
-    let newPRCount = 0;
-    const muscleGroupsSet = new Set<MuscleGroup>();
+    // ── Streak ──
+    const updatedDates = [...new Set([...currentStreak.completedDates, today])].sort();
+    const derivedStreak = streakFromDates(updatedDates, today);
+    const updatedStreak: StreakData = {
+      currentStreak: derivedStreak.currentStreak,
+      longestStreak: Math.max(currentStreak.longestStreak, derivedStreak.longestStreak),
+      lastWorkoutDate: today,
+      completedDates: updatedDates,
+    };
 
-    session.exercises.forEach((ex) => {
-      const sets = ensureSetDetails(ex);
-      const completedSets = sets.filter((s) => s.completed);
-      muscleGroupsSet.add(ex.muscleGroup);
-
-      let exVolume = 0;
-      let bestSet = { weight: 0, reps: 0 };
-
-      if (completedSets.length > 0) {
-        completedSets.forEach((s) => {
-          exVolume += s.weight * s.reps;
-          if (s.weight > bestSet.weight || (s.weight === bestSet.weight && s.reps > bestSet.reps)) {
-            bestSet = { weight: s.weight, reps: s.reps };
-          }
-        });
-
-        updatedPerf[ex.exerciseName] = {
-          sets: completedSets.map((s) => ({ weight: s.weight, reps: s.reps })),
-          date: today,
-        };
-
-        // Check for PR (Epley formula: 1RM = weight * (1 + reps/30))
-        completedSets.forEach((s) => {
-          if (s.weight > 0) {
-            const estimated1RM = s.weight * (1 + s.reps / 30);
-            const existingPR = updatedPRs[ex.exerciseName];
-            if (!existingPR || estimated1RM > existingPR.estimated1RM) {
-              updatedPRs[ex.exerciseName] = {
-                weight: s.weight,
-                reps: s.reps,
-                estimated1RM,
-                date: today,
-              };
-              newPRCount++;
-            }
-          }
-        });
-      }
-
-      totalVolume += exVolume;
-      exerciseDetails.push({
-        exerciseName: ex.exerciseName,
-        muscleGroup: ex.muscleGroup,
-        setsCompleted: completedSets.length,
-        totalSets: sets.length,
-        volume: exVolume,
-        bestSet,
-      });
-    });
+    // ── XP + achievements ──
+    const currentGamification = gamificationRef.current;
+    const xpBreakdown = calculateXPGain(
+      summary.completedSets,
+      summary.newPRCount,
+      summary.totalVolume,
+      updatedStreak.currentStreak
+    );
+    const newTotalXP = currentGamification.totalXP + xpBreakdown.total;
+    const previousLevel = currentGamification.level;
+    const newLevel = getLevelForXP(newTotalXP);
 
     const historyEntry: WorkoutHistory = {
       id: generateId(),
       routineId: session.routineId,
       routineName: session.routineName,
       completedAt: new Date().toISOString(),
-      exerciseCount: session.exercises.length,
-      duration,
-      totalVolume,
-      muscleGroups: [...muscleGroupsSet],
-      exercises: exerciseDetails,
-      newPRs: newPRCount,
+      exerciseCount: summary.exerciseCount,
+      completedExercises: summary.completedExercises,
+      skippedExercises: summary.skippedExercises,
+      totalSets: summary.totalSets,
+      completedSets: summary.completedSets,
+      duration: summary.durationMinutes,
+      totalVolume: summary.totalVolume,
+      muscleGroups: summary.muscleGroups,
+      exercises: summary.exercises,
+      newPRs: summary.newPRCount,
+      xpAwarded: xpBreakdown.total,
     };
-
     const updatedHistory = [historyEntry, ...currentHistory];
-    saveHistoryMutation.mutate(updatedHistory);
-
-    setLastPerformance(updatedPerf);
-    setPersonalRecords(updatedPRs);
-    void AsyncStorage.setItem(STORAGE_KEYS.LAST_PERFORMANCE, JSON.stringify(updatedPerf)).catch(() => {});
-    void AsyncStorage.setItem(STORAGE_KEYS.PERSONAL_RECORDS, JSON.stringify(updatedPRs)).catch(() => {});
-
-    // Update streak
-    const updatedDates = currentStreak.completedDates.includes(today)
-      ? currentStreak.completedDates
-      : [...currentStreak.completedDates, today];
-
-    let newStreak = currentStreak.currentStreak;
-    const yd = new Date(); yd.setDate(yd.getDate() - 1);
-    const yesterday = formatDate(yd);
-
-    if (currentStreak.lastWorkoutDate === today) {
-      // already counted today
-    } else if (currentStreak.lastWorkoutDate === yesterday || currentStreak.lastWorkoutDate === null) {
-      newStreak = currentStreak.currentStreak + 1;
-    } else {
-      newStreak = 1;
-    }
-
-    const newLongest = Math.max(currentStreak.longestStreak, newStreak);
-    const updatedStreak: StreakData = {
-      currentStreak: newStreak,
-      longestStreak: newLongest,
-      lastWorkoutDate: today,
-      completedDates: updatedDates,
-    };
-    saveStreakMutation.mutate(updatedStreak);
-
-    // ─── Gamification: XP + Achievements ───────────────────
-    const currentGamification = gamificationRef.current;
-    const completedSetsCount = exerciseDetails.reduce((sum, ex) => sum + ex.setsCompleted, 0);
-    const xpBreakdown = calculateXPGain(completedSetsCount, newPRCount, totalVolume, newStreak);
-    const newTotalXP = currentGamification.totalXP + xpBreakdown.total;
-    const previousLevel = currentGamification.level;
-    const newLevel = getLevelForXP(newTotalXP);
 
     const achievementCtx = buildAchievementContext(
       updatedHistory,
       updatedStreak,
       updatedPRs,
       newLevel,
-      totalVolume,
-      newPRCount
+      summary.totalVolume,
+      summary.newPRCount
     );
     const alreadyUnlockedIds = currentGamification.achievements.map((a) => a.id);
     const newAchievementIds = checkAchievements(achievementCtx, alreadyUnlockedIds);
     const now = new Date().toISOString();
-    const newAchievements = [
-      ...currentGamification.achievements,
-      ...newAchievementIds.map((id) => ({ id, unlockedAt: now })),
-    ];
 
     const xpGainEvent: XPGainEvent = {
       timestamp: now,
@@ -955,43 +1151,171 @@ function useGymState() {
     const updatedGamification: GamificationData = {
       totalXP: newTotalXP,
       level: newLevel,
-      achievements: newAchievements,
+      achievements: [
+        ...currentGamification.achievements,
+        ...newAchievementIds.map((id) => ({ id, unlockedAt: now })),
+      ],
       lastXPGain: xpGainEvent,
     };
-    setGamification(updatedGamification);
-    gamificationRef.current = updatedGamification;
-    void AsyncStorage.setItem(STORAGE_KEYS.GAMIFICATION, JSON.stringify(updatedGamification)).catch(() => {});
 
-    // Fire notifications if enabled
+    persistDerived(updatedHistory, {
+      performance: updatedPerf,
+      records: updatedPRs,
+      streak: updatedStreak,
+      gamification: updatedGamification,
+    });
+
     if (settingsRef.current.notificationsEnabled) {
-      void sendWorkoutCompleteNotification(session.exercises.length, duration, newPRCount);
-      void sendStreakMilestoneNotification(newStreak);
+      void sendWorkoutCompleteNotification(
+        summary.completedExercises,
+        summary.durationMinutes,
+        summary.newPRCount
+      );
+      void sendStreakMilestoneNotification(updatedStreak.currentStreak);
+      // Already trained today — don't let the 6pm reminder claim otherwise.
+      void refreshDailyReminder({ reminderHour: settingsRef.current.reminderHour, trainedToday: true });
     }
 
-    // Track workout for paywall trigger
     recordPaywallWorkout();
-
     saveSession(null);
-    } finally {
-      completingRef.current = false;
-    }
-  }, [saveHistoryMutation, saveStreakMutation, saveSession, recordPaywallWorkout]);
+    return true;
+  }, [persistDerived, recordPaywallWorkout, saveSession]);
 
   const cancelWorkout = useCallback(() => {
     saveSession(null);
   }, [saveSession]);
 
-  // ─── Computed Data ────────────────────────────────────────
-  const getWorkoutsThisWeek = useCallback(() => {
-    const startOfWeek = getStartOfWeek(new Date());
-    return history.filter((h) => new Date(h.completedAt).getTime() >= startOfWeek.getTime()).length;
-  }, [history]);
+  /**
+   * The session as of the most recent mutation, not as of the last render.
+   * Callers that react synchronously to a toggle (the completion celebration)
+   * would otherwise summarise the session *before* the set they just checked.
+   */
+  const getLiveSession = useCallback(() => sessionRef.current, []);
 
-  // Calendar-week aligned weekly counts
+  /**
+   * Delete a logged workout and rebuild everything derived from history.
+   * Without this a single mistyped set permanently poisoned personal records,
+   * lifetime volume and achievements with no way to correct it.
+   */
+  const deleteWorkout = useCallback(
+    (workoutId: string) => {
+      const nextHistory = historyRef.current.filter((h) => h.id !== workoutId);
+      if (nextHistory.length === historyRef.current.length) return;
+
+      const records = rebuildPersonalRecords(nextHistory);
+      const performance = rebuildLastPerformance(nextHistory);
+      const dates = rebuildCompletedDates(nextHistory);
+      const today = getToday();
+      const derived = streakFromDates(dates, today);
+      const nextStreak: StreakData = {
+        currentStreak: derived.currentStreak,
+        longestStreak: derived.longestStreak,
+        lastWorkoutDate: derived.lastWorkoutDate,
+        completedDates: dates,
+      };
+
+      // XP replays from what each workout actually awarded. Older entries
+      // predate that field, so fall back to recomputing from their totals.
+      const totalXP = nextHistory.reduce((sum, w) => {
+        if (typeof w.xpAwarded === "number") return sum + w.xpAwarded;
+        const sets =
+          w.completedSets ??
+          w.exercises?.reduce((s, e) => s + e.setsCompleted, 0) ??
+          w.exerciseCount * 3;
+        return sum + calculateXPGain(sets, w.newPRs ?? 0, w.totalVolume ?? 0, 0).total;
+      }, 0);
+      const level = getLevelForXP(totalXP);
+
+      // Re-test unlocked achievements: one earned only by the deleted workout
+      // should not survive it. Genuinely earned ones keep their original date.
+      const ctx = buildAchievementContext(nextHistory, nextStreak, records, level);
+      const stillQualifying = new Set(checkAchievements(ctx, []));
+      const stillValid = gamificationRef.current.achievements.filter((a) =>
+        stillQualifying.has(a.id)
+      );
+
+      persistDerived(nextHistory, {
+        performance,
+        records,
+        streak: nextStreak,
+        gamification: {
+          totalXP,
+          level,
+          achievements: stillValid,
+          lastXPGain: null,
+        },
+      });
+    },
+    [persistDerived]
+  );
+
+  // ─── Export / reset ───────────────────────────────────────
+  const exportData = useCallback(() => {
+    const payload = {
+      app: "GymPulse",
+      schemaVersion: CURRENT_DATA_VERSION,
+      exportedAt: new Date().toISOString(),
+      weightUnitNote: "All weights are stored in pounds (lbs).",
+      profile,
+      settings: settingsRef.current,
+      routines,
+      customExercises,
+      history: historyRef.current,
+      streak: streakRef.current,
+      personalRecords: personalRecordsRef.current,
+      lastPerformance: lastPerformanceRef.current,
+      gamification: gamificationRef.current,
+    };
+    return JSON.stringify(payload, null, 2);
+  }, [profile, routines, customExercises]);
+
+  const clearAllData = useCallback(async () => {
+    await AsyncStorage.multiRemove(ALL_STORAGE_KEYS).catch(() => {});
+    completedSessionIds.current.clear();
+    setProfile(null);
+    setRoutines([]);
+    setCustomExercises([]);
+    setCurrentSession(null);
+    sessionRef.current = null;
+    setHistory([]);
+    historyRef.current = [];
+    setStreak(createDefaultStreak());
+    streakRef.current = createDefaultStreak();
+    setLastPerformance({});
+    lastPerformanceRef.current = {};
+    setPersonalRecords({});
+    personalRecordsRef.current = {};
+    setSettings(DEFAULT_SETTINGS);
+    settingsRef.current = DEFAULT_SETTINGS;
+    setGamification(DEFAULT_GAMIFICATION);
+    gamificationRef.current = DEFAULT_GAMIFICATION;
+    setPremium(DEFAULT_PREMIUM);
+    premiumRef.current = DEFAULT_PREMIUM;
+    await disableAllNotifications().catch(() => {});
+    queryClient.clear();
+  }, [queryClient]);
+
+  // ─── Computed Data ────────────────────────────────────────
+
+  /**
+   * Distinct *days* trained this week, not workout count. The goal is
+   * "training days per week", so two sessions in one day used to read as 2/5.
+   */
+  const getWorkoutsThisWeek = useCallback(() => {
+    const startOfWeek = getStartOfWeek(new Date(), settings.weekStartsOn);
+    const days = new Set<string>();
+    for (const h of history) {
+      const d = new Date(h.completedAt);
+      if (d.getTime() >= startOfWeek.getTime()) days.add(formatDate(d));
+    }
+    return days.size;
+  }, [history, settings.weekStartsOn]);
+
+  /** Calendar-week aligned counts with real labels for the chart axis. */
   const getWeeklyWorkoutCounts = useCallback(
     (weeks: number) => {
-      const counts: number[] = [];
-      const currentWeekStart = getStartOfWeek(new Date());
+      const result: { count: number; label: string; startDate: string; isCurrent: boolean }[] = [];
+      const currentWeekStart = getStartOfWeek(new Date(), settings.weekStartsOn);
 
       for (let w = weeks - 1; w >= 0; w--) {
         const weekStart = new Date(currentWeekStart);
@@ -1003,20 +1327,44 @@ function useGymState() {
           const d = new Date(h.completedAt);
           return d.getTime() >= weekStart.getTime() && d.getTime() < weekEnd.getTime();
         }).length;
-        counts.push(count);
+
+        result.push({
+          count,
+          // "Aug 4" beats "W3" — the old labels named nothing the user could place.
+          label: weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          startDate: formatDate(weekStart),
+          isCurrent: w === 0,
+        });
       }
-      return counts;
+      return result;
     },
-    [history]
+    [history, settings.weekStartsOn]
   );
 
-  // Invalidate queries for pull-to-refresh
+  const getVolumeThisWeek = useCallback(() => {
+    const startOfWeek = getStartOfWeek(new Date(), settings.weekStartsOn);
+    return history
+      .filter((h) => new Date(h.completedAt).getTime() >= startOfWeek.getTime())
+      .reduce((sum, h) => sum + (h.totalVolume ?? 0), 0);
+  }, [history, settings.weekStartsOn]);
+
+  const trainedToday = useMemo(
+    () => streak.lastWorkoutDate === getToday(),
+    [streak.lastWorkoutDate]
+  );
+
   const refreshData = useCallback(() => {
+    // Deliberately excludes ["currentSession"]: refetching it mid-workout can
+    // lose the most recent set toggle, because session writes are fire-and-forget.
     void queryClient.invalidateQueries({ queryKey: ["history"] });
     void queryClient.invalidateQueries({ queryKey: ["streak"] });
     void queryClient.invalidateQueries({ queryKey: ["routines"] });
     void queryClient.invalidateQueries({ queryKey: ["profile"] });
-    void queryClient.invalidateQueries({ queryKey: ["currentSession"] });
+    void queryClient.invalidateQueries({ queryKey: ["personalRecords"] });
+    void queryClient.invalidateQueries({ queryKey: ["lastPerformance"] });
+    if (!sessionRef.current) {
+      void queryClient.invalidateQueries({ queryKey: ["currentSession"] });
+    }
   }, [queryClient]);
 
   return {
@@ -1028,6 +1376,7 @@ function useGymState() {
     history,
     streak,
     isLoading,
+    trainedToday,
     saveProfile,
     completeOnboarding,
     addRoutine,
@@ -1037,16 +1386,26 @@ function useGymState() {
     reorderRoutine,
     addExerciseToRoutine,
     removeExerciseFromRoutine,
+    reorderExerciseInRoutine,
     addCustomExercise,
+    deleteCustomExercise,
     startWorkout,
     toggleExerciseComplete,
     skipExercise,
     toggleSetComplete,
     updateSetWeight,
+    updateSetReps,
+    addSetToExercise,
+    removeSetFromExercise,
     completeWorkout,
     cancelWorkout,
+    getLiveSession,
+    deleteWorkout,
+    exportData,
+    clearAllData,
     getWorkoutsThisWeek,
     getWeeklyWorkoutCounts,
+    getVolumeThisWeek,
     refreshData,
     lastPerformance,
     personalRecords,
@@ -1059,3 +1418,5 @@ function useGymState() {
     shouldShowPaywall,
   };
 }
+
+export type { WeightUnit };

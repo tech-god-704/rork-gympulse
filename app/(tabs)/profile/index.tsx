@@ -8,16 +8,21 @@ import {
   TextInput,
   Platform,
   RefreshControl,
+  Alert,
+  Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp, Crown } from "lucide-react-native";
+import { Flame, ChevronRight, Dumbbell, Trophy, Clock, TrendingUp, Crown, Download, Trash2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
-import { FitnessGoal, ExperienceLevel, GOAL_LABELS, LEVEL_LABELS, WeightUnit, AppTheme } from "@/types";
+import { FitnessGoal, ExperienceLevel, GOAL_LABELS, LEVEL_LABELS, WeightUnit, AppTheme, WeekStart } from "@/types";
+import { formatVolume } from "@/utils/units";
+import { formatDuration } from "@/utils/helpers";
+import { ACTIVE_BAR_HEIGHT } from "@/components/ActiveWorkoutBar";
 import XPBar from "@/components/XPBar";
 import AchievementGrid from "@/components/AchievementGrid";
 import { getLevelDefinition } from "@/utils/gamification";
@@ -27,8 +32,21 @@ const LEVELS: ExperienceLevel[] = ["beginner", "intermediate", "advanced"];
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
-  const { profile, streak, history, saveProfile, refreshData, settings, updateSettings, gamification, premium } = useGym();
+  const { colors } = useTheme();
+  const {
+    profile,
+    streak,
+    history,
+    saveProfile,
+    refreshData,
+    settings,
+    updateSettings,
+    gamification,
+    premium,
+    exportData,
+    clearAllData,
+    currentSession,
+  } = useGym();
   const router = useRouter();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -94,6 +112,35 @@ export default function ProfileScreen() {
     [profile, saveProfile]
   );
 
+  const handleExport = useCallback(async () => {
+    try {
+      const payload = exportData();
+      await Share.share({
+        title: "GymPulse data export",
+        message: payload,
+      });
+    } catch {
+      Alert.alert("Export failed", "Could not open the share sheet. Please try again.");
+    }
+  }, [exportData]);
+
+  const handleClearData = useCallback(() => {
+    Alert.alert(
+      "Erase all data?",
+      "This permanently deletes your profile, routines, workout history, personal records and achievements on this device. It cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Erase everything",
+          style: "destructive",
+          onPress: () => {
+            void clearAllData();
+          },
+        },
+      ]
+    );
+  }, [clearAllData]);
+
   if (!profile) return null;
 
   return (
@@ -102,7 +149,10 @@ export default function ProfileScreen() {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: currentSession ? 40 + ACTIVE_BAR_HEIGHT : 40 },
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -234,28 +284,20 @@ export default function ProfileScreen() {
               <View style={styles.extendedStatItem}>
                 <TrendingUp size={14} color={colors.indigo} />
                 <Text style={styles.extendedStatValue}>
-                  {totalVolume >= 1000000
-                    ? `${(totalVolume / 1000000).toFixed(1)}M`
-                    : totalVolume >= 1000
-                    ? `${(totalVolume / 1000).toFixed(1)}k`
-                    : totalVolume} {settings.weightUnit}
+                  {formatVolume(totalVolume, settings.weightUnit)}
                 </Text>
                 <Text style={styles.extendedStatLabel}>Total Volume</Text>
               </View>
               <View style={styles.extendedStatDivider} />
               <View style={styles.extendedStatItem}>
                 <Clock size={14} color={colors.indigo} />
-                <Text style={styles.extendedStatValue}>{avgDuration}m</Text>
+                <Text style={styles.extendedStatValue}>{formatDuration(avgDuration)}</Text>
                 <Text style={styles.extendedStatLabel}>Avg Duration</Text>
               </View>
               <View style={styles.extendedStatDivider} />
               <View style={styles.extendedStatItem}>
                 <Clock size={14} color={colors.indigo} />
-                <Text style={styles.extendedStatValue}>
-                  {totalDuration >= 60
-                    ? `${Math.floor(totalDuration / 60)}h ${totalDuration % 60}m`
-                    : `${totalDuration}m`}
-                </Text>
+                <Text style={styles.extendedStatValue}>{formatDuration(totalDuration)}</Text>
                 <Text style={styles.extendedStatLabel}>Total Time</Text>
               </View>
             </View>
@@ -470,6 +512,45 @@ export default function ProfileScreen() {
 
           <View style={styles.settingDivider} />
 
+          {/* Week Start — weekly stats and the activity calendar both honour this */}
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>Week Starts</Text>
+            <View style={styles.segmentedControl}>
+              {([
+                { key: "monday" as WeekStart, label: "Mon" },
+                { key: "sunday" as WeekStart, label: "Sun" },
+              ]).map((w) => (
+                <TouchableOpacity
+                  key={w.key}
+                  onPress={() => {
+                    updateSettings({ weekStartsOn: w.key });
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: settings.weekStartsOn === w.key }}
+                  accessibilityLabel={`Week starts on ${w.key === "monday" ? "Monday" : "Sunday"}`}
+                >
+                  {settings.weekStartsOn === w.key ? (
+                    <LinearGradient
+                      colors={[colors.primary, colors.indigo]}
+                      style={styles.segmentActive}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    >
+                      <Text style={styles.segmentTextActive}>{w.label}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={styles.segmentInactive}>
+                      <Text style={styles.segmentText}>{w.label}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.settingDivider} />
+
           {/* Confetti Toggle */}
           <TouchableOpacity
             style={styles.settingRow}
@@ -478,6 +559,9 @@ export default function ProfileScreen() {
               if (Platform.OS !== "web") void Haptics.selectionAsync();
             }}
             activeOpacity={0.7}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: settings.showConfetti }}
+            accessibilityLabel="Celebration Effects"
           >
             <Text style={styles.settingLabel}>Celebration Effects</Text>
             <View style={[styles.toggleTrack, settings.showConfetti && styles.toggleTrackOn]}>
@@ -495,6 +579,9 @@ export default function ProfileScreen() {
               if (Platform.OS !== "web") void Haptics.selectionAsync();
             }}
             activeOpacity={0.7}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: settings.autoStartRestTimer }}
+            accessibilityLabel="Auto-Start Rest Timer"
           >
             <Text style={styles.settingLabel}>Auto-Start Rest Timer</Text>
             <View style={[styles.toggleTrack, settings.autoStartRestTimer && styles.toggleTrackOn]}>
@@ -512,11 +599,98 @@ export default function ProfileScreen() {
               if (Platform.OS !== "web") void Haptics.selectionAsync();
             }}
             activeOpacity={0.7}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: settings.notificationsEnabled }}
+            accessibilityLabel="Push Notifications"
           >
             <Text style={styles.settingLabel}>Push Notifications</Text>
             <View style={[styles.toggleTrack, settings.notificationsEnabled && styles.toggleTrackOn]}>
               <View style={[styles.toggleThumb, settings.notificationsEnabled && styles.toggleThumbOn]} />
             </View>
+          </TouchableOpacity>
+
+          {settings.notificationsEnabled && (
+            <>
+              <View style={styles.settingDivider} />
+              <View style={styles.settingRow}>
+                <Text style={styles.settingLabel}>Reminder Time</Text>
+                <View style={styles.segmentedControl}>
+                  {[
+                    { hour: 8, label: "8am" },
+                    { hour: 12, label: "12pm" },
+                    { hour: 17, label: "5pm" },
+                    { hour: 20, label: "8pm" },
+                  ].map((r) => (
+                    <TouchableOpacity
+                      key={r.hour}
+                      onPress={() => {
+                        updateSettings({ reminderHour: r.hour });
+                        if (Platform.OS !== "web") void Haptics.selectionAsync();
+                      }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: settings.reminderHour === r.hour }}
+                      accessibilityLabel={`Remind me at ${r.label}`}
+                    >
+                      {settings.reminderHour === r.hour ? (
+                        <LinearGradient
+                          colors={[colors.primary, colors.indigo]}
+                          style={styles.segmentActive}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                        >
+                          <Text style={styles.segmentTextActive}>{r.label}</Text>
+                        </LinearGradient>
+                      ) : (
+                        <View style={styles.segmentInactive}>
+                          <Text style={styles.segmentText}>{r.label}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* ─── Your Data ─── */}
+        <View style={styles.settingsList}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleExport}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Export your data as JSON"
+          >
+            <View style={styles.dataRowLeft}>
+              <Download size={16} color={colors.primary} />
+              <View>
+                <Text style={styles.settingLabel}>Export Data</Text>
+                <Text style={styles.settingHint}>
+                  {history.length} workout{history.length === 1 ? "" : "s"} · JSON, weights in lbs
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={14} color={colors.textTertiary} />
+          </TouchableOpacity>
+
+          <View style={styles.settingDivider} />
+
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={handleClearData}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Erase all data on this device"
+          >
+            <View style={styles.dataRowLeft}>
+              <Trash2 size={16} color={colors.error} />
+              <View>
+                <Text style={[styles.settingLabel, { color: colors.error }]}>Erase All Data</Text>
+                <Text style={styles.settingHint}>Cannot be undone</Text>
+              </View>
+            </View>
+            <ChevronRight size={14} color={colors.textTertiary} />
           </TouchableOpacity>
         </View>
 
@@ -829,11 +1003,23 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 14,
+    minHeight: 56,
   },
   settingLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
     color: colors.text,
+  },
+  settingHint: {
+    fontSize: 11,
+    color: colors.textTertiary,
+    marginTop: 2,
+  },
+  dataRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
   },
   settingRight: {
     flexDirection: "row",

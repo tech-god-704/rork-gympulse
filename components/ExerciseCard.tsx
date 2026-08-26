@@ -1,10 +1,12 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, TextInput, PanResponder } from "react-native";
-import { Check, ChevronDown, Minus, Plus, SkipForward, RotateCcw } from "lucide-react-native";
+import { Check, ChevronDown, Minus, Plus, SkipForward, RotateCcw, Trash2 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS } from "@/types";
+import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS, WeightUnit, ExercisePerformance, PersonalRecord } from "@/types";
+import { estimateOneRepMax } from "@/utils/workoutStats";
+import { formatWeight, toDisplayWeight, fromDisplayWeight, weightStep, trimNumber } from "@/utils/units";
 
 interface Props {
   exercise: WorkoutSessionExercise;
@@ -13,18 +15,42 @@ interface Props {
   onToggle: (id: string) => void;
   onRestTimer: (seconds?: number) => void;
   onToggleSet?: (id: string, setNumber: number) => void;
+  /** Weight arrives in stored pounds. */
   onUpdateSetWeight?: (id: string, setNumber: number, weight: number) => void;
+  onUpdateSetReps?: (id: string, setNumber: number, reps: number) => void;
+  onAddSet?: (id: string) => void;
+  onRemoveSet?: (id: string, setNumber: number) => void;
   onSkip?: (id: string) => void;
-  previousPerformance?: { sets: { weight: number; reps: number }[] };
-  personalRecord?: { weight: number; reps: number; estimated1RM: number };
-  weightUnit?: string;
+  previousPerformance?: ExercisePerformance;
+  personalRecord?: PersonalRecord;
+  weightUnit?: WeightUnit;
   defaultRestTimer?: number;
   autoStartRestTimer?: boolean;
   accentColor?: string;
 }
 
-function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, onToggleSet, onUpdateSetWeight, onSkip, previousPerformance, personalRecord, weightUnit = "lbs", defaultRestTimer = 60, autoStartRestTimer = true, accentColor }: Props) {
-  const { colors, isDark } = useTheme();
+type EditTarget = { setNumber: number; field: "weight" | "reps" } | null;
+
+function ExerciseCard({
+  exercise,
+  index = 0,
+  exerciseId,
+  onToggle,
+  onRestTimer,
+  onToggleSet,
+  onUpdateSetWeight,
+  onUpdateSetReps,
+  onAddSet,
+  onRemoveSet,
+  onSkip,
+  previousPerformance,
+  personalRecord,
+  weightUnit = "lbs",
+  defaultRestTimer = 60,
+  autoStartRestTimer = true,
+  accentColor,
+}: Props) {
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
@@ -34,10 +60,10 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
   const swipeOpen = useRef(false);
   const [expanded, setExpanded] = useState(false);
   const expandedRef = useRef(false);
-  const [editingSet, setEditingSet] = useState<number | null>(null);
-  const [editWeight, setEditWeight] = useState("");
+  const [editing, setEditing] = useState<EditTarget>(null);
+  const [draft, setDraft] = useState("");
 
-  const isSkipped = exercise.completed && exercise.completedAt === "skipped";
+  const isSkipped = exercise.skipped === true;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -62,18 +88,24 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
     })
   ).current;
 
-  const completedSets = (exercise.setDetails || []).filter((s) => s.completed).length;
-  const totalSets = exercise.setDetails?.length || exercise.sets;
+  const sets = useMemo(() => exercise.setDetails ?? [], [exercise.setDetails]);
+  const completedSets = useMemo(() => sets.filter((s) => s.completed).length, [sets]);
+  const totalSets = sets.length || exercise.sets;
 
-  // PR detection: check if any completed set in this exercise beats the existing PR
-  const isPRBeaten = (() => {
-    if (!personalRecord || !exercise.setDetails) return false;
-    return exercise.setDetails.some((s) => {
-      if (!s.completed || s.weight <= 0) return false;
-      const estimated1RM = s.weight * (1 + s.reps / 30);
-      return estimated1RM > personalRecord.estimated1RM;
-    });
-  })();
+  const volume = useMemo(
+    () => sets.filter((s) => s.completed).reduce((sum, s) => sum + s.weight * s.reps, 0),
+    [sets]
+  );
+
+  // Does any completed set beat the standing record? Uses the same 1RM
+  // estimator the provider records PRs with, so the badge can't disagree
+  // with what actually gets saved.
+  const isPRBeaten = useMemo(() => {
+    if (isSkipped || !personalRecord) return false;
+    return sets.some(
+      (s) => s.completed && s.weight > 0 && estimateOneRepMax(s.weight, s.reps) > personalRecord.estimated1RM
+    );
+  }, [sets, personalRecord, isSkipped]);
 
   useEffect(() => {
     Animated.timing(checkAnim, {
@@ -103,6 +135,7 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
     const next = !expandedRef.current;
     expandedRef.current = next;
     setExpanded(next);
+    setEditing(null);
     Animated.spring(chevronAnim, {
       toValue: next ? 1 : 0,
       friction: 8,
@@ -114,38 +147,81 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
     }
   }, [chevronAnim]);
 
-  const handleSetToggle = useCallback((setNumber: number, wasCompleted: boolean) => {
-    if (onToggleSet) {
+  const handleSetToggle = useCallback(
+    (setNumber: number, wasCompleted: boolean) => {
+      if (!onToggleSet) return;
       onToggleSet(exerciseId, setNumber);
       if (Platform.OS !== "web") {
-        void Haptics.impactAsync(wasCompleted ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium);
+        void Haptics.impactAsync(
+          wasCompleted ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium
+        );
       }
       if (!wasCompleted && autoStartRestTimer) {
         onRestTimer(defaultRestTimer);
       }
-    }
-  }, [onToggleSet, exerciseId, onRestTimer, autoStartRestTimer, defaultRestTimer]);
+    },
+    [onToggleSet, exerciseId, onRestTimer, autoStartRestTimer, defaultRestTimer]
+  );
 
-  const handleWeightSave = useCallback((setNumber: number) => {
-    if (onUpdateSetWeight && editWeight.trim()) {
-      const w = parseFloat(editWeight);
-      if (!isNaN(w) && w >= 0) {
-        onUpdateSetWeight(exerciseId, setNumber, w);
+  // ── Inline editing ──────────────────────────────────────
+  const beginEdit = useCallback(
+    (setNumber: number, field: "weight" | "reps", currentWeightLbs: number, currentReps: number) => {
+      setEditing({ setNumber, field });
+      setDraft(
+        field === "weight"
+          ? trimNumber(toDisplayWeight(currentWeightLbs, weightUnit))
+          : String(currentReps)
+      );
+    },
+    [weightUnit]
+  );
+
+  const commitEdit = useCallback(() => {
+    if (!editing) return;
+    const value = parseFloat(draft);
+    if (Number.isFinite(value) && value >= 0) {
+      if (editing.field === "weight") {
+        onUpdateSetWeight?.(exerciseId, editing.setNumber, fromDisplayWeight(value, weightUnit));
+      } else {
+        onUpdateSetReps?.(exerciseId, editing.setNumber, Math.round(value));
       }
     }
-    setEditingSet(null);
-    setEditWeight("");
-  }, [onUpdateSetWeight, exerciseId, editWeight]);
+    setEditing(null);
+    setDraft("");
+  }, [editing, draft, onUpdateSetWeight, onUpdateSetReps, exerciseId, weightUnit]);
 
-  const handleWeightStep = useCallback((setNumber: number, currentWeight: number, delta: number) => {
-    const newWeight = Math.max(0, currentWeight + delta);
-    if (onUpdateSetWeight) {
-      onUpdateSetWeight(exerciseId, setNumber, newWeight);
-      if (Platform.OS !== "web") {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+  const stepDraft = useCallback(
+    (delta: number) => {
+      const current = parseFloat(draft) || 0;
+      const next = Math.max(0, current + delta);
+      setDraft(trimNumber(Math.round(next * 100) / 100));
+      if (Platform.OS !== "web") void Haptics.selectionAsync();
+    },
+    [draft]
+  );
+
+  const handleAddSet = useCallback(() => {
+    onAddSet?.(exerciseId);
+    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, [onAddSet, exerciseId]);
+
+  const handleRemoveSet = useCallback(
+    (setNumber: number) => {
+      onRemoveSet?.(exerciseId, setNumber);
+      setEditing(null);
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [onRemoveSet, exerciseId]
+  );
+
+  const handleSkip = useCallback(() => {
+    Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+    swipeOpen.current = false;
+    if (onSkip) {
+      onSkip(exerciseId);
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-  }, [onUpdateSetWeight]);
+  }, [onSkip, exerciseId, swipeX]);
 
   const backgroundColor = checkAnim.interpolate({
     inputRange: [0, 1],
@@ -162,22 +238,32 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
     outputRange: ["0deg", "180deg"],
   });
 
-  const handleSkip = useCallback(() => {
-    Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
-    swipeOpen.current = false;
-    if (onSkip) {
-      onSkip(exerciseId);
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-  }, [onSkip, exerciseId, swipeX]);
+  const hasSets = sets.length > 0;
+  const step = weightStep(weightUnit);
 
-  const hasSets = exercise.setDetails && exercise.setDetails.length > 0;
+  // Summarise the loaded weight across sets: one figure when uniform, a range otherwise.
+  const weightSummary = useMemo(() => {
+    if (sets.length === 0) return formatWeight(exercise.weight, weightUnit);
+    const unique = [...new Set(sets.map((s) => s.weight))];
+    if (unique.length === 1) return formatWeight(unique[0], weightUnit);
+    return `${formatWeight(Math.min(...unique), weightUnit, { withUnit: false, bodyweightLabel: false })}–${formatWeight(Math.max(...unique), weightUnit)}`;
+  }, [sets, exercise.weight, weightUnit]);
+
+  const statusLabel = isSkipped
+    ? "skipped"
+    : `${completedSets} of ${totalSets} sets complete`;
 
   return (
     <View style={styles.swipeWrapper}>
       {/* Skip action behind */}
       <View style={[styles.skipAction, isSkipped && styles.skipActionRestore]}>
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleSkip}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={isSkipped ? `Undo skip for ${exercise.exerciseName}` : `Skip ${exercise.exerciseName}`}
+        >
           {isSkipped ? (
             <RotateCcw size={16} color={colors.white} />
           ) : (
@@ -187,179 +273,257 @@ function ExerciseCard({ exercise, index = 0, exerciseId, onToggle, onRestTimer, 
         </TouchableOpacity>
       </View>
 
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor,
-          borderColor,
-          transform: [{ scale: scaleAnim }, { translateX: swipeX }],
-        },
-        isSkipped && styles.skippedContainer,
-        accentColor && !exercise.completed ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
-      ]}
-    >
-      {/* Main exercise row — PanResponder here only, not on expand/sets */}
-      <View style={styles.content} {...panResponder.panHandlers}>
-        <TouchableOpacity style={styles.toggleArea} onPress={handleToggle} activeOpacity={0.7} testID={`exercise-${exercise.routineExerciseId}`} accessibilityLabel={`${exercise.exerciseName}, ${completedSets} of ${totalSets} sets complete`} accessibilityRole="button">
-          <Animated.View
-            style={[
-              styles.checkbox,
-              {
-                backgroundColor: checkAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [accentColor ? `${accentColor}15` : `${colors.primary}15`, colors.emerald],
-                }),
-                borderColor: checkAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [accentColor ? `${accentColor}30` : `${colors.primary}33`, colors.emerald],
-                }),
-              },
-            ]}
-          >
-            {exercise.completed ? (
-              <Check size={16} color={colors.white} />
-            ) : (
-              <Text style={[styles.indexText, accentColor ? { color: accentColor } : undefined]}>{index + 1}</Text>
-            )}
-          </Animated.View>
-          <View style={styles.info}>
-            <View style={styles.nameRow}>
-              <Text style={[styles.exerciseName, exercise.completed && styles.exerciseNameCompleted, isSkipped && styles.exerciseNameSkipped]} numberOfLines={1}>
-                {exercise.exerciseName}
-              </Text>
-              {isSkipped && <Text style={styles.skippedBadge}>SKIPPED</Text>}
-            </View>
-            <View style={styles.detailRow}>
-              <Text style={styles.detail}>
-                {completedSets}/{totalSets} sets
-              </Text>
-              <View style={styles.dot} />
-              <Text style={styles.detail}>
-                {(() => {
-                  const sets = exercise.setDetails || [];
-                  if (sets.length === 0) return exercise.weight > 0 ? `${exercise.weight} ${weightUnit}` : "BW";
-                  const weights = [...new Set(sets.map((s) => s.weight))];
-                  if (weights.length === 1) return weights[0] > 0 ? `${weights[0]} ${weightUnit}` : "BW";
-                  return `${Math.min(...weights)}-${Math.max(...weights)} ${weightUnit}`;
-                })()}
-              </Text>
-              <View style={styles.muscleTag}>
-                <Text style={styles.muscleTagText}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>
-              </View>
-              {isPRBeaten && (
-                <View style={styles.prBadge}>
-                  <Text style={styles.prBadgeText}>PR!</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </TouchableOpacity>
-        {!exercise.completed && (
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            backgroundColor,
+            borderColor,
+            transform: [{ scale: scaleAnim }, { translateX: swipeX }],
+          },
+          isSkipped && styles.skippedContainer,
+          accentColor && !exercise.completed ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
+        ]}
+      >
+        {/* Main exercise row — PanResponder here only, not on expand/sets */}
+        <View style={styles.content} {...panResponder.panHandlers}>
           <TouchableOpacity
-            style={styles.restButton}
-            onPress={() => {
-              onRestTimer(defaultRestTimer);
-              if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.toggleArea}
+            onPress={handleToggle}
+            activeOpacity={0.7}
+            testID={`exercise-${exercise.routineExerciseId}`}
+            accessibilityLabel={`${exercise.exerciseName}, ${statusLabel}`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: exercise.completed }}
           >
-            <Text style={styles.restButtonText}>{defaultRestTimer}s</Text>
+            <Animated.View
+              style={[
+                styles.checkbox,
+                {
+                  backgroundColor: checkAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [accentColor ? `${accentColor}15` : `${colors.primary}15`, colors.emerald],
+                  }),
+                  borderColor: checkAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [accentColor ? `${accentColor}30` : `${colors.primary}33`, colors.emerald],
+                  }),
+                },
+              ]}
+            >
+              {exercise.completed ? (
+                <Check size={16} color={colors.white} />
+              ) : (
+                <Text style={[styles.indexText, accentColor ? { color: accentColor } : undefined]}>{index + 1}</Text>
+              )}
+            </Animated.View>
+            <View style={styles.info}>
+              <View style={styles.nameRow}>
+                <Text
+                  style={[
+                    styles.exerciseName,
+                    exercise.completed && !isSkipped && styles.exerciseNameCompleted,
+                    isSkipped && styles.exerciseNameSkipped,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {exercise.exerciseName}
+                </Text>
+                {isSkipped && <Text style={styles.skippedBadge}>SKIPPED</Text>}
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detail}>{completedSets}/{totalSets} sets</Text>
+                <View style={styles.dot} />
+                <Text style={styles.detail}>{weightSummary}</Text>
+                {volume > 0 && (
+                  <>
+                    <View style={styles.dot} />
+                    <Text style={styles.detail}>{Math.round(volume).toLocaleString()} vol</Text>
+                  </>
+                )}
+                <View style={styles.muscleTag}>
+                  <Text style={styles.muscleTagText}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>
+                </View>
+                {isPRBeaten && (
+                  <View style={styles.prBadge}>
+                    <Text style={styles.prBadgeText}>PR!</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </TouchableOpacity>
+          {!exercise.completed && (
+            <TouchableOpacity
+              style={styles.restButton}
+              onPress={() => {
+                onRestTimer(defaultRestTimer);
+                if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel={`Start ${defaultRestTimer} second rest timer`}
+            >
+              <Text style={styles.restButtonText}>{defaultRestTimer}s</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Full-width expand/collapse bar */}
+        {hasSets && (
+          <TouchableOpacity
+            style={styles.expandBar}
+            onPress={handleExpandToggle}
+            activeOpacity={0.6}
+            accessibilityRole="button"
+            accessibilityState={{ expanded }}
+            accessibilityLabel={expanded ? "Hide sets" : `Show ${totalSets} sets`}
+          >
+            <Text style={styles.expandBarText}>
+              {expanded ? "Hide sets" : `${totalSets} sets · Tap to ${exercise.completed ? "view" : "log"}`}
+            </Text>
+            <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
+              <ChevronDown size={14} color={colors.textTertiary} />
+            </Animated.View>
           </TouchableOpacity>
         )}
-      </View>
 
-      {/* Full-width expand/collapse bar */}
-      {hasSets && (
-        <TouchableOpacity
-          style={styles.expandBar}
-          onPress={handleExpandToggle}
-          activeOpacity={0.6}
-        >
-          <Text style={styles.expandBarText}>
-            {expanded ? "Hide sets" : `${totalSets} sets · Tap to ${exercise.completed ? "view" : "log"}`}
-          </Text>
-          <Animated.View style={{ transform: [{ rotate: chevronRotation }] }}>
-            <ChevronDown size={14} color={colors.textTertiary} />
-          </Animated.View>
-        </TouchableOpacity>
-      )}
+        {/* Expanded set details */}
+        {expanded && hasSets && (
+          <View style={styles.setsContainer}>
+            {sets.map((set) => {
+              const editingThis = editing?.setNumber === set.setNumber;
+              const previous = previousPerformance?.sets?.[set.setNumber - 1];
+              return (
+                <View key={set.setNumber} style={styles.setBlock}>
+                  <View style={styles.setRow}>
+                    <TouchableOpacity
+                      style={styles.setCheckTouch}
+                      onPress={() => handleSetToggle(set.setNumber, set.completed)}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: set.completed }}
+                      accessibilityLabel={`Set ${set.setNumber}, ${set.reps} reps at ${formatWeight(set.weight, weightUnit)}`}
+                      hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                    >
+                      <View style={[styles.setCheckbox, set.completed && styles.setCheckboxCompleted]}>
+                        {set.completed && <Check size={14} color={colors.white} />}
+                      </View>
+                    </TouchableOpacity>
 
-      {/* Expanded set details */}
-      {expanded && exercise.setDetails && (
-        <View style={styles.setsContainer}>
-          {exercise.setDetails.map((set) => (
-            <TouchableOpacity
-              key={set.setNumber}
-              style={styles.setRow}
-              onPress={() => handleSetToggle(set.setNumber, set.completed)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.setCheckbox, set.completed && styles.setCheckboxCompleted]}>
-                {set.completed && <Check size={14} color={colors.white} />}
-              </View>
-              <Text style={[styles.setLabel, set.completed && styles.setLabelCompleted]}>
-                Set {set.setNumber}
-              </Text>
-              <Text style={styles.setReps}>{set.reps} reps</Text>
-              {editingSet === set.setNumber ? (
-                <View style={styles.editWeightContainer}>
-                  <TouchableOpacity
-                    style={styles.stepperButton}
-                    onPress={() => {
-                      const w = parseFloat(editWeight) || 0;
-                      setEditWeight(Math.max(0, w - 5).toString());
-                    }}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Minus size={14} color={colors.primary} />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.editWeightInput}
-                    value={editWeight}
-                    onChangeText={setEditWeight}
-                    keyboardType="decimal-pad"
-                    autoFocus
-                    selectTextOnFocus
-                    onBlur={() => handleWeightSave(set.setNumber)}
-                    onSubmitEditing={() => handleWeightSave(set.setNumber)}
-                  />
-                  <TouchableOpacity
-                    style={styles.stepperButton}
-                    onPress={() => {
-                      const w = parseFloat(editWeight) || 0;
-                      setEditWeight((w + 5).toString());
-                    }}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Plus size={14} color={colors.primary} />
-                  </TouchableOpacity>
-                  <Text style={styles.editWeightUnit}>{weightUnit}</Text>
+                    <Text style={[styles.setLabel, set.completed && styles.setLabelCompleted]}>
+                      {set.setNumber}
+                    </Text>
+
+                    {editingThis ? (
+                      <View style={styles.editRow}>
+                        <TouchableOpacity
+                          style={styles.stepperButton}
+                          onPress={() => stepDraft(editing?.field === "weight" ? -step : -1)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Decrease"
+                        >
+                          <Minus size={14} color={colors.primary} />
+                        </TouchableOpacity>
+                        <TextInput
+                          style={styles.editInput}
+                          value={draft}
+                          onChangeText={setDraft}
+                          keyboardType={editing?.field === "weight" ? "decimal-pad" : "number-pad"}
+                          autoFocus
+                          selectTextOnFocus
+                          returnKeyType="done"
+                          onBlur={commitEdit}
+                          onSubmitEditing={commitEdit}
+                          accessibilityLabel={editing?.field === "weight" ? "Weight" : "Reps"}
+                        />
+                        <TouchableOpacity
+                          style={styles.stepperButton}
+                          onPress={() => stepDraft(editing?.field === "weight" ? step : 1)}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Increase"
+                        >
+                          <Plus size={14} color={colors.primary} />
+                        </TouchableOpacity>
+                        <Text style={styles.editUnit}>
+                          {editing?.field === "weight" ? weightUnit : "reps"}
+                        </Text>
+                        <TouchableOpacity
+                          style={styles.doneButton}
+                          onPress={commitEdit}
+                          accessibilityRole="button"
+                          accessibilityLabel="Done editing"
+                        >
+                          <Check size={14} color={colors.white} />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          style={styles.valuePill}
+                          onPress={() => beginEdit(set.setNumber, "weight", set.weight, set.reps)}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit weight for set ${set.setNumber}, currently ${formatWeight(set.weight, weightUnit)}`}
+                        >
+                          <Text style={[styles.valuePillText, set.completed && styles.valueMuted]}>
+                            {formatWeight(set.weight, weightUnit)}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <Text style={styles.times}>×</Text>
+
+                        <TouchableOpacity
+                          style={styles.valuePill}
+                          onPress={() => beginEdit(set.setNumber, "reps", set.weight, set.reps)}
+                          hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit reps for set ${set.setNumber}, currently ${set.reps}`}
+                        >
+                          <Text style={[styles.valuePillText, set.completed && styles.valueMuted]}>
+                            {set.reps}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {sets.length > 1 && onRemoveSet && (
+                          <TouchableOpacity
+                            style={styles.removeSetButton}
+                            onPress={() => handleRemoveSet(set.setNumber)}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Remove set ${set.setNumber}`}
+                          >
+                            <Trash2 size={13} color={colors.textTertiary} />
+                          </TouchableOpacity>
+                        )}
+                      </>
+                    )}
+                  </View>
+
+                  {previous && !set.completed && (
+                    <Text style={styles.prevHint}>
+                      Last time: {formatWeight(previous.weight, weightUnit)} × {previous.reps}
+                    </Text>
+                  )}
                 </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.weightButton}
-                  onPress={() => {
-                    setEditingSet(set.setNumber);
-                    setEditWeight(set.weight.toString());
-                  }}
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                >
-                  <Text style={[styles.setWeight, set.completed && styles.setWeightCompleted]}>
-                    {set.weight > 0 ? `${set.weight} ${weightUnit}` : "BW"}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {previousPerformance?.sets?.[set.setNumber - 1] != null && !set.completed && (
-                <Text style={styles.prevHint}>
-                  Last: {previousPerformance.sets[set.setNumber - 1].weight} {weightUnit}×{previousPerformance.sets[set.setNumber - 1].reps}
-                </Text>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </Animated.View>
+              );
+            })}
+
+            {onAddSet && (
+              <TouchableOpacity
+                style={styles.addSetButton}
+                onPress={handleAddSet}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Add a set to ${exercise.exerciseName}`}
+              >
+                <Plus size={14} color={colors.primary} />
+                <Text style={styles.addSetText}>Add set</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </Animated.View>
     </View>
   );
 }
@@ -390,6 +554,8 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   skipText: {
     fontSize: 10,
@@ -397,7 +563,7 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     color: colors.white,
   },
   skippedContainer: {
-    opacity: 0.5,
+    opacity: 0.55,
   },
   container: {
     borderRadius: 10,
@@ -414,13 +580,13 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 14,
-    paddingHorizontal: 14,
   },
   toggleArea: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
     gap: 12,
+    minHeight: 44,
   },
   checkbox: {
     width: 38,
@@ -458,7 +624,6 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   exerciseNameSkipped: {
     color: colors.textTertiary,
-    textDecorationLine: "line-through" as const,
     fontStyle: "italic" as const,
   },
   skippedBadge: {
@@ -519,13 +684,15 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   },
   restButton: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 8,
     backgroundColor: colors.glassBorder,
     borderWidth: 1,
     borderColor: colors.glassBorder,
     marginLeft: 8,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 36,
   },
   restButtonText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
@@ -556,15 +723,22 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   setsContainer: {
     borderTopWidth: 1,
     borderTopColor: colors.glassBorder,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  setBlock: {
+    paddingVertical: 2,
   },
   setRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: 8,
+    gap: 10,
     minHeight: 48,
+  },
+  setCheckTouch: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   setCheckbox: {
     width: 32,
@@ -581,48 +755,57 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     borderColor: colors.emerald,
   },
   setLabel: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: colors.text,
-    width: 50,
+    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: colors.textTertiary,
+    width: 16,
+    textAlign: "center" as const,
   },
   setLabelCompleted: {
     color: colors.textTertiary,
-    textDecorationLine: "line-through" as const,
+    opacity: 0.6,
   },
-  setReps: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
-    color: colors.textTertiary,
-    flex: 1,
-  },
-  weightButton: {
+  valuePill: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: `${colors.primary}15`,
+    backgroundColor: `${colors.primary}12`,
     borderWidth: 1,
-    borderColor: `${colors.primary}20`,
-    minHeight: 32,
+    borderColor: `${colors.primary}22`,
+    minHeight: 36,
+    minWidth: 60,
     justifyContent: "center",
+    alignItems: "center",
   },
-  setWeight: {
+  valuePillText: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 13,
-    fontWeight: "600" as const,
+    fontWeight: "700" as const,
     color: colors.primary,
   },
-  setWeightCompleted: {
+  valueMuted: {
     color: colors.textTertiary,
   },
-  editWeightContainer: {
+  times: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    fontWeight: "600" as const,
+  },
+  removeSetButton: {
+    marginLeft: "auto",
+    padding: 6,
+    borderRadius: 8,
+  },
+  editRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
+    flex: 1,
   },
   stepperButton: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: 10,
     backgroundColor: `${colors.primary}15`,
     borderWidth: 1,
@@ -630,10 +813,10 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  editWeightInput: {
-    width: 60,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+  editInput: {
+    width: 62,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
     borderRadius: 10,
     backgroundColor: colors.cardBackground,
     borderWidth: 2,
@@ -644,16 +827,45 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     color: colors.text,
     textAlign: "center" as const,
   },
-  editWeightUnit: {
-    fontSize: 11,
+  editUnit: {
+    fontSize: 10,
     color: colors.textTertiary,
-    fontWeight: "500" as const,
+    fontWeight: "600" as const,
+  },
+  doneButton: {
+    marginLeft: "auto",
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: colors.emerald,
+    justifyContent: "center",
+    alignItems: "center",
   },
   prevHint: {
     fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
     fontSize: 9,
     color: colors.textTertiary,
-    opacity: 0.6,
-    marginLeft: 4,
+    opacity: 0.7,
+    marginLeft: 58,
+    marginBottom: 4,
+  },
+  addSetButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 6,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: `${colors.primary}30`,
+    borderStyle: "dashed" as const,
+    minHeight: 44,
+  },
+  addSetText: {
+    fontSize: 12,
+    fontWeight: "700" as const,
+    color: colors.primary,
   },
 });
