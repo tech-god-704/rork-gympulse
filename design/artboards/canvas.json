@@ -1,0 +1,14 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",      "x": 0,    "y": 0, "w": 393, "h": 852, "title": "1 · Today — live workout" },
+    { "file": "Progress.dc.html",  "x": 493,  "y": 0, "w": 393, "h": 852, "title": "2 · Progress — dark mode" },
+    { "file": "Complete.dc.html",  "x": 986,  "y": 0, "w": 393, "h": 852, "title": "3 · Workout complete" },
+    { "file": "Routines.dc.html",  "x": 1479, "y": 0, "w": 393, "h": 852, "title": "4 · Routines" },
+    { "file": "Profile.dc.html",   "x": 1972, "y": 0, "w": 393, "h": 852, "title": "5 · Profile — dark mode" }
+  ],
+  "annotations": [
+    { "id": "brief", "x": 0, "y": -150, "w": 700, "text": "GymPulse — five product shots at iPhone 15 Pro size (393x852).\nColours, type ramp, radii and spacing are lifted from constants/theme.ts and constants/colors.ts in the repo, not approximated.\nNo painted iOS status bar: the real one renders over that inset, so it is left blank as the app does." },
+    { "id": "data-note", "x": 1479, "y": -150, "w": 700, "text": "Sample data is one consistent intermediate lifter: Marcus Reid, level 13 (Dumbbell Knight), 12-day streak, 84 workouts.\nThe calendar, the 8-week chart and the weekly summary all agree with that story." }
+  ],
+  "launch": { "view": "canvas" }
+}

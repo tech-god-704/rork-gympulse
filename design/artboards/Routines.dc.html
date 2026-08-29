@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    body { margin: 0; }
+    .gp {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .num { font-variant-numeric: tabular-nums; }
+    a { color: #3B82F6; } a:hover { color: #1D4ED8; }
+    .ic { display: block; }
+    .rcard { display: flex; align-items: center; gap: 12px; padding: 14px; background: #FFFFFF;
+             border: 0.5px solid rgba(60,60,67,0.10); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .mark { width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 22px; font-weight: 800; letter-spacing: -0.6px; flex: none; }
+    .rname { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; color: #000000; }
+    .rmeta { font-size: 11px; font-weight: 500; color: #8E8E93; font-variant-numeric: tabular-nums; }
+    .tag { font-size: 11px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase;
+           padding: 2px 8px; border-radius: 6px; }
+    .tagrow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+    .sched { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 11px; font-weight: 600; color: #8E8E93; }
+    .reorder { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  </style>
+</helmet>
+
+<div class="gp" style="position: relative; width: 393px; height: 852px; border-radius: 44px; overflow: hidden; background: #F4F4F7;">
+
+  <div style="height: 59px;"></div>
+
+  <!-- Header with the create action -->
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 12px 18px 16px;">
+    <div style="flex: 1;">
+      <div style="font-size: 28px; font-weight: 800; letter-spacing: -0.9px; line-height: 34px; color: #000000;">Routines</div>
+      <div style="font-size: 13px; font-weight: 500; color: #8E8E93; margin-top: 3px;">5 saved</div>
+    </div>
+    <div style="width: 44px; height: 44px; border-radius: 10px; background: #3B82F6; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(59,130,246,0.28); margin-bottom: 2px;">
+      <svg class="ic" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+    </div>
+  </div>
+
+  <div style="height: 618px; overflow: hidden; padding: 0 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- Push Day -->
+    <div class="rcard">
+      <div class="mark" style="background: #EF4444; color: #FFFFFF;">P</div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+        <div class="rname">Push Day</div>
+        <div class="rmeta">5 exercises &middot; 20 sets &middot; ~58 min</div>
+        <div class="tagrow">
+          <span class="tag" style="color: #EF4444; background: rgba(239,68,68,0.13);">Chest</span>
+          <span class="tag" style="color: #F59E0B; background: rgba(245,158,11,0.13);">Shoulders</span>
+          <span class="tag" style="color: #EC4899; background: rgba(236,72,153,0.13);">Arms</span>
+        </div>
+        <div class="sched">
+          <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          <span>Mon &middot; Thu</span>
+        </div>
+      </div>
+      <div class="reorder">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.10)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <!-- Pull Day -->
+    <div class="rcard">
+      <div class="mark" style="background: #8B5CF6; color: #FFFFFF;">P</div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+        <div class="rname">Pull Day</div>
+        <div class="rmeta">6 exercises &middot; 19 sets &middot; ~56 min</div>
+        <div class="tagrow">
+          <span class="tag" style="color: #8B5CF6; background: rgba(139,92,246,0.13);">Back</span>
+          <span class="tag" style="color: #EC4899; background: rgba(236,72,153,0.13);">Arms</span>
+        </div>
+        <div class="sched">
+          <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          <span>Tue &middot; Fri</span>
+        </div>
+      </div>
+      <div class="reorder">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <!-- Leg Day -->
+    <div class="rcard">
+      <div class="mark" style="background: #3B82F6; color: #FFFFFF;">L</div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+        <div class="rname">Leg Day</div>
+        <div class="rmeta">5 exercises &middot; 18 sets &middot; ~53 min</div>
+        <div class="tagrow">
+          <span class="tag" style="color: #3B82F6; background: rgba(59,130,246,0.13);">Legs</span>
+          <span class="tag" style="color: #10B981; background: rgba(16,185,129,0.13);">Core</span>
+        </div>
+        <div class="sched">
+          <svg class="ic" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+          <span>Wed &middot; Sat</span>
+        </div>
+      </div>
+      <div class="reorder">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <!-- Upper Body — amber is light enough that the initial flips to dark ink -->
+    <div class="rcard">
+      <div class="mark" style="background: #F59E0B; color: #101014;">U</div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+        <div class="rname">Upper Body</div>
+        <div class="rmeta">7 exercises &middot; 21 sets &middot; ~61 min</div>
+        <div class="tagrow">
+          <span class="tag" style="color: #EF4444; background: rgba(239,68,68,0.13);">Chest</span>
+          <span class="tag" style="color: #8B5CF6; background: rgba(139,92,246,0.13);">Back</span>
+          <span class="tag" style="color: #F59E0B; background: rgba(245,158,11,0.13);">Shoulders</span>
+          <span style="font-size: 11px; font-weight: 700; color: #8E8E93;">+1</span>
+        </div>
+      </div>
+      <div class="reorder">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <!-- Core & Cardio - unscheduled, so no calendar row. Clipped by the tab bar
+         on purpose: the list scrolls, same as Today and Profile. -->
+    <div class="rcard">
+      <div class="mark" style="background: #10B981; color: #FFFFFF;">C</div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;">
+        <div class="rname">Core &amp; Cardio</div>
+        <div class="rmeta">4 exercises &middot; 12 sets &middot; ~38 min</div>
+        <div class="tagrow">
+          <span class="tag" style="color: #10B981; background: rgba(16,185,129,0.13);">Core</span>
+          <span class="tag" style="color: #14B8A6; background: rgba(20,184,166,0.13);">Cardio</span>
+        </div>
+      </div>
+      <div class="reorder">
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        <svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.10)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+    <!-- Splits entry point -->
+    <div style="display: flex; align-items: center; gap: 12px; padding: 16px; min-height: 52px; box-sizing: border-box; border-radius: 14px; border: 1.5px dashed rgba(59,130,246,0.30);">
+      <svg class="ic" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+      <div style="flex: 1; font-size: 14px; font-weight: 700; letter-spacing: -0.2px; color: #3B82F6;">Browse workout splits</div>
+      <svg class="ic" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+
+  </div>
+
+  <!-- Tab bar -->
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 92px; background: #FFFFFF; border-top: 0.5px solid #E5E5EA; padding-top: 6px; box-sizing: border-box;">
+    <div style="display: flex; height: 52px;">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.3px; color: #8E8E93;">Today</span>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.3px; color: #3B82F6;">Routines</span>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.3px; color: #8E8E93;">Progress</span>
+      </div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+        <svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: 0.3px; color: #8E8E93;">Profile</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
