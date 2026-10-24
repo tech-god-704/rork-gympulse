@@ -13,7 +13,7 @@ import {
   PanResponder,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell } from "lucide-react-native";
+import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell, ChevronUp, ChevronDown } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -27,10 +27,15 @@ import {
   RoutineSetConfig,
   WeekDay,
   WEEKDAY_SHORT,
+  WEEKDAY_LABELS,
   ALL_WEEKDAYS,
   RestTimerAlert,
+  WeightUnit,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
+import { formatWeight, toDisplayWeight, fromDisplayWeight, trimNumber } from "@/utils/units";
+import { Layout, Radius, Space, Type, muscleColor, numeric, tint } from "@/constants/theme";
+import { Tag } from "@/components/ui";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
@@ -63,11 +68,14 @@ interface SwipeableRowProps {
   index: number;
   onDelete: () => void;
   onTap: () => void;
-  weightUnit: string;
+  weightUnit: WeightUnit;
   accentColor?: string;
+  onMove?: (direction: "up" | "down") => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
-function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor }: SwipeableRowProps) {
+function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor, onMove, canMoveUp, canMoveDown }: SwipeableRowProps) {
   const { colors } = useTheme();
   const swStyles = useMemo(() => createSwStyles(colors), [colors]);
   const translateX = useRef(new Animated.Value(0)).current;
@@ -131,7 +139,13 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
     <View style={swStyles.container}>
       {/* Delete action behind */}
       <View style={swStyles.deleteAction}>
-        <TouchableOpacity style={swStyles.deleteButton} onPress={handleDelete} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={swStyles.deleteButton}
+          onPress={handleDelete}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${exercise.exerciseName} from this routine`}
+        >
           <Trash2 size={18} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -146,6 +160,8 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
       >
         <TouchableOpacity
           style={swStyles.rowContent}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${exercise.exerciseName}, exercise ${index + 1}`}
           onPress={() => {
             if (isOpen.current) {
               closeSwipe();
@@ -168,27 +184,50 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
               {(() => {
                 const configs = exercise.setConfigs;
                 if (!configs || configs.length === 0) {
-                  return `${exercise.sets}×${exercise.reps}${exercise.weight > 0 ? ` @ ${exercise.weight} ${weightUnit}` : ""}`;
+                  return `${exercise.sets}×${exercise.reps} @ ${formatWeight(exercise.weight, weightUnit)}`;
                 }
                 // Check if all sets are identical
                 const allSame = configs.every(
                   (s) => s.weight === configs[0].weight && s.reps === configs[0].reps
                 );
                 if (allSame) {
-                  const w = configs[0].weight;
-                  return `${configs.length} sets · ${w > 0 ? w + " " + weightUnit : "BW"} × ${configs[0].reps} reps`;
+                  return `${configs.length} sets · ${formatWeight(configs[0].weight, weightUnit)} × ${configs[0].reps} reps`;
                 }
                 // Mixed sets: show compact summary
                 const weights = [...new Set(configs.map((s) => s.weight))];
                 const reps = [...new Set(configs.map((s) => s.reps))];
                 const wStr = weights.length === 1
-                  ? (weights[0] > 0 ? `${weights[0]} ${weightUnit}` : "BW")
-                  : `${Math.min(...weights)}-${Math.max(...weights)} ${weightUnit}`;
+                  ? formatWeight(weights[0], weightUnit)
+                  : `${formatWeight(Math.min(...weights), weightUnit, { withUnit: false, bodyweightLabel: false })}-${formatWeight(Math.max(...weights), weightUnit)}`;
                 const rStr = reps.length === 1 ? `${reps[0]}` : `${Math.min(...reps)}-${Math.max(...reps)}`;
                 return `${configs.length} sets · ${wStr} × ${rStr} reps`;
               })()}
             </Text>
           </View>
+          {onMove && (
+            <View style={swStyles.reorderColumn}>
+              <TouchableOpacity
+                onPress={() => onMove("up")}
+                disabled={!canMoveUp}
+                style={[swStyles.reorderBtn, !canMoveUp && swStyles.reorderBtnDisabled]}
+                hitSlop={{ top: 8, bottom: 4, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Move ${exercise.exerciseName} earlier`}
+              >
+                <ChevronUp size={15} color={canMoveUp ? colors.textTertiary : colors.glassBorder} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => onMove("down")}
+                disabled={!canMoveDown}
+                style={[swStyles.reorderBtn, !canMoveDown && swStyles.reorderBtnDisabled]}
+                hitSlop={{ top: 4, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Move ${exercise.exerciseName} later`}
+              >
+                <ChevronDown size={15} color={canMoveDown ? colors.textTertiary : colors.glassBorder} />
+              </TouchableOpacity>
+            </View>
+          )}
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -196,6 +235,18 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
 }
 
 const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
+  reorderColumn: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 2,
+    paddingLeft: 4,
+  },
+  reorderBtn: {
+    padding: 2,
+  },
+  reorderBtnDisabled: {
+    opacity: 0.3,
+  },
   container: {
     marginBottom: 10,
     borderRadius: 10,
@@ -264,8 +315,9 @@ const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
     letterSpacing: -0.3,
   },
   exerciseDetail: {
-    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-    fontSize: 11,
+    ...Type.caption,
+    ...numeric,
+    fontWeight: "500",
     color: colors.textTertiary,
     marginTop: 2,
   },
@@ -281,11 +333,12 @@ interface EditModalProps {
   visible: boolean;
   exercise: RoutineExercise | null;
   routineColor?: string;
+  weightUnit: WeightUnit;
   onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], color?: string) => void;
   onClose: () => void;
 }
 
-function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }: EditModalProps) {
+function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave, onClose }: EditModalProps) {
   const { colors } = useTheme();
   const editStyles = useMemo(() => createEditStyles(colors), [colors]);
   const [setRows, setSetRows] = useState<SetRow[]>([]);
@@ -297,13 +350,15 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
       for (let i = 0; i < exercise.sets; i++) {
         rows.push({
           reps: (exercise.setConfigs?.[i]?.reps ?? exercise.reps).toString(),
-          weight: (exercise.setConfigs?.[i]?.weight ?? exercise.weight).toString(),
+          weight: trimNumber(
+            toDisplayWeight(exercise.setConfigs?.[i]?.weight ?? exercise.weight, weightUnit)
+          ),
         });
       }
       setSetRows(rows);
       setExerciseColor(exercise.color ?? null);
     }
-  }, [exercise]);
+  }, [exercise, weightUnit]);
 
   const handleAddSet = () => {
     const lastRow = setRows[setRows.length - 1];
@@ -321,9 +376,10 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
 
   const handleSave = () => {
     if (!exercise) return;
+    // Inputs are in the user's display unit; storage is always pounds.
     const configs: RoutineSetConfig[] = setRows.map((r) => ({
       reps: parseInt(r.reps, 10) || 1,
-      weight: parseFloat(r.weight) || 0,
+      weight: fromDisplayWeight(parseFloat(r.weight) || 0, weightUnit),
     }));
     const firstReps = configs[0]?.reps ?? 10;
     const firstWeight = configs[0]?.weight ?? 0;
@@ -341,7 +397,12 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
         <View style={editStyles.card}>
           <View style={editStyles.header}>
             <Text style={editStyles.title}>{exercise.exerciseName}</Text>
-            <TouchableOpacity onPress={onClose} style={editStyles.closeBtn}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={editStyles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close without saving"
+            >
               <X size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
@@ -350,7 +411,7 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
           <View style={editStyles.columnHeaders}>
             <Text style={[editStyles.columnLabel, { width: 36 }]}>SET</Text>
             <Text style={[editStyles.columnLabel, { flex: 1 }]}>REPS</Text>
-            <Text style={[editStyles.columnLabel, { flex: 1 }]}>WEIGHT</Text>
+            <Text style={[editStyles.columnLabel, { flex: 1 }]}>WEIGHT ({weightUnit})</Text>
             <View style={{ width: 28 }} />
           </View>
 
@@ -374,10 +435,11 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                   style={editStyles.setInput}
                   value={row.weight}
                   onChangeText={(v) => updateRow(index, "weight", v)}
-                  keyboardType="number-pad"
+                  keyboardType="decimal-pad"
                   selectTextOnFocus
                   placeholder="0"
                   placeholderTextColor={colors.textTertiary}
+                  accessibilityLabel={`Weight for set ${index + 1}`}
                 />
                 <TouchableOpacity
                   onPress={() => handleRemoveSet(index)}
@@ -386,6 +448,9 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                     setRows.length > 1 && { backgroundColor: colors.error },
                   ]}
                   disabled={setRows.length <= 1}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: setRows.length <= 1 }}
+                  accessibilityLabel={`Remove set ${index + 1}`}
                 >
                   <Trash2 size={12} color={setRows.length <= 1 ? colors.textTertiary : colors.white} />
                 </TouchableOpacity>
@@ -394,7 +459,13 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
           </ScrollView>
 
           {/* Add set button */}
-          <TouchableOpacity style={editStyles.addSetBtn} onPress={handleAddSet} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={editStyles.addSetBtn}
+            onPress={handleAddSet}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Add another set"
+          >
             <Plus size={14} color={colors.primary} />
             <Text style={editStyles.addSetText}>Add Set</Text>
           </TouchableOpacity>
@@ -412,6 +483,9 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
                       setExerciseColor(c.value);
                       if (Platform.OS !== "web") void Haptics.selectionAsync();
                     }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${c.label} card colour`}
                     style={[
                       editStyles.colorDot,
                       c.value ? { backgroundColor: c.value } : editStyles.colorDotDefault,
@@ -435,10 +509,20 @@ function EditExerciseModal({ visible, exercise, routineColor, onSave, onClose }:
           </View>
 
           <View style={editStyles.buttons}>
-            <TouchableOpacity style={editStyles.cancelBtn} onPress={onClose}>
+            <TouchableOpacity
+              style={editStyles.cancelBtn}
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel"
+            >
               <Text style={editStyles.cancelText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} activeOpacity={0.8}>
+            <TouchableOpacity
+              onPress={handleSave}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Save changes to ${exercise.exerciseName}`}
+            >
               <View style={[editStyles.saveBtn, { backgroundColor: colors.primary }]}>
                 <Check size={18} color="#fff" />
                 <Text style={editStyles.saveText}>Save</Text>
@@ -494,7 +578,7 @@ const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
     marginBottom: 8,
   },
   columnLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700" as const,
     color: colors.textTertiary,
     letterSpacing: 0.8,
@@ -651,7 +735,7 @@ const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
 
 // ═══ MAIN SCREEN ════════════════════════════════════════════
 export default function RoutineDetailScreen() {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -661,6 +745,7 @@ export default function RoutineDetailScreen() {
     allExercises,
     addExerciseToRoutine,
     removeExerciseFromRoutine,
+    reorderExerciseInRoutine,
     deleteRoutine,
     addCustomExercise,
     updateRoutine,
@@ -680,13 +765,47 @@ export default function RoutineDetailScreen() {
   const [routineName, setRoutineName] = useState(routine?.name ?? "");
   const [editingExercise, setEditingExercise] = useState<RoutineExercise | null>(null);
 
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+
+  /**
+   * Searching used to only filter within the selected muscle tab, so typing
+   * "curl" while Chest was active returned nothing even though the exercise
+   * exists. A query now searches the whole library and the tabs act as the
+   * browse mode when the field is empty.
+   */
   const filteredExercises = useMemo(() => {
-    return allExercises.filter(
-      (e) =>
-        e.muscleGroup === selectedMuscle &&
-        e.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [allExercises, selectedMuscle, searchQuery]);
+    if (trimmedQuery.length > 0) {
+      return allExercises
+        .filter((e) => e.name.toLowerCase().includes(trimmedQuery))
+        .sort((a, b) => {
+          // Prefix matches first — "bench" should surface "Bench Press"
+          // before "Close-Grip Bench Press".
+          const aStarts = a.name.toLowerCase().startsWith(trimmedQuery) ? 0 : 1;
+          const bStarts = b.name.toLowerCase().startsWith(trimmedQuery) ? 0 : 1;
+          if (aStarts !== bStarts) return aStarts - bStarts;
+          return a.name.localeCompare(b.name);
+        });
+    }
+    return allExercises.filter((e) => e.muscleGroup === selectedMuscle);
+  }, [allExercises, selectedMuscle, trimmedQuery]);
+
+  /**
+   * Whether the query names something that doesn't exist yet, i.e. the
+   * "create a custom exercise" path is live. Compared against the *trimmed*
+   * query so a trailing space doesn't defeat the exact-match check.
+   */
+  const canCreateCustom = useMemo(
+    () =>
+      trimmedQuery.length > 0 &&
+      !filteredExercises.some((e) => e.name.toLowerCase() === trimmedQuery),
+    [trimmedQuery, filteredExercises]
+  );
+
+  /** Exercises already in this routine can't be added twice. */
+  const addedNames = useMemo(
+    () => new Set((routine?.exercises ?? []).map((e) => e.exerciseName.toLowerCase())),
+    [routine]
+  );
 
   const handleAddExercise = useCallback(
     (exercise: Exercise) => {
@@ -698,7 +817,7 @@ export default function RoutineDetailScreen() {
       }
       const numSets = parseInt(customSets, 10) || 3;
       const numReps = parseInt(customReps, 10) || 10;
-      const numWeight = parseFloat(customWeight) || 0;
+      const numWeight = fromDisplayWeight(parseFloat(customWeight) || 0, wu);
       const routineExercise: RoutineExercise = {
         id: generateId(),
         exerciseId: exercise.id,
@@ -719,7 +838,7 @@ export default function RoutineDetailScreen() {
       setCustomReps("10");
       setCustomWeight("0");
     },
-    [routineId, routine, customSets, customReps, customWeight, addExerciseToRoutine]
+    [routineId, routine, customSets, customReps, customWeight, wu, addExerciseToRoutine]
   );
 
   const handleAddCustom = useCallback((nameOverride?: string) => {
@@ -734,7 +853,7 @@ export default function RoutineDetailScreen() {
     if (!exercise) return;
     const numSets = parseInt(customSets, 10) || 3;
     const numReps = parseInt(customReps, 10) || 10;
-    const numWeight = parseFloat(customWeight) || 0;
+    const numWeight = fromDisplayWeight(parseFloat(customWeight) || 0, wu);
     const routineExercise: RoutineExercise = {
       id: generateId(),
       exerciseId: exercise.id,
@@ -754,7 +873,7 @@ export default function RoutineDetailScreen() {
     setCustomSets("3");
     setCustomReps("10");
     setCustomWeight("0");
-  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, addCustomExercise, addExerciseToRoutine]);
+  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, wu, addCustomExercise, addExerciseToRoutine]);
 
   const handleRemoveExercise = useCallback(
     (exerciseId: string) => {
@@ -842,7 +961,12 @@ export default function RoutineDetailScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityRole="button"
+          accessibilityLabel="Back to routines"
+        >
           <ArrowLeft size={24} color={colors.text} />
         </TouchableOpacity>
         {editingName ? (
@@ -855,11 +979,21 @@ export default function RoutineDetailScreen() {
             autoFocus
           />
         ) : (
-          <TouchableOpacity onPress={() => { setRoutineName(routine.name); setEditingName(true); }} style={styles.titleContainer}>
+          <TouchableOpacity
+            onPress={() => { setRoutineName(routine.name); setEditingName(true); }}
+            style={styles.titleContainer}
+            accessibilityRole="button"
+            accessibilityLabel={`Routine name, ${routine.name}. Tap to rename.`}
+          >
             <Text style={styles.headerTitle}>{routine.name}</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity onPress={handleDeleteRoutine} style={styles.deleteButton}>
+        <TouchableOpacity
+          onPress={handleDeleteRoutine}
+          style={styles.deleteButton}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete the ${routine.name} routine`}
+        >
           <Trash2 size={20} color={colors.error} />
         </TouchableOpacity>
       </View>
@@ -873,6 +1007,9 @@ export default function RoutineDetailScreen() {
               key={day}
               onPress={() => handleToggleDay(day)}
               activeOpacity={0.7}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: active }}
+              accessibilityLabel={`Schedule on ${WEEKDAY_LABELS[day]}`}
             >
               {active ? (
                 <View style={[styles.dayChip, { backgroundColor: colors.primary }]}>
@@ -894,6 +1031,9 @@ export default function RoutineDetailScreen() {
           style={styles.restTimerToggleRow}
           onPress={handleToggleRestTimer}
           activeOpacity={0.7}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: routine.restTimerEnabled !== false }}
+          accessibilityLabel="Rest timer for this routine"
         >
           <Timer size={14} color={colors.textTertiary} />
           <Text style={styles.colorPickerLabel}>Rest Timer</Text>
@@ -910,13 +1050,18 @@ export default function RoutineDetailScreen() {
               contentContainerStyle={styles.colorPickerRow}
             >
               {REST_TIMER_DURATIONS.map((dur) => {
-                const isActive = (routine.restTimerDuration ?? 60) === dur;
+                // Falls back to the user's configured default, not a hardcoded
+                // 60s — otherwise the highlighted pill disagrees with the timer.
+                const isActive = (routine.restTimerDuration ?? settings.defaultRestTimer) === dur;
                 return (
                   <TouchableOpacity
                     key={dur}
                     onPress={() => handleSetRestDuration(dur)}
                     activeOpacity={0.7}
                     style={[styles.restDurPill, isActive && styles.restDurPillActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`${dur} second rest between sets`}
                   >
                     <Text style={[styles.restDurText, isActive && styles.restDurTextActive]}>
                       {dur < 60 ? `${dur}s` : dur % 60 === 0 ? `${dur / 60}m` : `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`}
@@ -936,6 +1081,9 @@ export default function RoutineDetailScreen() {
                     onPress={() => handleSetRestAlert(opt.value)}
                     activeOpacity={0.7}
                     style={[styles.restAlertChip, isActive && styles.restAlertChipActive]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isActive }}
+                    accessibilityLabel={`Alert with ${opt.label.toLowerCase()} when rest ends`}
                   >
                     <Text style={[styles.restAlertChipText, isActive && styles.restAlertChipTextActive]}>
                       {opt.label}
@@ -950,7 +1098,7 @@ export default function RoutineDetailScreen() {
 
       {/* Hint text */}
       {routine.exercises.length > 0 && (
-        <Text style={styles.hintText}>Tap to edit · Swipe left to delete</Text>
+        <Text style={styles.hintText}>Tap to edit · Swipe left to delete · Arrows reorder</Text>
       )}
 
       <ScrollView
@@ -973,6 +1121,17 @@ export default function RoutineDetailScreen() {
               onTap={() => setEditingExercise(exercise)}
               weightUnit={wu}
               accentColor={exercise.color || routine.color}
+              onMove={
+                routine.exercises.length > 1
+                  ? (direction) => {
+                      if (!routineId) return;
+                      reorderExerciseInRoutine(routineId, exercise.id, direction);
+                      if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    }
+                  : undefined
+              }
+              canMoveUp={index > 0}
+              canMoveDown={index < routine.exercises.length - 1}
             />
           ))
         )}
@@ -981,6 +1140,8 @@ export default function RoutineDetailScreen() {
           style={styles.addExerciseButton}
           onPress={() => setShowAddModal(true)}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Add an exercise to this routine"
         >
           <Plus size={20} color={colors.primary} />
           <Text style={styles.addExerciseText}>Add Exercise</Text>
@@ -992,6 +1153,7 @@ export default function RoutineDetailScreen() {
         visible={editingExercise !== null}
         exercise={editingExercise}
         routineColor={routine.color}
+        weightUnit={wu}
         onSave={handleEditSave}
         onClose={() => setEditingExercise(null)}
       />
@@ -1000,7 +1162,11 @@ export default function RoutineDetailScreen() {
       <Modal visible={showAddModal} animationType="slide">
         <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => { setShowAddModal(false); setSearchQuery(""); }}>
+            <TouchableOpacity
+              onPress={() => { setShowAddModal(false); setSearchQuery(""); }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel adding an exercise"
+            >
               <Text style={styles.modalClose}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Add Exercise</Text>
@@ -1027,7 +1193,7 @@ export default function RoutineDetailScreen() {
               />
             </View>
             <View style={styles.setsRepsField}>
-              <Text style={styles.setsRepsLabel}>Weight</Text>
+              <Text style={styles.setsRepsLabel}>Weight ({wu})</Text>
               <TextInput
                 style={styles.setsRepsInput}
                 value={customWeight}
@@ -1039,14 +1205,21 @@ export default function RoutineDetailScreen() {
             </View>
           </View>
 
+          {canCreateCustom && (
+            <Text style={styles.groupPickerLabel}>MUSCLE GROUP FOR THE NEW EXERCISE</Text>
+          )}
+          {(trimmedQuery.length === 0 || canCreateCustom) && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleScroll} contentContainerStyle={styles.muscleScrollContent}>
             {MUSCLE_GROUPS.map((mg) => (
               <TouchableOpacity
                 key={mg}
                 onPress={() => setSelectedMuscle(mg)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: selectedMuscle === mg }}
+                accessibilityLabel={MUSCLE_GROUP_LABELS[mg]}
               >
                 {selectedMuscle === mg ? (
-                  <View style={[styles.musclePill, { backgroundColor: colors.primary }]}>
+                  <View style={[styles.musclePill, { backgroundColor: muscleColor(mg, colors) }]}>
                     <Text style={styles.musclePillTextActive}>
                       {MUSCLE_GROUP_LABELS[mg]}
                     </Text>
@@ -1061,6 +1234,7 @@ export default function RoutineDetailScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          )}
 
           <View style={styles.searchRow}>
             <Search size={18} color={colors.textTertiary} />
@@ -1068,42 +1242,89 @@ export default function RoutineDetailScreen() {
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search or type custom exercise..."
+              placeholder="Search all exercises, or name a new one"
               placeholderTextColor={colors.textTertiary}
+              autoCorrect={false}
+              returnKeyType="search"
+              accessibilityLabel="Search exercises"
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery("")}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <X size={16} color={colors.textTertiary} />
+              </TouchableOpacity>
+            )}
           </View>
+          {trimmedQuery.length > 0 && (
+            <Text style={styles.searchCount}>
+              {filteredExercises.length} match{filteredExercises.length === 1 ? "" : "es"} across all muscle groups
+            </Text>
+          )}
 
           <ScrollView style={styles.exercisesList} contentContainerStyle={styles.exercisesListContent}>
-            {searchQuery.trim().length > 0 && !filteredExercises.some((e) => e.name.toLowerCase() === searchQuery.toLowerCase()) && (
+            {canCreateCustom && (
               <TouchableOpacity
                 style={styles.customExerciseRow}
-                onPress={() => {
-                  handleAddCustom(searchQuery.trim());
-                }}
+                onPress={() => handleAddCustom(searchQuery.trim())}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Create ${searchQuery.trim()} as a custom ${MUSCLE_GROUP_LABELS[selectedMuscle]} exercise and add it`}
               >
                 <Plus size={18} color={colors.primary} />
-                <Text style={styles.customExerciseText}>
-                  Add "{searchQuery.trim()}" as custom exercise
-                </Text>
+                <View style={styles.exerciseListInfo}>
+                  <Text style={styles.customExerciseText} numberOfLines={1}>
+                    Create &ldquo;{searchQuery.trim()}&rdquo;
+                  </Text>
+                  <Text style={styles.exerciseListGroup}>
+                    New custom exercise · {MUSCLE_GROUP_LABELS[selectedMuscle]}
+                  </Text>
+                </View>
               </TouchableOpacity>
             )}
 
-            {filteredExercises.map((exercise) => (
-              <TouchableOpacity
-                key={exercise.id}
-                style={styles.exerciseListItem}
-                onPress={() => handleAddExercise(exercise)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.exerciseListName}>{exercise.name}</Text>
-                {exercise.isCustom && (
-                  <View style={styles.customBadge}>
-                    <Text style={styles.customBadgeText}>Custom</Text>
+            {filteredExercises.length === 0 && trimmedQuery.length === 0 && (
+              <Text style={styles.pickerEmpty}>
+                No exercises in this group yet. Type a name above to create one.
+              </Text>
+            )}
+
+            {filteredExercises.map((exercise) => {
+              const added = addedNames.has(exercise.name.toLowerCase());
+              return (
+                <TouchableOpacity
+                  key={exercise.id}
+                  style={[styles.exerciseListItem, added && styles.exerciseListItemAdded]}
+                  onPress={() => handleAddExercise(exercise)}
+                  activeOpacity={added ? 1 : 0.7}
+                  disabled={added}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: added }}
+                  accessibilityLabel={
+                    added
+                      ? `${exercise.name}, already in this routine`
+                      : `Add ${exercise.name}, ${MUSCLE_GROUP_LABELS[exercise.muscleGroup]}`
+                  }
+                >
+                  <View style={styles.exerciseListInfo}>
+                    <Text style={styles.exerciseListName} numberOfLines={1}>{exercise.name}</Text>
+                    {/* Searching spans every group, so name the group on each row. */}
+                    <Text style={styles.exerciseListGroup}>
+                      {MUSCLE_GROUP_LABELS[exercise.muscleGroup]}
+                    </Text>
                   </View>
-                )}
-                <Plus size={18} color={colors.primary} />
-              </TouchableOpacity>
-            ))}
+                  {exercise.isCustom && <Tag label="Custom" color={colors.violet} size="sm" />}
+                  {added ? (
+                    <Check size={18} color={colors.emerald} />
+                  ) : (
+                    <Plus size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
       </Modal>
@@ -1112,6 +1333,39 @@ export default function RoutineDetailScreen() {
 }
 
 const createStyles = (colors: ColorScheme) => StyleSheet.create({
+  exerciseListInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  exerciseListGroup: {
+    ...Type.caption,
+    fontWeight: "600",
+    color: colors.textTertiary,
+  },
+  exerciseListItemAdded: {
+    opacity: 0.5,
+  },
+  groupPickerLabel: {
+    ...Type.overline,
+    color: colors.textTertiary,
+    paddingHorizontal: Layout.gutter,
+    paddingBottom: Space.xs + 2,
+  },
+  searchCount: {
+    ...Type.caption,
+    ...numeric,
+    color: colors.textTertiary,
+    paddingHorizontal: Layout.gutter,
+    paddingBottom: Space.sm,
+  },
+  pickerEmpty: {
+    ...Type.subhead,
+    color: colors.textTertiary,
+    textAlign: "center",
+    paddingVertical: Space.xxl,
+    paddingHorizontal: Space.xl,
+    lineHeight: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1479,14 +1733,15 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   customExerciseRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: `${colors.primary}0F`,
-    borderRadius: 8,
-    marginBottom: 8,
+    gap: Space.md,
+    paddingVertical: Space.md,
+    paddingHorizontal: Space.base,
+    backgroundColor: tint(colors.primary, 0.08),
+    borderRadius: Radius.sm,
+    marginBottom: Space.sm,
     borderWidth: 1,
-    borderColor: `${colors.primary}26`,
+    borderColor: tint(colors.primary, 0.22),
+    minHeight: Layout.rowHeight,
   },
   customExerciseText: {
     fontSize: 15,
@@ -1497,14 +1752,16 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
   exerciseListItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
+    gap: Space.md,
+    paddingVertical: Space.md,
+    minHeight: Layout.rowHeight,
+    borderBottomWidth: Layout.hairline,
+    borderBottomColor: colors.separator,
   },
   exerciseListName: {
-    fontSize: 16,
+    ...Type.body,
+    fontWeight: "600",
     color: colors.text,
-    flex: 1,
   },
   customBadge: {
     backgroundColor: `${colors.primary}14`,

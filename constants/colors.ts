@@ -1,6 +1,10 @@
+export type SchemeName = "light" | "dark";
 export type ColorScheme = typeof LightColors;
 
 const LightColors = {
+  /** Lets style helpers (elevation, overlays) adapt without a second argument. */
+  scheme: "light" as SchemeName,
+
   // Primary palette
   primary: "#3B82F6",
   primaryDark: "#1D4ED8",
@@ -16,10 +20,21 @@ const LightColors = {
   rose: "#F43F5E",
 
   // Background & surfaces
-  background: "#F2F2F7",
+  background: "#F4F4F7",
   cardBackground: "#FFFFFF",
   cardBorder: "#E5E5EA",
   surface: "#E5E5EA",
+
+  // Semantic surface ramp — sunken < base < raised. Depth in light mode comes
+  // from shadow; in dark mode it comes from these getting progressively lighter.
+  surfaceSunken: "#EBEBF0",
+  surfaceBase: "#FFFFFF",
+  surfaceRaised: "#FFFFFF",
+  /** Hairline divider. Distinct from `border`, which outlines whole controls. */
+  separator: "rgba(60,60,67,0.10)",
+  /** Neutral fill for inactive chips, tracks and placeholders. */
+  fill: "rgba(118,118,128,0.10)",
+  fillStrong: "rgba(118,118,128,0.18)",
 
   // Glass effect (kept for modals/overlays only)
   glass: "rgba(255,255,255,0.92)",
@@ -82,6 +97,8 @@ const LightColors = {
 };
 
 const DarkColors: ColorScheme = {
+  scheme: "dark",
+
   // Primary palette
   primary: "#60A5FA",
   primaryDark: "#3B82F6",
@@ -101,6 +118,13 @@ const DarkColors: ColorScheme = {
   cardBackground: "#1C1C1E",
   cardBorder: "#38383A",
   surface: "#2C2C2E",
+
+  surfaceSunken: "#0A0A0C",
+  surfaceBase: "#1C1C1E",
+  surfaceRaised: "#252528",
+  separator: "rgba(84,84,88,0.55)",
+  fill: "rgba(118,118,128,0.20)",
+  fillStrong: "rgba(118,118,128,0.32)",
 
   // Glass effect
   glass: "rgba(28,28,30,0.92)",
