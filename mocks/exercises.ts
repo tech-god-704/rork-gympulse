@@ -144,7 +144,18 @@ type RoutineTemplate = {
 };
 
 // ── Workout-split metadata ────────────────────────────────────────
-export type WorkoutSplitId = "ppl" | "upper_lower" | "bro_split" | "full_body" | "strength_foundation" | "arnold_split" | "powerbuilding";
+export type WorkoutSplitId =
+  | "start_strong"
+  | "build_muscle"
+  | "ppl_program"
+  | "chest_arms"
+  | "ppl"
+  | "upper_lower"
+  | "bro_split"
+  | "full_body"
+  | "strength_foundation"
+  | "arnold_split"
+  | "powerbuilding";
 
 export interface WorkoutSplit {
   id: WorkoutSplitId;
@@ -447,8 +458,261 @@ const POWERBUILDING_ROUTINES: RoutineTemplate[] = [
   },
 ];
 
+// ===================================================================
+//  GYMPULSE PROGRAMS — share the 26-clip demo library (mocks/exerciseLibrary.ts)
+//  Reps are the bottom of each range; double progression builds up from there.
+// ===================================================================
+const START_STRONG_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Full Body A",
+    emoji: "🌱",
+    exercises: [
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 180 },
+      { name: "Bench Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 95 },
+      { name: "Lat Pulldown", muscleGroup: "back", sets: 3, reps: 10, weight: 80 },
+      { name: "Dumbbell Shoulder Press", muscleGroup: "shoulders", sets: 2, reps: 10, weight: 25 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 2, reps: 12, weight: 50 },
+      { name: "Plank", muscleGroup: "core", sets: 3, reps: 30, weight: 0 },
+    ],
+  },
+  {
+    name: "Full Body B",
+    emoji: "🌱",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 3, reps: 8, weight: 95 },
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 30 },
+      { name: "Seated Cable Row", muscleGroup: "back", sets: 3, reps: 10, weight: 80 },
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 2, reps: 10, weight: 95 },
+      { name: "EZ Bar Curls", muscleGroup: "arms", sets: 2, reps: 10, weight: 40 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 2, reps: 10, weight: 30 },
+    ],
+  },
+  {
+    name: "Full Body C",
+    emoji: "🌱",
+    exercises: [
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 180 },
+      { name: "Bench Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 95 },
+      { name: "Dumbbell Rows", muscleGroup: "back", sets: 3, reps: 10, weight: 30 },
+      { name: "Walking Lunges", muscleGroup: "legs", sets: 2, reps: 10, weight: 15 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 2, reps: 12, weight: 10 },
+      { name: "Cable Crunches", muscleGroup: "core", sets: 3, reps: 12, weight: 50 },
+    ],
+  },
+];
+
+const BUILD_MUSCLE_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Upper A",
+    emoji: "💪",
+    exercises: [
+      { name: "Bench Press", muscleGroup: "chest", sets: 3, reps: 6, weight: 135 },
+      { name: "Lat Pulldown", muscleGroup: "back", sets: 3, reps: 8, weight: 100 },
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 45 },
+      { name: "Seated Cable Row", muscleGroup: "back", sets: 3, reps: 8, weight: 100 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 3, reps: 12, weight: 15 },
+      { name: "EZ Bar Curls", muscleGroup: "arms", sets: 2, reps: 10, weight: 50 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 2, reps: 10, weight: 40 },
+    ],
+  },
+  {
+    name: "Lower A",
+    emoji: "💪",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 3, reps: 6, weight: 155 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 250 },
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 3, reps: 8, weight: 135 },
+      { name: "Leg Extensions", muscleGroup: "legs", sets: 2, reps: 12, weight: 80 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 2, reps: 12, weight: 70 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 3, reps: 12, weight: 100 },
+      { name: "Hanging Leg Raises", muscleGroup: "core", sets: 3, reps: 10, weight: 0 },
+    ],
+  },
+  {
+    name: "Upper B",
+    emoji: "💪",
+    exercises: [
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 45 },
+      { name: "Dumbbell Rows", muscleGroup: "back", sets: 3, reps: 8, weight: 45 },
+      { name: "Dumbbell Shoulder Press", muscleGroup: "shoulders", sets: 3, reps: 8, weight: 35 },
+      { name: "Cable Flyes", muscleGroup: "chest", sets: 2, reps: 12, weight: 25 },
+      { name: "Face Pulls", muscleGroup: "shoulders", sets: 3, reps: 12, weight: 30 },
+      { name: "Hammer Curls", muscleGroup: "arms", sets: 3, reps: 10, weight: 25 },
+      { name: "Overhead Tricep Extension", muscleGroup: "arms", sets: 3, reps: 10, weight: 30 },
+    ],
+  },
+  {
+    name: "Lower B",
+    emoji: "💪",
+    exercises: [
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 3, reps: 6, weight: 155 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 250 },
+      { name: "Hip Thrusts", muscleGroup: "legs", sets: 3, reps: 8, weight: 135 },
+      { name: "Walking Lunges", muscleGroup: "legs", sets: 2, reps: 10, weight: 25 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 3, reps: 10, weight: 70 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 3, reps: 12, weight: 100 },
+      { name: "Cable Crunches", muscleGroup: "core", sets: 3, reps: 12, weight: 60 },
+    ],
+  },
+];
+
+const PPL_PROGRAM_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Push A — Chest",
+    emoji: "🔥",
+    exercises: [
+      { name: "Bench Press", muscleGroup: "chest", sets: 3, reps: 6, weight: 135 },
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 45 },
+      { name: "Dumbbell Shoulder Press", muscleGroup: "shoulders", sets: 3, reps: 8, weight: 35 },
+      { name: "Cable Flyes", muscleGroup: "chest", sets: 2, reps: 12, weight: 25 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 3, reps: 12, weight: 15 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 3, reps: 10, weight: 40 },
+    ],
+  },
+  {
+    name: "Pull A — Width",
+    emoji: "🔥",
+    exercises: [
+      { name: "Pull-Ups", muscleGroup: "back", sets: 3, reps: 6, weight: 0 },
+      { name: "Lat Pulldown", muscleGroup: "back", sets: 3, reps: 8, weight: 100 },
+      { name: "Dumbbell Rows", muscleGroup: "back", sets: 3, reps: 8, weight: 45 },
+      { name: "Face Pulls", muscleGroup: "shoulders", sets: 3, reps: 12, weight: 30 },
+      { name: "EZ Bar Curls", muscleGroup: "arms", sets: 3, reps: 8, weight: 50 },
+      { name: "Hammer Curls", muscleGroup: "arms", sets: 2, reps: 10, weight: 25 },
+    ],
+  },
+  {
+    name: "Legs A — Quads",
+    emoji: "🔥",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 3, reps: 6, weight: 155 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 250 },
+      { name: "Walking Lunges", muscleGroup: "legs", sets: 3, reps: 10, weight: 25 },
+      { name: "Leg Extensions", muscleGroup: "legs", sets: 3, reps: 12, weight: 80 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 2, reps: 12, weight: 70 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 4, reps: 10, weight: 100 },
+    ],
+  },
+  {
+    name: "Push B — Shoulders",
+    emoji: "🔥",
+    exercises: [
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 45 },
+      { name: "Dumbbell Shoulder Press", muscleGroup: "shoulders", sets: 3, reps: 8, weight: 35 },
+      { name: "Bench Press", muscleGroup: "chest", sets: 2, reps: 8, weight: 125 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 4, reps: 12, weight: 15 },
+      { name: "Overhead Tricep Extension", muscleGroup: "arms", sets: 3, reps: 10, weight: 30 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 2, reps: 12, weight: 35 },
+    ],
+  },
+  {
+    name: "Pull B — Thickness",
+    emoji: "🔥",
+    exercises: [
+      { name: "Seated Cable Row", muscleGroup: "back", sets: 3, reps: 8, weight: 110 },
+      { name: "Dumbbell Rows", muscleGroup: "back", sets: 3, reps: 8, weight: 50 },
+      { name: "Lat Pulldown", muscleGroup: "back", sets: 3, reps: 10, weight: 90 },
+      { name: "Face Pulls", muscleGroup: "shoulders", sets: 3, reps: 12, weight: 30 },
+      { name: "Hammer Curls", muscleGroup: "arms", sets: 3, reps: 8, weight: 30 },
+      { name: "EZ Bar Curls", muscleGroup: "arms", sets: 2, reps: 12, weight: 40 },
+    ],
+  },
+  {
+    name: "Legs B — Glutes & Hams",
+    emoji: "🔥",
+    exercises: [
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 3, reps: 6, weight: 155 },
+      { name: "Hip Thrusts", muscleGroup: "legs", sets: 3, reps: 8, weight: 135 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 230 },
+      { name: "Leg Curls", muscleGroup: "legs", sets: 3, reps: 10, weight: 70 },
+      { name: "Walking Lunges", muscleGroup: "legs", sets: 2, reps: 10, weight: 25 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 4, reps: 12, weight: 100 },
+      { name: "Hanging Leg Raises", muscleGroup: "core", sets: 3, reps: 10, weight: 0 },
+    ],
+  },
+];
+
+const CHEST_ARMS_ROUTINES: RoutineTemplate[] = [
+  {
+    name: "Chest & Triceps",
+    emoji: "💥",
+    exercises: [
+      { name: "Bench Press", muscleGroup: "chest", sets: 4, reps: 6, weight: 135 },
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 45 },
+      { name: "Cable Flyes", muscleGroup: "chest", sets: 3, reps: 12, weight: 25 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 3, reps: 10, weight: 40 },
+      { name: "Overhead Tricep Extension", muscleGroup: "arms", sets: 3, reps: 10, weight: 30 },
+    ],
+  },
+  {
+    name: "Back & Biceps",
+    emoji: "💥",
+    exercises: [
+      { name: "Lat Pulldown", muscleGroup: "back", sets: 3, reps: 8, weight: 100 },
+      { name: "Seated Cable Row", muscleGroup: "back", sets: 3, reps: 8, weight: 100 },
+      { name: "Dumbbell Rows", muscleGroup: "back", sets: 2, reps: 10, weight: 45 },
+      { name: "EZ Bar Curls", muscleGroup: "arms", sets: 3, reps: 8, weight: 50 },
+      { name: "Hammer Curls", muscleGroup: "arms", sets: 3, reps: 10, weight: 25 },
+      { name: "Face Pulls", muscleGroup: "shoulders", sets: 2, reps: 15, weight: 25 },
+    ],
+  },
+  {
+    name: "Chest & Arms Pump",
+    emoji: "💥",
+    exercises: [
+      { name: "Incline Dumbbell Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 45 },
+      { name: "Bench Press", muscleGroup: "chest", sets: 3, reps: 8, weight: 125 },
+      { name: "Cable Flyes", muscleGroup: "chest", sets: 2, reps: 12, weight: 25 },
+      { name: "EZ Bar Curls", muscleGroup: "arms", sets: 3, reps: 10, weight: 45 },
+      { name: "Tricep Pushdowns", muscleGroup: "arms", sets: 3, reps: 10, weight: 40 },
+      { name: "Hammer Curls", muscleGroup: "arms", sets: 2, reps: 12, weight: 25 },
+      { name: "Overhead Tricep Extension", muscleGroup: "arms", sets: 2, reps: 12, weight: 25 },
+    ],
+  },
+  {
+    name: "Legs & Shoulders",
+    emoji: "💥",
+    exercises: [
+      { name: "Barbell Squats", muscleGroup: "legs", sets: 3, reps: 6, weight: 155 },
+      { name: "Romanian Deadlift", muscleGroup: "legs", sets: 3, reps: 8, weight: 135 },
+      { name: "Leg Press", muscleGroup: "legs", sets: 3, reps: 10, weight: 250 },
+      { name: "Dumbbell Shoulder Press", muscleGroup: "shoulders", sets: 3, reps: 8, weight: 35 },
+      { name: "Lateral Raises", muscleGroup: "shoulders", sets: 3, reps: 12, weight: 15 },
+      { name: "Calf Raises", muscleGroup: "legs", sets: 3, reps: 12, weight: 100 },
+    ],
+  },
+];
+
 // ── All splits in one exportable collection ───────────────────────
 export const WORKOUT_SPLITS: WorkoutSplit[] = [
+  {
+    id: "start_strong",
+    name: "Start Strong",
+    shortDescription: "3 days per week — beginner full-body program, 35–45 min",
+    daysPerWeek: 3,
+    routines: START_STRONG_ROUTINES,
+  },
+  {
+    id: "build_muscle",
+    name: "Build Muscle",
+    shortDescription: "4 days per week — upper/lower hypertrophy, 45–60 min",
+    daysPerWeek: 4,
+    routines: BUILD_MUSCLE_ROUTINES,
+  },
+  {
+    id: "ppl_program",
+    name: "Push Pull Legs",
+    shortDescription: "6 days per week — intermediate/advanced hypertrophy, 50–70 min",
+    daysPerWeek: 6,
+    routines: PPL_PROGRAM_ROUTINES,
+  },
+  {
+    id: "chest_arms",
+    name: "Chest & Arms Accelerator",
+    shortDescription: "4 days per week — upper-body specialization, 40–55 min",
+    daysPerWeek: 4,
+    routines: CHEST_ARMS_ROUTINES,
+  },
   {
     id: "ppl",
     name: "Push / Pull / Legs",
