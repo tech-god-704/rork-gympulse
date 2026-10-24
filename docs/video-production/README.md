@@ -9,13 +9,17 @@ project (`https://gympulse.cloudpod.pro`, collection `exercises`).
 1. Pick an exercise from `mocks/exerciseLibrary.ts` (its `slug` is the key everywhere).
 2. Generate the clip from its prompt in this folder (FAL.AI or Model Labs).
    Use the approved Barbell Bench Press presenter as the character reference.
-3. Either upload the MP4 to the record's `video` field (permanent), or paste
-   the generator's CDN link into `video_url` (instant, but the link can expire).
+3. Paste the generator's CDN link into `video_url` (plays instantly). A re-runnable
+   script on the VPS copies any record with a `video_url` and an empty `video` into
+   the `video` file field for permanent storage — run it after adding new clips.
    Save the prompt in `generation_prompt` and the job id in `fal_request_id`.
+   Thumbnails are not generated server-side (no ffmpeg there); the clip itself is the poster.
 4. Set `status` to `review`, check the clip loops cleanly, then set it to `ready`.
    The app plays the `video` file if present, otherwise `video_url`, regardless of status.
 
 Provider (FAL vs Model Labs) is not decided yet — do not generate until it is.
+
+The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 
 ## Files
 
@@ -26,8 +30,8 @@ Provider (FAL vs Model Labs) is not decided yet — do not generate until it is.
 
 | # | Slug | Prompt |
 |---|------|--------|
-| 1 | barbell_bench_press | ready — on `video_url` (FAL CDN) |
-| 2 | incline_dumbbell_press | draft in review — Seedance 2.5 ref-to-video, on `video_url` |
+| 1 | barbell_bench_press | ready — stored in `video` |
+| 2 | incline_dumbbell_press | draft in review — Seedance 2.5 ref-to-video, stored in `video` |
 | 3 | cable_chest_fly | batch 1 |
 | 4 | dumbbell_shoulder_press | batch 1 |
 | 5 | dumbbell_lateral_raise | batch 1 |
