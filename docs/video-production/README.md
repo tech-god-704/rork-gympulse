@@ -17,7 +17,7 @@ project (`https://gympulse.cloudpod.pro`, collection `exercises`).
 4. Set `status` to `review`, check the clip loops cleanly, then set it to `ready`.
    The app plays the `video` file if present, otherwise `video_url`, regardless of status.
 
-Provider (FAL vs Model Labs) is not decided yet — do not generate until it is.
+Provider: ModelsLab, model `seedance-2-5-text-to-video` (720p max there). Job specs: `jobs/batch1-modelslab.json`.
 
 The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 
@@ -32,9 +32,9 @@ The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 |---|------|--------|
 | 1 | barbell_bench_press | ready — stored in `video` |
 | 2 | incline_dumbbell_press | draft in review — Seedance 2.5 ref-to-video, stored in `video` |
-| 3 | cable_chest_fly | batch 1 |
-| 4 | dumbbell_shoulder_press | batch 1 |
-| 5 | dumbbell_lateral_raise | batch 1 |
+| 3 | cable_chest_fly | in review — ModelsLab job 190501965, on `video_url` |
+| 4 | dumbbell_shoulder_press | in review — ModelsLab job 190501988, on `video_url` |
+| 5 | dumbbell_lateral_raise | in review — ModelsLab job 190501997, on `video_url` |
 | 6 | rope_triceps_pushdown | batch 1 |
 | 7 | overhead_cable_triceps_extension | batch 1 |
 | 8 | lat_pulldown | batch 1 |
