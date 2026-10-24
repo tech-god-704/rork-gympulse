@@ -17,7 +17,7 @@ project (`https://gympulse.cloudpod.pro`, collection `exercises`).
 4. Set `status` to `review`, check the clip loops cleanly, then set it to `ready`.
    The app plays the `video` file if present, otherwise `video_url`, regardless of status.
 
-Provider: ModelsLab, model `seedance-2-5-text-to-video` (720p max there). Job specs: `jobs/batch1-modelslab.json`.
+Providers used: ModelsLab `seedance-2-5-text-to-video` (#3–5) and Runware — `bytedance:seedance@2.0-mini` for simpler moves, `bytedance:seedance@2.0` for barbell lifts (#6–14). All 720×1280, 8 s, audio off. Prompts: `jobs/batch1-modelslab.json`; Runware task ids: `jobs/runware-tasks.txt` (retrieve with getTaskDetails). Always pass your own `taskUUID` to Runware — the MCP call times out at 60 s but the job keeps running.
 
 The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 
@@ -30,20 +30,20 @@ The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 
 | # | Slug | Prompt |
 |---|------|--------|
-| 1 | barbell_bench_press | ready — stored in `video` |
+| 1 | barbell_bench_press | ready — stored in `video`. Alt take from the master prompt (Runware Seedance 2.0, task 1bfccfac…) awaiting comparison |
 | 2 | incline_dumbbell_press | draft in review — Seedance 2.5 ref-to-video, stored in `video` |
 | 3 | cable_chest_fly | in review — ModelsLab job 190501965, on `video_url` |
 | 4 | dumbbell_shoulder_press | in review — ModelsLab job 190501988, on `video_url` |
 | 5 | dumbbell_lateral_raise | in review — ModelsLab job 190501997, on `video_url` |
-| 6 | rope_triceps_pushdown | batch 1 |
-| 7 | overhead_cable_triceps_extension | batch 1 |
-| 8 | lat_pulldown | batch 1 |
-| 9 | seated_cable_row | batch 1 |
-| 10 | one_arm_dumbbell_row | batch 1 |
-| 11 | face_pull | batch 1 |
-| 12 | ez_bar_curl | batch 1 |
-| 13 | hammer_curl | batch 1 |
-| 14 | barbell_back_squat | batch 1 |
+| 6 | rope_triceps_pushdown | in review — Runware Seedance Mini, on `video_url` |
+| 7 | overhead_cable_triceps_extension | in review — Runware Seedance Mini, on `video_url` |
+| 8 | lat_pulldown | in review — Runware Seedance Mini, on `video_url` |
+| 9 | seated_cable_row | in review — Runware Seedance Mini, on `video_url` |
+| 10 | one_arm_dumbbell_row | in review — Runware Seedance Mini, on `video_url` |
+| 11 | face_pull | in review — Runware Seedance Mini, on `video_url` |
+| 12 | ez_bar_curl | in review — Runware Seedance Mini, on `video_url` |
+| 13 | hammer_curl | in review — Runware Seedance Mini, on `video_url` |
+| 14 | barbell_back_squat | in review — Runware Seedance 2.0, on `video_url` |
 | 15 | leg_press | needed |
 | 16 | romanian_deadlift | needed |
 | 17 | leg_curl | needed |

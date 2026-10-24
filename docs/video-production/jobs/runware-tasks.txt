@@ -1,0 +1,10 @@
+06 rope_triceps_pushdown            mini  1f1f495d-4668-4baa-b0d1-74ca8698ebca
+07 overhead_cable_triceps_extension mini  05f3cf41-9c19-4161-b32a-9153965d32df
+08 lat_pulldown                     mini  dc2ba950-3901-4384-964f-b32d5dab996a
+09 seated_cable_row                 mini  b59e4d72-26cc-4a13-b937-5e0050b37d94
+10 one_arm_dumbbell_row             mini  f058944a-99d6-497c-96a9-09f67a760ec7
+11 face_pull                        mini  a5d7b484-9580-4356-8afb-71bfdb4154fd
+12 ez_bar_curl                      mini  618babf5-c3f3-4c06-80f1-dd5913aab683
+13 hammer_curl                      mini  42356bbc-2f5d-49e6-b14b-ead16f7e3903
+14 barbell_back_squat               2.5   c4a0970d-1d32-454a-a252-8db4053ac19d
+01 barbell_bench_press (master v2)  2.5   1bfccfac-bb39-4aac-965f-36006ccc6144
