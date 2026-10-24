@@ -25,6 +25,7 @@ The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 
 - `global-rules.md` — presenter, wardrobe, gym, format, and negative rules that apply to every clip
 - `batch-1-videos-02-14.md` — prompts for videos #2–#14
+- `jobs/batch2-runware.json` — prompts, models and Runware task ids for videos #15–#26 (written by Claude in the Batch 1 format)
 
 ## Library status
 
@@ -44,15 +45,15 @@ The PocketBase batch API is enabled (max 50 requests) for bulk record updates.
 | 12 | ez_bar_curl | in review — Runware Seedance Mini, on `video_url` |
 | 13 | hammer_curl | in review — Runware Seedance Mini, on `video_url` |
 | 14 | barbell_back_squat | in review — Runware Seedance 2.0, on `video_url` |
-| 15 | leg_press | needed |
-| 16 | romanian_deadlift | needed |
-| 17 | leg_curl | needed |
-| 18 | leg_extension | needed |
-| 19 | walking_dumbbell_lunge | needed |
-| 20 | standing_calf_raise | needed |
-| 21 | hip_thrust | needed |
-| 22 | plank | needed |
-| 23 | hanging_knee_raise | needed |
-| 24 | cable_crunch | needed |
-| 25 | push_up | needed |
-| 26 | pull_up | needed |
+| 15 | leg_press | in review — Runware Seedance Mini, on `video_url` |
+| 16 | romanian_deadlift | in review — Runware Seedance 2.0, on `video_url` |
+| 17 | leg_curl | in review — Runware Seedance Mini, on `video_url` |
+| 18 | leg_extension | in review — Runware Seedance Mini, on `video_url` |
+| 19 | walking_dumbbell_lunge | in review — Runware Seedance Mini, on `video_url` |
+| 20 | standing_calf_raise | in review — Runware Seedance Mini, on `video_url` |
+| 21 | hip_thrust | in review — Runware Seedance Mini, on `video_url` |
+| 22 | plank | in review — Runware Seedance Mini, on `video_url` |
+| 23 | hanging_knee_raise | in review — Runware Seedance Mini, on `video_url` |
+| 24 | cable_crunch | in review — Runware Seedance Mini, on `video_url` |
+| 25 | push_up | in review — Runware Seedance Mini, on `video_url` |
+| 26 | pull_up | in review — Runware Seedance Mini, on `video_url` |
