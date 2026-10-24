@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, TextInput, PanResponder } from "react-native";
-import { Check, ChevronDown, Minus, Plus, SkipForward, RotateCcw, Trash2 } from "lucide-react-native";
+import { Check, ChevronDown, Minus, Plus, SkipForward, RotateCcw, Trash2, PlayCircle } from "lucide-react-native";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
@@ -8,6 +9,7 @@ import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS, WeightUnit, ExercisePerfor
 import { estimateOneRepMax } from "@/utils/workoutStats";
 import { formatWeight, toDisplayWeight, fromDisplayWeight, weightStep, trimNumber } from "@/utils/units";
 import { Layout, Radius, Space, Type, elevation, numeric, tint } from "@/constants/theme";
+import { findLibraryExerciseByName } from "@/mocks/exerciseLibrary";
 
 interface Props {
   exercise: WorkoutSessionExercise;
@@ -53,6 +55,8 @@ function ExerciseCard({
 }: Props) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const router = useRouter();
+  const demo = useMemo(() => findLibraryExerciseByName(exercise.exerciseName), [exercise.exerciseName]);
 
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -350,6 +354,18 @@ function ExerciseCard({
                   <View style={styles.prBadge}>
                     <Text style={styles.prBadgeText}>PR!</Text>
                   </View>
+                )}
+                {demo && (
+                  <TouchableOpacity
+                    style={styles.formButton}
+                    onPress={() => router.push({ pathname: "/exercise/[slug]", params: { slug: demo.slug } })}
+                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                    accessibilityLabel={`Form guide for ${exercise.exerciseName}`}
+                    accessibilityRole="button"
+                  >
+                    <PlayCircle size={11} color={colors.primary} />
+                    <Text style={styles.formButtonText}>Form</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             </View>
@@ -693,6 +709,22 @@ const createStyles = (colors: ColorScheme) => StyleSheet.create({
     fontWeight: "900",
     color: colors.amberDark,
     letterSpacing: 0.5,
+  },
+  formButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: Space.sm,
+    paddingVertical: 2,
+    borderRadius: Radius.xs,
+    borderWidth: 1,
+    borderColor: tint(colors.primary, 0.35),
+  },
+  formButtonText: {
+    ...Type.caption,
+    fontWeight: "800",
+    color: colors.primary,
+    letterSpacing: 0.3,
   },
   restButton: {
     paddingHorizontal: Space.sm + 2,
