@@ -9,10 +9,13 @@ project (`https://gympulse.cloudpod.pro`, collection `exercises`).
 1. Pick an exercise from `mocks/exerciseLibrary.ts` (its `slug` is the key everywhere).
 2. Generate the clip from its prompt in this folder (FAL.AI or Model Labs).
    Use the approved Barbell Bench Press presenter as the character reference.
-3. Upload the MP4 to the matching PocketBase record's `video` field,
-   save the prompt in `generation_prompt` and the job id in `fal_request_id`.
+3. Either upload the MP4 to the record's `video` field (permanent), or paste
+   the generator's CDN link into `video_url` (instant, but the link can expire).
+   Save the prompt in `generation_prompt` and the job id in `fal_request_id`.
 4. Set `status` to `review`, check the clip loops cleanly, then set it to `ready`.
-   The app shows any record that has a `video` file, regardless of status.
+   The app plays the `video` file if present, otherwise `video_url`, regardless of status.
+
+Provider (FAL vs Model Labs) is not decided yet — do not generate until it is.
 
 ## Files
 
@@ -23,8 +26,8 @@ project (`https://gympulse.cloudpod.pro`, collection `exercises`).
 
 | # | Slug | Prompt |
 |---|------|--------|
-| 1 | barbell_bench_press | already generated (reference presenter) |
-| 2 | incline_dumbbell_press | batch 1 |
+| 1 | barbell_bench_press | ready — on `video_url` (FAL CDN) |
+| 2 | incline_dumbbell_press | draft in review — Seedance 2.5 ref-to-video, on `video_url` |
 | 3 | cable_chest_fly | batch 1 |
 | 4 | dumbbell_shoulder_press | batch 1 |
 | 5 | dumbbell_lateral_raise | batch 1 |
