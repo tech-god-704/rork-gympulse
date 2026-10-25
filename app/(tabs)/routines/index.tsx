@@ -21,6 +21,7 @@ import {
   ChevronUp,
   ChevronDown,
   CalendarDays,
+  PlayCircle,
 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -247,6 +248,18 @@ export default function RoutinesScreen() {
             </TouchableOpacity>
           </>
         )}
+
+        <TouchableOpacity
+          onPress={() => router.push("/exercise")}
+          activeOpacity={0.7}
+          style={styles.browseCard}
+          accessibilityRole="button"
+          accessibilityLabel="Open the exercise library"
+        >
+          <PlayCircle size={17} color={colors.primary} />
+          <Text style={styles.browseText}>Exercise library · form demos</Text>
+          <ChevronRight size={15} color={colors.textTertiary} />
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ─── Create Routine ─────────────────────────────────── */}
