@@ -1,0 +1,428 @@
+{
+ "provider": "Runware",
+ "settings": {
+  "width": 720,
+  "height": 1280,
+  "duration": 8,
+  "settings": {
+   "audio": false
+  },
+  "deliveryMethod": "async"
+ },
+ "jobs": {
+  "barbell_row": {
+   "num": 27,
+   "name": "Barbell Row",
+   "muscle_group": "back",
+   "target_area": "Lats, mid back, rear delts",
+   "equipment": "Barbell",
+   "aliases": [
+    "Barbell Rows",
+    "Bent-Over Row",
+    "Bent Over Barbell Row",
+    "Bent-Over Barbell Row"
+   ],
+   "model": "bytedance:seedance@2.0",
+   "taskUUID": "a388f5d1-856f-4ac1-b776-ec858c866960",
+   "setup": [
+    "Feet hip-width, bar over mid-foot",
+    "Hinge until torso is about 45° or lower",
+    "Overhand grip just outside the knees, back flat"
+   ],
+   "cues": [
+    "Pull the bar to your lower ribs",
+    "Drive elbows back, squeeze shoulder blades",
+    "Lower under control to straight arms"
+   ],
+   "common_mistakes": [
+    "Rounding the lower back",
+    "Standing up as you pull",
+    "Jerking the weight with the hips"
+   ],
+   "breathing": "Exhale as you row, inhale as you lower.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Barbell Bent-Over Row repetition.\n\nEquipment: Olympic barbell with identical moderate plates on both sides.\n\nCamera: Static side view (about 70–90 degrees) at hip height so the flat back, hip hinge and bar path are clearly visible; show the entire head, whole barbell including both plates, torso, hips, legs and feet.\n\nStart position: Athlete hinged forward with a flat back, torso about 45 degrees to the floor, knees softly bent, feet hip-width, arms straight, overhand grip just outside the knees, bar hanging below the shoulders near the knees.\n\nTimeline:\n- 0.0–1.0 s — Hold the hinged start, back flat.\n- 1.0–3.2 s — Row the bar up to the lower ribs by driving the elbows back; the torso angle stays fixed.\n- 3.2–4.1 s — Top: bar touching the lower ribs, shoulder blades squeezed together, back still flat. Brief pause.\n- 4.1–7.2 s — Lower the bar slowly to straight arms along the same path.\n- 7.2–8.0 s — Return to the exact hinged start.\n\nTechnique: No rounding the back, standing up during the pull, hip jerking, shrugging, or bar bouncing.\n\nBarbell physics (critical): one straight rigid Olympic bar of constant length; identical plates on both sides that never change, disappear or multiply; the bar never bends dramatically or passes through the body; hands stay wrapped around the bar.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "overhead_press": {
+   "num": 28,
+   "name": "Overhead Press",
+   "muscle_group": "shoulders",
+   "target_area": "Front and side delts, triceps, upper chest",
+   "equipment": "Barbell",
+   "aliases": [
+    "Overhead Press",
+    "Barbell Overhead Press",
+    "Military Press",
+    "Standing Overhead Press",
+    "OHP"
+   ],
+   "model": "bytedance:seedance@2.0",
+   "taskUUID": "979c1453-3c36-4c1b-9d14-7841ba296615",
+   "setup": [
+    "Bar in the front rack on your collarbones",
+    "Grip just outside shoulder width, elbows slightly forward",
+    "Squeeze glutes and brace your core"
+   ],
+   "cues": [
+    "Press straight up, moving your head back slightly",
+    "Push your head through once the bar passes",
+    "Lock out with the bar over mid-foot"
+   ],
+   "common_mistakes": [
+    "Leaning back to push the weight",
+    "Pressing the bar out in front",
+    "Flaring the ribs"
+   ],
+   "breathing": "Big breath and brace at the bottom, exhale near the top.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Standing Barbell Overhead Press repetition.\n\nEquipment: Olympic barbell with identical moderate plates on both sides.\n\nCamera: Static three-quarter side view at chest height, framed tall enough that the bar and both plates stay fully visible at lockout overhead; show head, arms, hands, whole barbell, torso, hips, legs and feet.\n\nStart position: Athlete standing tall, feet hip-width, bar resting in the front rack on the upper chest/collarbones, grip just outside shoulder width, forearms vertical, elbows slightly in front of the bar, glutes and core braced.\n\nTimeline:\n- 0.0–1.0 s — Hold the front-rack start.\n- 1.0–3.4 s — Press the bar straight up; the head moves back slightly to let the bar pass, then forward under the bar.\n- 3.4–4.2 s — Lockout: arms straight, bar directly over the mid-foot and shoulders, body in a straight vertical line. Brief pause.\n- 4.2–7.2 s — Lower the bar under control back to the collarbones.\n- 7.2–8.0 s — Return to the exact front-rack start.\n\nTechnique: No excessive lean-back, knee dip or push-press, bar drifting forward, wrists collapsing, or flaring ribs.\n\nBarbell physics (critical): one straight rigid Olympic bar of constant length; identical plates on both sides that never change, disappear or multiply; the bar never bends dramatically or passes through the body; hands stay wrapped around the bar.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "deadlift": {
+   "num": 29,
+   "name": "Deadlift",
+   "muscle_group": "back",
+   "target_area": "Glutes, hamstrings, back, grip",
+   "equipment": "Barbell",
+   "aliases": [
+    "Deadlift",
+    "Deadlifts",
+    "Conventional Deadlift",
+    "Barbell Deadlift"
+   ],
+   "model": "bytedance:seedance@2.0",
+   "taskUUID": "692111a6-e4b7-4471-9b33-bc6d8647063d",
+   "setup": [
+    "Bar over mid-foot, feet hip-width",
+    "Hinge down and grip just outside the legs",
+    "Shins to the bar, chest up, back flat"
+   ],
+   "cues": [
+    "Push the floor away and stand up",
+    "Keep the bar dragging up your legs",
+    "Lock hips and knees together at the top",
+    "Hinge back down with the bar close"
+   ],
+   "common_mistakes": [
+    "Rounding the back",
+    "Hips shooting up first",
+    "Bar drifting away from the body"
+   ],
+   "breathing": "Big breath and brace before each rep, exhale at the top.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Conventional Barbell Deadlift repetition from the floor and back to the floor.\n\nEquipment: Olympic barbell with identical full-size bumper plates on both sides resting on the gym floor.\n\nCamera: Static side view (about 70–90 degrees) at hip height so the hip hinge, flat back and vertical bar path are clearly visible; show the entire head, whole barbell including both plates, torso, hips, legs, feet and floor.\n\nStart position: Bar on the floor over the mid-foot, feet hip-width, athlete hinged down gripping the bar just outside the legs with arms straight, shins touching the bar, hips higher than the knees, chest up, back flat, neutral neck.\n\nTimeline:\n- 0.0–1.0 s — Hold the set-up position, bar on the floor.\n- 1.0–3.4 s — Push the floor away: hips and shoulders rise together, bar stays in contact with the legs, then the hips drive forward to stand tall.\n- 3.4–4.1 s — Lockout: standing tall, hips and knees fully extended, shoulders back, no leaning back. Brief pause.\n- 4.1–7.2 s — Hinge the hips back and lower the bar along the legs until the plates touch the floor softly.\n- 7.2–8.0 s — Return to the exact set-up position with the bar resting on the floor.\n\nTechnique: No rounding the back, hips shooting up before the chest, bar drifting away from the legs, hyperextending at the top, or dropping or bouncing the bar.\n\nBarbell physics (critical): one straight rigid Olympic bar of constant length; identical plates on both sides that never change, disappear or multiply; the bar never bends dramatically or passes through the body; hands stay wrapped around the bar.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "close_grip_bench_press": {
+   "num": 30,
+   "name": "Close-Grip Bench Press",
+   "muscle_group": "arms",
+   "target_area": "Triceps, chest, front delts",
+   "equipment": "Barbell, bench",
+   "aliases": [
+    "Close-Grip Bench Press",
+    "Close Grip Bench Press",
+    "Close-Grip Bench"
+   ],
+   "model": "bytedance:seedance@2.0",
+   "taskUUID": "68ee7818-f6ed-4dbb-b4e7-853247c862ca",
+   "setup": [
+    "Lie on the bench with eyes under the bar",
+    "Grip about shoulder width",
+    "Shoulder blades pinned, feet planted"
+   ],
+   "cues": [
+    "Lower to your lower chest, elbows tucked",
+    "Keep forearms vertical",
+    "Press up and lock out with the triceps"
+   ],
+   "common_mistakes": [
+    "Grip too narrow, straining the wrists",
+    "Elbows flaring out",
+    "Bouncing the bar"
+   ],
+   "breathing": "Inhale as you lower, exhale as you press.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Close-Grip Barbell Bench Press repetition.\n\nEquipment: Flat bench in a bench-press rack, Olympic barbell with identical moderate plates on both sides; bar starts already unracked.\n\nCamera: Static three-quarter front/side angle with the bench framed diagonally; keep the head, both hands, entire barbell with both plates, torso, hips, legs and both feet visible throughout.\n\nStart position: Athlete lying on the bench holding the bar at lockout over the shoulders, hands about shoulder-width apart (narrower than a normal bench press), wrists stacked, shoulder blades retracted, feet planted, glutes on the bench.\n\nTimeline:\n- 0.0–1.0 s — Hold the top position.\n- 1.0–3.4 s — Lower the bar to the lower chest with elbows tucked close to the torso, forearms vertical.\n- 3.4–4.1 s — Bar lightly touches the lower chest. Brief pause, no bounce.\n- 4.1–6.8 s — Press the bar back up, triceps driving the lockout.\n- 6.8–8.0 s — Hold the exact top position.\n\nTechnique: No elbows flaring out, wrists bending back, hips lifting, feet moving, or bar bouncing.\n\nBarbell physics (critical): one straight rigid Olympic bar of constant length; identical plates on both sides that never change, disappear or multiply; the bar never bends dramatically or passes through the body; hands stay wrapped around the bar.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "dumbbell_fly": {
+   "num": 31,
+   "name": "Dumbbell Fly",
+   "muscle_group": "chest",
+   "target_area": "Chest",
+   "equipment": "Dumbbells, bench",
+   "aliases": [
+    "Dumbbell Flyes",
+    "Dumbbell Fly",
+    "Dumbbell Flys",
+    "Flat Dumbbell Fly"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "f27e3de1-76d5-4f60-a057-36e8e511ab3c",
+   "setup": [
+    "Lie flat holding dumbbells over your chest",
+    "Palms facing each other",
+    "Slight bend in the elbows"
+   ],
+   "cues": [
+    "Open your arms in a wide arc",
+    "Lower until you feel a chest stretch",
+    "Hug the weights back together over your chest"
+   ],
+   "common_mistakes": [
+    "Turning it into a press",
+    "Going too deep",
+    "Locking the elbows"
+   ],
+   "breathing": "Inhale as you open, exhale as you bring the weights together.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Flat Dumbbell Fly repetition.\n\nEquipment: Flat bench, two identical dumbbells.\n\nCamera: Static three-quarter front/side view showing head, both arms, both dumbbells, torso, bench, hips, legs and feet; keep both dumbbells in frame at the widest point.\n\nStart position: Athlete lying on the flat bench, feet planted, dumbbells held above the chest with palms facing each other and a slight fixed bend in the elbows.\n\nTimeline:\n- 0.0–1.0 s — Hold the top position.\n- 1.0–3.5 s — Open the arms out to the sides in a wide arc, elbows keeping the same slight bend.\n- 3.5–4.3 s — Bottom: dumbbells about level with the chest, comfortable chest stretch. Brief pause.\n- 4.3–7.2 s — Bring the dumbbells back together over the chest along the same arc, like hugging a barrel.\n- 7.2–8.0 s — Hold the exact top position; dumbbells do not clash.\n\nTechnique: No pressing motion, straightening the elbows, dropping the dumbbells too low, or hips lifting.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "dumbbell_curl": {
+   "num": 32,
+   "name": "Dumbbell Curl",
+   "muscle_group": "arms",
+   "target_area": "Biceps",
+   "equipment": "Dumbbells",
+   "aliases": [
+    "Dumbbell Curls",
+    "Dumbbell Curl",
+    "Dumbbell Biceps Curl",
+    "Standing Dumbbell Curl"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "2ecf84cf-6a64-43d1-9ce0-091b8981a615",
+   "setup": [
+    "Stand tall, dumbbells at your sides",
+    "Palms facing forward",
+    "Elbows pinned to your sides"
+   ],
+   "cues": [
+    "Curl both dumbbells to shoulder height",
+    "Squeeze the biceps at the top",
+    "Lower slowly to straight arms"
+   ],
+   "common_mistakes": [
+    "Swinging the body",
+    "Elbows drifting forward",
+    "Half reps"
+   ],
+   "breathing": "Exhale as you curl, inhale as you lower.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct simultaneous Standing Dumbbell Curl repetition.\n\nEquipment: Two identical dumbbells.\n\nCamera: Static three-quarter front view showing the entire body from head to feet with both dumbbells visible throughout.\n\nStart position: Athlete standing tall, feet hip-width, arms straight at the sides, palms facing forward (supinated), elbows close to the torso.\n\nTimeline:\n- 0.0–1.0 s — Hold the bottom position.\n- 1.0–3.4 s — Curl both dumbbells up toward the shoulders; elbows stay pinned at the sides.\n- 3.4–4.2 s — Top: biceps squeezed, dumbbells near shoulder height. Brief pause.\n- 4.2–7.2 s — Lower both dumbbells slowly to straight arms.\n- 7.2–8.0 s — Return to the exact starting position.\n\nTechnique: No swinging, hip drive, elbows moving forward, shrugging, or uneven arms.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "skull_crusher": {
+   "num": 33,
+   "name": "Skull Crusher",
+   "muscle_group": "arms",
+   "target_area": "Triceps",
+   "equipment": "EZ bar, bench",
+   "aliases": [
+    "Skull Crushers",
+    "Skull Crusher",
+    "Lying Triceps Extension",
+    "EZ-Bar Skull Crusher"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "104fea14-7dfb-43ac-ac7a-ab5c44b1681a",
+   "setup": [
+    "Lie on a flat bench holding an EZ bar over your chest",
+    "Narrow grip on the angled part of the bar",
+    "Arms angled slightly back toward your head"
+   ],
+   "cues": [
+    "Bend only at the elbows",
+    "Lower the bar toward your forehead",
+    "Extend back up and squeeze the triceps"
+   ],
+   "common_mistakes": [
+    "Elbows flaring out",
+    "Moving the upper arms",
+    "Dropping the bar too fast"
+   ],
+   "breathing": "Inhale as you lower, exhale as you extend.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct EZ-Bar Skull Crusher (lying triceps extension) repetition.\n\nEquipment: Flat bench, EZ curl bar with its zig-zag grip and small identical plates on both sides.\n\nCamera: Static side view at bench height so the elbow bend and upper-arm angle are clearly visible; show head, arms, hands, whole EZ bar with plates, torso, bench, legs and feet.\n\nStart position: Athlete lying on the flat bench, feet planted, holding the EZ bar with a narrow grip, arms extended above the shoulders and angled slightly back toward the head.\n\nTimeline:\n- 0.0–1.0 s — Hold the extended start.\n- 1.0–3.4 s — Bend only at the elbows, lowering the bar in an arc toward the forehead/just behind the head; upper arms stay still.\n- 3.4–4.2 s — Bottom: bar a few centimetres above the forehead, elbows pointing up. Brief pause.\n- 4.2–7.2 s — Extend the elbows to press the bar back up.\n- 7.2–8.0 s — Return to the exact starting position.\n\nTechnique: No elbows flaring wide, upper arms swinging, bar touching the face, or hips lifting.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "chest_dip": {
+   "num": 34,
+   "name": "Chest Dip",
+   "muscle_group": "chest",
+   "target_area": "Lower chest, triceps, front delts",
+   "equipment": "Dip bars",
+   "aliases": [
+    "Chest Dips",
+    "Chest Dip",
+    "Dips",
+    "Parallel Bar Dips"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "8b881588-d30c-4cab-9f7f-2817f2191543",
+   "setup": [
+    "Support yourself on the dip bars, arms straight",
+    "Lean your torso forward slightly",
+    "Cross your ankles behind you"
+   ],
+   "cues": [
+    "Lower until shoulders are just below elbows",
+    "Keep the forward lean",
+    "Press back up to straight arms"
+   ],
+   "common_mistakes": [
+    "Staying fully upright",
+    "Going too deep",
+    "Shrugging the shoulders"
+   ],
+   "breathing": "Inhale on the way down, exhale as you press up.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Chest Dip repetition on parallel bars.\n\nEquipment: Sturdy parallel dip bars; bars stay fixed.\n\nCamera: Static side view showing the whole body from hands on the bars to feet, so the forward torso lean and elbow angle are clearly visible.\n\nStart position: Athlete supported on straight arms on the dip bars, torso leaning forward about 20–30 degrees, knees bent with ankles crossed behind, shoulders down.\n\nTimeline:\n- 0.0–1.0 s — Hold the top support position.\n- 1.0–3.4 s — Lower the body by bending the elbows, keeping the forward lean; elbows travel back and slightly out.\n- 3.4–4.1 s — Bottom: shoulders slightly below the elbows, chest stretched. Brief pause.\n- 4.1–7.0 s — Press back up to straight arms.\n- 7.0–8.0 s — Hold the exact top support position.\n\nTechnique: No swinging, shrugging, dropping too deep, or kicking the legs. Hands stay planted on the bars.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "straight_arm_pulldown": {
+   "num": 35,
+   "name": "Straight-Arm Pulldown",
+   "muscle_group": "back",
+   "target_area": "Lats",
+   "equipment": "Cable station, bar or rope",
+   "aliases": [
+    "Straight-Arm Pulldown",
+    "Straight Arm Pulldown",
+    "Straight-Arm Lat Pulldown"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "a66e2cc7-5d87-49b9-95ea-d86397dcdcf8",
+   "setup": [
+    "Face a high pulley holding a straight bar",
+    "Step back and hinge slightly forward",
+    "Arms straight, slight bend in the elbows"
+   ],
+   "cues": [
+    "Sweep the bar down to your thighs",
+    "Keep arms straight the whole time",
+    "Let the bar rise slowly to eye level"
+   ],
+   "common_mistakes": [
+    "Bending the elbows into a pushdown",
+    "Using body swing",
+    "Shrugging"
+   ],
+   "breathing": "Exhale as you pull down, inhale as you return.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Straight-Arm Cable Pulldown repetition.\n\nEquipment: Cable station with a high pulley and a straight bar attachment; cable and bar stay physically consistent.\n\nCamera: Static side view so the arm arc and fixed elbows are clearly visible; show head, arms, hands, bar, cable, torso, hips and legs.\n\nStart position: Athlete standing a step back from the cable stack, hips hinged slightly forward, spine neutral, arms extended up and forward holding the bar at about eye level, elbows softly bent and fixed.\n\nTimeline:\n- 0.0–1.0 s — Hold the start, arms up.\n- 1.0–3.4 s — Sweep the bar down in an arc to the front of the thighs, arms staying straight, lats squeezing.\n- 3.4–4.2 s — Bottom: bar at the thighs, shoulders down. Brief pause.\n- 4.2–7.2 s — Let the bar rise slowly back along the same arc.\n- 7.2–8.0 s — Return to the exact start.\n\nTechnique: No bending the elbows into a triceps pushdown, swinging the torso, or shrugging.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "reverse_fly": {
+   "num": 36,
+   "name": "Reverse Dumbbell Fly",
+   "muscle_group": "shoulders",
+   "target_area": "Rear delts, upper back",
+   "equipment": "Dumbbells",
+   "aliases": [
+    "Reverse Flyes",
+    "Reverse Fly",
+    "Reverse Dumbbell Fly",
+    "Rear Delt Fly",
+    "Bent-Over Reverse Fly"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "93098ba5-310f-4902-835a-f716c3f11156",
+   "setup": [
+    "Hinge forward with a flat back",
+    "Dumbbells hanging under your chest",
+    "Palms facing each other, slight elbow bend"
+   ],
+   "cues": [
+    "Raise the arms out to the sides",
+    "Squeeze the shoulder blades at the top",
+    "Lower slowly"
+   ],
+   "common_mistakes": [
+    "Using momentum",
+    "Shrugging",
+    "Rounding the back"
+   ],
+   "breathing": "Exhale as you raise, inhale as you lower.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Bent-Over Reverse Dumbbell Fly repetition.\n\nEquipment: Two identical light dumbbells.\n\nCamera: Static three-quarter front/side view showing the whole body from head to feet, with both dumbbells visible at the top of the arc.\n\nStart position: Athlete standing, hips hinged so the torso is nearly parallel to the floor, flat back, knees soft, dumbbells hanging under the chest with palms facing each other and a slight fixed elbow bend.\n\nTimeline:\n- 0.0–1.0 s — Hold the hinged start.\n- 1.0–3.4 s — Raise both arms out to the sides in a wide arc up to about shoulder level.\n- 3.4–4.2 s — Top: rear delts and upper back squeezed, shoulder blades together. Brief pause.\n- 4.2–7.2 s — Lower the dumbbells slowly along the same arc.\n- 7.2–8.0 s — Return to the exact start.\n\nTechnique: No swinging, standing up, shrugging, or rounding the back.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "barbell_shrug": {
+   "num": 37,
+   "name": "Barbell Shrug",
+   "muscle_group": "shoulders",
+   "target_area": "Upper traps",
+   "equipment": "Barbell",
+   "aliases": [
+    "Shrugs",
+    "Barbell Shrugs",
+    "Barbell Shrug",
+    "Shrug"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "3fc583c0-8b27-44f0-b56c-11260d2c07fc",
+   "setup": [
+    "Stand tall holding a barbell at your thighs",
+    "Overhand grip, shoulder width",
+    "Arms straight"
+   ],
+   "cues": [
+    "Lift your shoulders straight up to your ears",
+    "Pause and squeeze",
+    "Lower slowly to a full stretch"
+   ],
+   "common_mistakes": [
+    "Rolling the shoulders",
+    "Bending the elbows",
+    "Bouncing the weight"
+   ],
+   "breathing": "Exhale as you shrug, inhale as you lower.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct Barbell Shrug repetition.\n\nEquipment: Olympic barbell with identical plates on both sides.\n\nCamera: Static front or slight three-quarter front view showing the head, shoulders, neck, arms, whole barbell with plates, torso and legs.\n\nStart position: Athlete standing tall, feet hip-width, holding the barbell at the front of the thighs with an overhand shoulder-width grip, arms straight, shoulders relaxed and down.\n\nTimeline:\n- 0.0–1.0 s — Hold the start.\n- 1.0–3.0 s — Lift the shoulders straight up toward the ears; arms stay straight.\n- 3.0–4.2 s — Top: traps squeezed. Brief pause.\n- 4.2–7.2 s — Lower the shoulders slowly to a full stretch.\n- 7.2–8.0 s — Return to the exact start.\n\nTechnique: No rolling the shoulders, bending the elbows, leaning back, or bouncing.\n\nBarbell physics (critical): one straight rigid Olympic bar of constant length; identical plates on both sides that never change, disappear or multiply; the bar never bends dramatically or passes through the body; hands stay wrapped around the bar.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "preacher_curl": {
+   "num": 38,
+   "name": "Preacher Curl",
+   "muscle_group": "arms",
+   "target_area": "Biceps",
+   "equipment": "EZ bar, preacher bench",
+   "aliases": [
+    "Preacher Curls",
+    "Preacher Curl",
+    "EZ-Bar Preacher Curl"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "dc4fa5bb-e035-4ff3-bb01-4045404a9675",
+   "setup": [
+    "Sit at the preacher bench, armpits snug on the pad",
+    "Hold an EZ bar on the angled grip",
+    "Upper arms flat on the pad"
+   ],
+   "cues": [
+    "Curl the bar toward your shoulders",
+    "Squeeze at the top",
+    "Lower slowly to almost straight arms"
+   ],
+   "common_mistakes": [
+    "Lifting the elbows off the pad",
+    "Dropping the weight at the bottom",
+    "Rocking the body"
+   ],
+   "breathing": "Exhale as you curl, inhale as you lower.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct EZ-Bar Preacher Curl repetition.\n\nEquipment: Preacher curl bench, EZ curl bar with zig-zag grip and small identical plates on both sides.\n\nCamera: Static side view so the elbow joint, pad and full curl arc are clearly visible; show head, torso, arms, hands, whole EZ bar with plates and the bench.\n\nStart position: Athlete seated at the preacher bench, armpits snug against the top of the pad, upper arms flat on the pad, holding the EZ bar on the angled grip with arms nearly straight.\n\nTimeline:\n- 0.0–1.0 s — Hold the bottom position.\n- 1.0–3.4 s — Curl the bar up toward the shoulders; upper arms stay flat on the pad.\n- 3.4–4.2 s — Top: biceps squeezed, forearms near vertical. Brief pause.\n- 4.2–7.2 s — Lower the bar slowly to almost straight arms.\n- 7.2–8.0 s — Return to the exact bottom position.\n\nTechnique: No elbows lifting off the pad, rocking the body, or dropping into the bottom.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  },
+  "concentration_curl": {
+   "num": 39,
+   "name": "Concentration Curl",
+   "muscle_group": "arms",
+   "target_area": "Biceps peak",
+   "equipment": "Dumbbell, bench",
+   "aliases": [
+    "Concentration Curls",
+    "Concentration Curl"
+   ],
+   "model": "bytedance:seedance@2.0-mini",
+   "taskUUID": "50ec5360-18e9-404f-a70c-c3229655d4f7",
+   "setup": [
+    "Sit on a bench, feet wide",
+    "Brace the back of your arm against your inner thigh",
+    "Dumbbell hanging, palm facing forward"
+   ],
+   "cues": [
+    "Curl the dumbbell toward your shoulder",
+    "Squeeze hard at the top",
+    "Lower slowly to a full stretch"
+   ],
+   "common_mistakes": [
+    "Moving the elbow",
+    "Swinging the torso",
+    "Short range of motion"
+   ],
+   "breathing": "Exhale as you curl, inhale as you lower.",
+   "prompt": "Ultra-photorealistic live-action instructional fitness footage for a premium mobile workout app, 9:16 vertical, 8 seconds, one continuous shot, static locked-off camera, no cuts, no zoom, no pan, no camera movement, silent. Presenter: a naturally handsome athletic man around 30, lean muscular natural-lifter physique (about 12% body fat, believable proportions, not a bodybuilder), natural skin texture with pores, short well-groomed dark hair, calm focused expression, professional fitness instructor. Wardrobe: fitted solid charcoal-gray athletic performance T-shirt, black training shorts, clean neutral athletic shoes; no logos, writing, jewelry, watch, hat, headphones or gloves. Setting: clean premium modern commercial gym, rubber flooring, racks, machines, cable stations and free weights softly out of focus in the background, professional overhead lighting, slight natural depth of field; background never changes. The clip shows exactly one clean controlled repetition; the final frame matches the opening position so it loops seamlessly (rep → rep → rep). No text, captions, titles, timers, rep counters, logos, watermarks or UI.\n\nCreate an ultra-photorealistic 8-second instructional video showing one correct seated Concentration Curl repetition with the right arm.\n\nEquipment: Flat bench, one dumbbell.\n\nCamera: Static three-quarter front view showing head, torso, both arms, the working right arm braced on the thigh, the dumbbell, legs and feet.\n\nStart position: Athlete seated on the end of a flat bench, feet wide, leaning slightly forward, back of the right upper arm braced against the inside of the right thigh, dumbbell hanging with the arm straight and palm facing forward; left hand resting on the left knee.\n\nTimeline:\n- 0.0–1.0 s — Hold the bottom position.\n- 1.0–3.4 s — Curl the dumbbell up toward the shoulder; the elbow stays braced on the thigh.\n- 3.4–4.2 s — Top: biceps fully squeezed. Brief pause.\n- 4.2–7.2 s — Lower the dumbbell slowly to a straight arm.\n- 7.2–8.0 s — Return to the exact bottom position.\n\nTechnique: No elbow moving off the thigh, swinging the torso, or partial range.\n\nAvoid: extra or missing fingers, extra limbs, duplicated hands or feet, morphing muscles, changing face, equipment teleporting or changing size, warped equipment, floating objects, objects passing through the body, impossible joint motion, slow motion, camera movement, cuts, text, watermark, logos, bodybuilder look, extreme vascularity, oily or plastic skin."
+  }
+ }
+}
