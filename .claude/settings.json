@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__CloudPod",
+      "mcp__runware",
+      "mcp__ModelsLab_AI",
+      "mcp__fal"
+    ]
+  }
+}
