@@ -59,3 +59,24 @@ All 26 clips are stored permanently in `video` with a `thumbnail` (verified 2026
 | 24 | cable_crunch | in review — Runware Seedance Mini, stored in `video` |
 | 25 | push_up | in review — Runware Seedance Mini, stored in `video` |
 | 26 | pull_up | in review — Runware Seedance Mini, stored in `video` |
+
+## Batch 3 (#27–#39), server-only
+
+These exist only in PocketBase (no entry in `mocks/exerciseLibrary.ts`); the app picks them up live.
+Prompts, coaching text and Runware task ids: `jobs/batch3-runware.json`.
+
+| # | Slug | Model |
+|---|------|-------|
+| 27 | barbell_row | Seedance 2.0 |
+| 28 | overhead_press | Seedance 2.0 |
+| 29 | deadlift | Seedance 2.0 |
+| 30 | close_grip_bench_press | Seedance 2.0 |
+| 31 | dumbbell_fly | Seedance 2.0 Mini |
+| 32 | dumbbell_curl | Seedance 2.0 Mini |
+| 33 | skull_crusher | Seedance 2.0 Mini |
+| 34 | chest_dip | Seedance 2.0 Mini |
+| 35 | straight_arm_pulldown | Seedance 2.0 Mini |
+| 36 | reverse_fly | Seedance 2.0 Mini |
+| 37 | barbell_shrug | Seedance 2.0 Mini |
+| 38 | preacher_curl | Seedance 2.0 Mini |
+| 39 | concentration_curl | Seedance 2.0 Mini |
