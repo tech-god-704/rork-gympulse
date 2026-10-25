@@ -1,0 +1,46 @@
+# Publishes an over-the-air update (EAS Update) to the "production" channel whenever app code
+# lands on main, so merged changes reach installed TestFlight/App Store builds without a new build.
+# Needs an EXPO_TOKEN repository secret from an Expo account with access to this project;
+# without it the job skips instead of failing.
+name: EAS Update
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".claude/**"
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - name: Skip when EXPO_TOKEN is not configured
+        if: env.EXPO_TOKEN == ''
+        run: echo "EXPO_TOKEN secret is not set; skipping EAS Update."
+
+      - uses: actions/checkout@v4
+        if: env.EXPO_TOKEN != ''
+
+      - uses: oven-sh/setup-bun@v2
+        if: env.EXPO_TOKEN != ''
+
+      - uses: expo/expo-github-action@v8
+        if: env.EXPO_TOKEN != ''
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        if: env.EXPO_TOKEN != ''
+        run: bun install
+
+      - name: Publish update
+        if: env.EXPO_TOKEN != ''
+        env:
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message || 'Manual update' }}
+        run: eas update --channel production --message "$(echo "$COMMIT_MESSAGE" | head -n 1)" --non-interactive

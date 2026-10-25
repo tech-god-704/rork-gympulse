@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { GymProvider, useGym } from "@/providers/GymProvider";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
+import { useOtaUpdates } from "@/hooks/useOtaUpdates";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -17,6 +18,7 @@ function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
   const hasShownPostOnboardingPaywall = React.useRef(false);
+  useOtaUpdates();
 
   useEffect(() => {
     if (isLoading) return;
