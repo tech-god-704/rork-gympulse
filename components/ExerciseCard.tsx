@@ -363,8 +363,8 @@ function ExerciseCard({
                     accessibilityLabel={`Form guide for ${exercise.exerciseName}`}
                     accessibilityRole="button"
                   >
-                    <PlayCircle size={11} color={colors.primary} />
-                    <Text style={styles.formButtonText}>Form</Text>
+                    <PlayCircle size={14} color={colors.primary} />
+                    <Text style={styles.formButtonText}>Watch form</Text>
                   </TouchableOpacity>
                 )}
               </View>
