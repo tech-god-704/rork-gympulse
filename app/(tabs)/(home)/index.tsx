@@ -46,6 +46,7 @@ import {
   DEFAULT_TRAINING_DAYS,
 } from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
+import ExerciseDemoStrip from "@/components/ExerciseDemoStrip";
 import ProgressRing from "@/components/ProgressRing";
 import RestTimer from "@/components/RestTimer";
 import ConfettiOverlay from "@/components/ConfettiOverlay";
@@ -466,6 +467,9 @@ export default function TodayScreen() {
           <Card padding={Space.base}>
             <XPBar totalXP={gamification.totalXP} level={gamification.level} compact />
           </Card>
+
+          {/* ── Form demo videos ── */}
+          {!currentSession && <ExerciseDemoStrip />}
 
           {currentSession ? (
             <>

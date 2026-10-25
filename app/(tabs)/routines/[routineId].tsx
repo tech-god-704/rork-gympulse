@@ -36,6 +36,7 @@ import { generateId } from "@/utils/helpers";
 import { formatWeight, toDisplayWeight, fromDisplayWeight, trimNumber } from "@/utils/units";
 import { Layout, Radius, Space, Type, muscleColor, numeric, tint } from "@/constants/theme";
 import { Tag } from "@/components/ui";
+import ExerciseDemoThumb from "@/components/ExerciseDemoThumb";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
 const SWIPE_THRESHOLD = -56;
@@ -204,6 +205,9 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
               })()}
             </Text>
           </View>
+          <View style={swStyles.demoThumb}>
+            <ExerciseDemoThumb exerciseName={exercise.exerciseName} />
+          </View>
           {onMove && (
             <View style={swStyles.reorderColumn}>
               <TouchableOpacity
@@ -235,6 +239,9 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
 }
 
 const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
+  demoThumb: {
+    marginLeft: 10,
+  },
   reorderColumn: {
     justifyContent: "center",
     alignItems: "center",
