@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, CheckCircle2, AlertTriangle, Wind, Wrench } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { getLibraryExercise } from "@/mocks/exerciseLibrary";
+import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 import { MUSCLE_GROUP_LABELS } from "@/types";
 import ExerciseDemoVideo from "@/components/ExerciseDemoVideo";
 
@@ -16,7 +16,8 @@ export default function ExerciseGuideScreen() {
   const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const exercise = slug ? getLibraryExercise(slug) : undefined;
+  const { getBySlug } = useExerciseLibrary();
+  const exercise = getBySlug(slug);
 
   // 9:16 clip, capped so the coaching text is still visible without scrolling far.
   const videoHeight = Math.min((width - 36) * (16 / 9), 460);

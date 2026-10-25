@@ -5,8 +5,7 @@ import { Image } from "expo-image";
 import { Play, Film } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { findLibraryExerciseByName, getLibraryExercise } from "@/mocks/exerciseLibrary";
-import { useExerciseVideo } from "@/hooks/useExerciseVideos";
+import { useExerciseLibrary, useExerciseVideo } from "@/hooks/useExerciseVideos";
 
 interface Props {
   /** Pass either a library slug or an exercise name as it appears in a routine. */
@@ -21,10 +20,8 @@ export default function ExerciseDemoThumb({ slug, exerciseName, width = 40, heig
   const router = useRouter();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const demo = useMemo(
-    () => (slug ? getLibraryExercise(slug) : exerciseName ? findLibraryExerciseByName(exerciseName) : undefined),
-    [slug, exerciseName]
-  );
+  const { getBySlug, findByName } = useExerciseLibrary();
+  const demo = slug ? getBySlug(slug) : exerciseName ? findByName(exerciseName) : undefined;
   const media = useExerciseVideo(demo?.slug);
 
   if (!demo) return null;

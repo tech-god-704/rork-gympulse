@@ -6,8 +6,8 @@ import { Image } from "expo-image";
 import { X, ChevronRight, Film } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { EXERCISE_LIBRARY, type LibraryExercise } from "@/mocks/exerciseLibrary";
-import { useExerciseVideos } from "@/hooks/useExerciseVideos";
+import { type LibraryExercise } from "@/mocks/exerciseLibrary";
+import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 import { MuscleGroup, MUSCLE_GROUP_LABELS } from "@/types";
 
 const GROUP_ORDER: MuscleGroup[] = ["chest", "shoulders", "arms", "back", "legs", "core"];
@@ -17,22 +17,22 @@ export default function ExerciseLibraryScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const { data: videos } = useExerciseVideos();
+  const { exercises, videos } = useExerciseLibrary();
 
   const groups = useMemo(() => {
     const byGroup = new Map<MuscleGroup, LibraryExercise[]>();
-    for (const ex of EXERCISE_LIBRARY) {
+    for (const ex of exercises) {
       byGroup.set(ex.muscleGroup, [...(byGroup.get(ex.muscleGroup) ?? []), ex]);
     }
     return GROUP_ORDER.filter((g) => byGroup.has(g)).map((g) => ({ group: g, items: byGroup.get(g)! }));
-  }, []);
+  }, [exercises]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <View style={styles.headerText}>
           <Text style={styles.title}>Exercise Library</Text>
-          <Text style={styles.subtitle}>{EXERCISE_LIBRARY.length} exercises with form demos</Text>
+          <Text style={styles.subtitle}>{exercises.length} exercises with form demos</Text>
         </View>
         <TouchableOpacity
           onPress={() => router.back()}
@@ -50,7 +50,7 @@ export default function ExerciseLibraryScreen() {
             <Text style={styles.sectionTitle}>{MUSCLE_GROUP_LABELS[group]}</Text>
             <View style={styles.card}>
               {items.map((ex, i) => {
-                const thumb = videos?.[ex.slug]?.thumbnailUrl;
+                const thumb = videos[ex.slug]?.thumbnailUrl;
                 return (
                   <TouchableOpacity
                     key={ex.slug}

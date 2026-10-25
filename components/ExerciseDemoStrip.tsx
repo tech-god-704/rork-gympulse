@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { PlayCircle, ChevronRight } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { EXERCISE_LIBRARY } from "@/mocks/exerciseLibrary";
+import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 import ExerciseDemoThumb from "@/components/ExerciseDemoThumb";
 
 /** Home-screen card: a scrollable row of demo thumbnails plus a link to the full library. */
@@ -12,6 +12,7 @@ export default function ExerciseDemoStrip() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { exercises } = useExerciseLibrary();
 
   return (
     <View style={styles.card}>
@@ -25,14 +26,14 @@ export default function ExerciseDemoStrip() {
         <PlayCircle size={18} color={colors.primary} />
         <View style={styles.headText}>
           <Text style={styles.title}>Form demos</Text>
-          <Text style={styles.subtitle}>{EXERCISE_LIBRARY.length} exercises · tap to watch</Text>
+          <Text style={styles.subtitle}>{exercises.length} exercises · tap to watch</Text>
         </View>
         <Text style={styles.seeAll}>See all</Text>
         <ChevronRight size={16} color={colors.primary} />
       </TouchableOpacity>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {EXERCISE_LIBRARY.map((ex) => (
+        {exercises.map((ex) => (
           <View key={ex.slug} style={styles.item}>
             <ExerciseDemoThumb slug={ex.slug} width={72} height={104} />
             <Text style={styles.name} numberOfLines={2}>{ex.name}</Text>

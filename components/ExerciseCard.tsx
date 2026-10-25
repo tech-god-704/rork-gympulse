@@ -9,7 +9,7 @@ import { WorkoutSessionExercise, MUSCLE_GROUP_LABELS, WeightUnit, ExercisePerfor
 import { estimateOneRepMax } from "@/utils/workoutStats";
 import { formatWeight, toDisplayWeight, fromDisplayWeight, weightStep, trimNumber } from "@/utils/units";
 import { Layout, Radius, Space, Type, elevation, numeric, tint } from "@/constants/theme";
-import { findLibraryExerciseByName } from "@/mocks/exerciseLibrary";
+import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 
 interface Props {
   exercise: WorkoutSessionExercise;
@@ -56,7 +56,8 @@ function ExerciseCard({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const router = useRouter();
-  const demo = useMemo(() => findLibraryExerciseByName(exercise.exerciseName), [exercise.exerciseName]);
+  const { findByName } = useExerciseLibrary();
+  const demo = useMemo(() => findByName(exercise.exerciseName), [findByName, exercise.exerciseName]);
 
   const checkAnim = useRef(new Animated.Value(exercise.completed ? 1 : 0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
