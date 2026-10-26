@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
   Platform,
   Animated,
   PanResponder,
+  Switch,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft, Plus, Trash2, Search, Check, X, Timer, Bell, ChevronUp, ChevronDown } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, Trash2, Search, Check, X, Play } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -26,211 +28,177 @@ import {
   RoutineExercise,
   RoutineSetConfig,
   WeekDay,
-  WEEKDAY_SHORT,
   WEEKDAY_LABELS,
   ALL_WEEKDAYS,
   RestTimerAlert,
   WeightUnit,
 } from "@/types";
 import { generateId } from "@/utils/helpers";
-import { formatWeight, toDisplayWeight, fromDisplayWeight, trimNumber } from "@/utils/units";
-import { Layout, Radius, Space, Type, muscleColor, numeric, tint } from "@/constants/theme";
-import { Tag } from "@/components/ui";
+import { formatWeight, toDisplayWeight, fromDisplayWeight, weightStep, trimNumber } from "@/utils/units";
+import { elevation, muscleColor } from "@/constants/theme";
+import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 import ExerciseDemoThumb from "@/components/ExerciseDemoThumb";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
-const SWIPE_THRESHOLD = -56;
-const REST_TIMER_DURATIONS = [30, 45, 60, 90, 120, 180];
+const DAY_LETTER: Record<WeekDay, string> = {
+  monday: "M",
+  tuesday: "T",
+  wednesday: "W",
+  thursday: "T",
+  friday: "F",
+  saturday: "S",
+  sunday: "S",
+};
+const ROUTINE_COLORS = ["#3B82F6", "#EF4444", "#8B5CF6", "#F59E0B", "#EC4899", "#10B981", "#6366F1", "#64748B"];
+const REST_MIN = 15;
+const REST_MAX = 300;
 const REST_ALERT_OPTIONS: { value: RestTimerAlert; label: string }[] = [
   { value: "vibrate", label: "Vibrate" },
   { value: "sound", label: "Sound" },
   { value: "both", label: "Both" },
   { value: "none", label: "None" },
 ];
+const DELETE_WIDTH = 88;
+const DEFAULT_SETS = 3;
+const DEFAULT_REPS = 10;
 
-const ROUTINE_COLORS: { label: string; value: string | null }[] = [
-  { label: "Default", value: null },
-  { label: "Lime", value: "#84CC16" },
-  { label: "Emerald", value: "#10B981" },
-  { label: "Cyan", value: "#06B6D4" },
-  { label: "Violet", value: "#8B5CF6" },
-  { label: "Rose", value: "#F43F5E" },
-  { label: "Amber", value: "#F59E0B" },
-  { label: "Orange", value: "#F97316" },
-  { label: "Pink", value: "#EC4899" },
-  { label: "Teal", value: "#14B8A6" },
-  { label: "Sky", value: "#0EA5E9" },
-  { label: "Red", value: "#EF4444" },
-];
+const formatRest = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}` : `${s}s`);
 
-// ─── Swipeable Exercise Row ─────────────────────────────────
-interface SwipeableRowProps {
-  exercise: RoutineExercise;
-  index: number;
-  onDelete: () => void;
-  onTap: () => void;
-  weightUnit: WeightUnit;
-  accentColor?: string;
-  onMove?: (direction: "up" | "down") => void;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
+function summarize(exercise: RoutineExercise, unit: WeightUnit): string {
+  const configs = Array.from({ length: Math.max(1, exercise.sets) }, (_, i) => exercise.setConfigs?.[i] ?? { reps: exercise.reps, weight: exercise.weight });
+  const reps = [...new Set(configs.map((s) => s.reps))];
+  const weights = [...new Set(configs.map((s) => s.weight))];
+  const r = reps.length === 1 ? `${reps[0]}` : `${Math.min(...reps)}-${Math.max(...reps)}`;
+  const w =
+    weights.length === 1
+      ? formatWeight(weights[0], unit)
+      : `${formatWeight(Math.min(...weights), unit, { withUnit: false, bodyweightLabel: false })}-${formatWeight(Math.max(...weights), unit)}`;
+  return `${configs.length} × ${r} · ${w}`;
 }
 
-function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, accentColor, onMove, canMoveUp, canMoveDown }: SwipeableRowProps) {
+// ─── Demo thumb with a "no demo" fallback ───────────────────
+function Thumb({ name, width, height }: { name: string; width: number; height: number }) {
   const { colors } = useTheme();
-  const swStyles = useMemo(() => createSwStyles(colors), [colors]);
+  const { findByName } = useExerciseLibrary();
+  if (findByName(name)) return <ExerciseDemoThumb exerciseName={name} width={width} height={height} />;
+  return (
+    <View style={{ width, height, borderRadius: 9, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontSize: 9, fontWeight: "800", lineHeight: 11, color: colors.textTertiary, textAlign: "center" }}>{"NO\nDEMO"}</Text>
+    </View>
+  );
+}
+
+// ─── Swipeable exercise row ─────────────────────────────────
+interface RowProps {
+  exercise: RoutineExercise;
+  index: number;
+  last: boolean;
+  reordering: boolean;
+  weightUnit: WeightUnit;
+  onDelete: () => void;
+  onTap: () => void;
+  onMove: (dir: "up" | "down") => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}
+
+function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, onTap, onMove, canMoveUp, canMoveDown }: RowProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createRowStyles(colors), [colors]);
   const translateX = useRef(new Animated.Value(0)).current;
   const isOpen = useRef(false);
 
-  const panResponder = useRef(
+  const snap = useCallback(
+    (open: boolean) => {
+      Animated.spring(translateX, { toValue: open ? -DELETE_WIDTH : 0, useNativeDriver: true, friction: 8 }).start();
+      isOpen.current = open;
+    },
+    [translateX],
+  );
+
+  const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 20;
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 20,
+      onPanResponderMove: (_, g) => {
+        const base = isOpen.current ? -DELETE_WIDTH : 0;
+        translateX.setValue(Math.min(0, Math.max(base + g.dx, -DELETE_WIDTH - 16)));
       },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dx < 0) {
-          translateX.setValue(Math.max(gestureState.dx, -72));
-        } else if (isOpen.current) {
-          translateX.setValue(Math.min(gestureState.dx - 56, 0));
-        }
+      onPanResponderRelease: (_, g) => {
+        const base = isOpen.current ? -DELETE_WIDTH : 0;
+        const open = base + g.dx < -DELETE_WIDTH / 2;
+        if (open && !isOpen.current && Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Animated.spring(translateX, { toValue: open ? -DELETE_WIDTH : 0, useNativeDriver: true, friction: 8 }).start();
+        isOpen.current = open;
       },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < SWIPE_THRESHOLD) {
-          Animated.spring(translateX, {
-            toValue: -56,
-            useNativeDriver: true,
-            friction: 8,
-          }).start();
-          isOpen.current = true;
-          if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            useNativeDriver: true,
-            friction: 8,
-          }).start();
-          isOpen.current = false;
-        }
-      },
-    })
+    }),
   ).current;
 
-  const closeSwipe = useCallback(() => {
-    Animated.spring(translateX, {
-      toValue: 0,
-      useNativeDriver: true,
-      friction: 8,
-    }).start();
-    isOpen.current = false;
-  }, [translateX]);
+  useEffect(() => {
+    if (reordering) snap(false);
+  }, [reordering, snap]);
 
-  const handleDelete = useCallback(() => {
-    closeSwipe();
-    Alert.alert(
-      "Remove Exercise",
-      `Remove "${exercise.exerciseName}" from this routine?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: onDelete },
-      ]
-    );
-  }, [closeSwipe, onDelete, exercise.exerciseName]);
+  const deleteOpacity = translateX.interpolate({ inputRange: [-DELETE_WIDTH, -8, 0], outputRange: [1, 0, 0] });
 
   return (
-    <View style={swStyles.container}>
-      {/* Delete action behind */}
-      <View style={swStyles.deleteAction}>
+    <View style={[styles.wrap, !last && styles.border]}>
+      <Animated.View style={[styles.deleteAction, { opacity: deleteOpacity }]}>
         <TouchableOpacity
-          style={swStyles.deleteButton}
-          onPress={handleDelete}
-          activeOpacity={0.7}
+          style={styles.deleteBtn}
+          onPress={() => {
+            snap(false);
+            onDelete();
+          }}
           accessibilityRole="button"
           accessibilityLabel={`Remove ${exercise.exerciseName} from this routine`}
         >
-          <Trash2 size={18} color="#fff" />
+          <Trash2 size={20} color="#fff" />
+          <Text style={styles.deleteText}>Delete</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
-      {/* Foreground row */}
-      <Animated.View
-        style={[
-          swStyles.foreground,
-          { transform: [{ translateX }] },
-          accentColor ? { borderLeftWidth: 3, borderLeftColor: accentColor } : undefined,
-        ]}
-      >
+      <Animated.View style={[styles.fg, { transform: [{ translateX }] }]} {...(reordering ? {} : pan.panHandlers)}>
         <TouchableOpacity
-          style={swStyles.rowContent}
+          style={styles.row}
+          activeOpacity={reordering ? 1 : 0.7}
+          onPress={() => {
+            if (reordering) return;
+            if (isOpen.current) snap(false);
+            else onTap();
+          }}
           accessibilityRole="button"
           accessibilityLabel={`Edit ${exercise.exerciseName}, exercise ${index + 1}`}
-          onPress={() => {
-            if (isOpen.current) {
-              closeSwipe();
-            } else {
-              onTap();
-            }
-          }}
-          activeOpacity={0.7}
-          {...panResponder.panHandlers}
         >
-          <View style={[
-            swStyles.exerciseNumber,
-            accentColor ? { backgroundColor: `${accentColor}15`, borderColor: `${accentColor}30` } : undefined,
-          ]}>
-            <Text style={[swStyles.exerciseNumberText, accentColor ? { color: accentColor } : undefined]}>{index + 1}</Text>
+          <Thumb name={exercise.exerciseName} width={36} height={64} />
+          <View style={styles.info}>
+            <Text style={styles.name} numberOfLines={1}>{exercise.exerciseName}</Text>
+            <View style={styles.metaRow}>
+              <View style={[styles.dot, { backgroundColor: muscleColor(exercise.muscleGroup, colors) }]} />
+              <Text style={styles.meta} numberOfLines={1}>{summarize(exercise, weightUnit)}</Text>
+            </View>
           </View>
-          <View style={swStyles.exerciseInfo}>
-            <Text style={swStyles.exerciseName} numberOfLines={1}>{exercise.exerciseName}</Text>
-            <Text style={swStyles.exerciseDetail} numberOfLines={1}>
-              {(() => {
-                const configs = exercise.setConfigs;
-                if (!configs || configs.length === 0) {
-                  return `${exercise.sets}×${exercise.reps} @ ${formatWeight(exercise.weight, weightUnit)}`;
-                }
-                // Check if all sets are identical
-                const allSame = configs.every(
-                  (s) => s.weight === configs[0].weight && s.reps === configs[0].reps
-                );
-                if (allSame) {
-                  return `${configs.length} sets · ${formatWeight(configs[0].weight, weightUnit)} × ${configs[0].reps} reps`;
-                }
-                // Mixed sets: show compact summary
-                const weights = [...new Set(configs.map((s) => s.weight))];
-                const reps = [...new Set(configs.map((s) => s.reps))];
-                const wStr = weights.length === 1
-                  ? formatWeight(weights[0], weightUnit)
-                  : `${formatWeight(Math.min(...weights), weightUnit, { withUnit: false, bodyweightLabel: false })}-${formatWeight(Math.max(...weights), weightUnit)}`;
-                const rStr = reps.length === 1 ? `${reps[0]}` : `${Math.min(...reps)}-${Math.max(...reps)}`;
-                return `${configs.length} sets · ${wStr} × ${rStr} reps`;
-              })()}
-            </Text>
-          </View>
-          <View style={swStyles.demoThumb}>
-            <ExerciseDemoThumb exerciseName={exercise.exerciseName} />
-          </View>
-          {onMove && (
-            <View style={swStyles.reorderColumn}>
+          {reordering ? (
+            <View style={styles.reorder}>
               <TouchableOpacity
                 onPress={() => onMove("up")}
                 disabled={!canMoveUp}
-                style={[swStyles.reorderBtn, !canMoveUp && swStyles.reorderBtnDisabled]}
-                hitSlop={{ top: 8, bottom: 4, left: 8, right: 8 }}
+                style={[styles.reorderBtn, !canMoveUp && styles.dim]}
                 accessibilityRole="button"
                 accessibilityLabel={`Move ${exercise.exerciseName} earlier`}
               >
-                <ChevronUp size={15} color={canMoveUp ? colors.textTertiary : colors.glassBorder} />
+                <ChevronUp size={18} color={colors.text} strokeWidth={2.4} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => onMove("down")}
                 disabled={!canMoveDown}
-                style={[swStyles.reorderBtn, !canMoveDown && swStyles.reorderBtnDisabled]}
-                hitSlop={{ top: 4, bottom: 8, left: 8, right: 8 }}
+                style={[styles.reorderBtn, !canMoveDown && styles.dim]}
                 accessibilityRole="button"
                 accessibilityLabel={`Move ${exercise.exerciseName} later`}
               >
-                <ChevronDown size={15} color={canMoveDown ? colors.textTertiary : colors.glassBorder} />
+                <ChevronDown size={18} color={colors.text} strokeWidth={2.4} />
               </TouchableOpacity>
             </View>
+          ) : (
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2.4} />
           )}
         </TouchableOpacity>
       </Animated.View>
@@ -238,509 +206,512 @@ function SwipeableExerciseRow({ exercise, index, onDelete, onTap, weightUnit, ac
   );
 }
 
-const createSwStyles = (colors: ColorScheme) => StyleSheet.create({
-  demoThumb: {
-    marginLeft: 10,
-  },
-  reorderColumn: {
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 2,
-    paddingLeft: 4,
-  },
-  reorderBtn: {
-    padding: 2,
-  },
-  reorderBtnDisabled: {
-    opacity: 0.3,
-  },
-  container: {
-    marginBottom: 10,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  deleteAction: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 56,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.error,
-    borderTopRightRadius: 10,
-    borderBottomRightRadius: 10,
-  },
-  deleteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.overlay,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  foreground: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  rowContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-  },
-  exerciseNumber: {
-    width: 38,
-    height: 38,
-    borderRadius: 8,
-    backgroundColor: `${colors.primary}14`,
-    borderWidth: 1.5,
-    borderColor: `${colors.primary}26`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  exerciseNumberText: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: colors.primary,
-  },
-  exerciseInfo: {
-    flex: 1,
-  },
-  exerciseName: {
-    fontSize: 14,
-    fontWeight: "700" as const,
-    color: colors.text,
-    marginBottom: 2,
-    letterSpacing: -0.3,
-  },
-  exerciseDetail: {
-    ...Type.caption,
-    ...numeric,
-    fontWeight: "500",
-    color: colors.textTertiary,
-    marginTop: 2,
-  },
-});
+const createRowStyles = (colors: ColorScheme) =>
+  StyleSheet.create({
+    wrap: { position: "relative", overflow: "hidden" },
+    border: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator },
+    deleteAction: { position: "absolute", top: 0, right: 0, bottom: 0, width: DELETE_WIDTH, backgroundColor: colors.error },
+    deleteBtn: { flex: 1, alignItems: "center", justifyContent: "center", gap: 2 },
+    deleteText: { fontSize: 14, fontWeight: "800", color: "#fff" },
+    fg: { backgroundColor: colors.cardBackground },
+    row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10, paddingLeft: 14, paddingRight: 12 },
+    info: { flex: 1, minWidth: 0, gap: 3 },
+    name: { fontSize: 15, fontWeight: "700", color: colors.text },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    dot: { width: 7, height: 7, borderRadius: 4 },
+    meta: { flex: 1, fontSize: 13, fontWeight: "600", color: colors.textTertiary, fontVariant: ["tabular-nums"] },
+    reorder: { flexDirection: "row", gap: 4 },
+    reorderBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
+    dim: { opacity: 0.3 },
+  });
 
-// ─── Edit Modal ─────────────────────────────────────────────
+// ─── Bottom sheet shell ─────────────────────────────────────
+function Sheet({
+  visible,
+  title,
+  doneLabel = "Done",
+  onDone,
+  onDismiss,
+  children,
+}: {
+  visible: boolean;
+  title: string;
+  doneLabel?: string;
+  onDone: () => void;
+  onDismiss: () => void;
+  children: React.ReactNode;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createSheetStyles(colors), [colors]);
+  const insets = useSafeAreaInsets();
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.root}>
+        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onDismiss} accessibilityLabel="Close" />
+        <View style={styles.sheet}>
+          <View style={styles.handleRow}>
+            <View style={styles.handle} />
+          </View>
+          <View style={styles.head}>
+            <Text style={styles.title}>{title}</Text>
+            <TouchableOpacity onPress={onDone} style={styles.done} accessibilityRole="button">
+              <Text style={styles.doneText}>{doneLabel}</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 32 }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+const createSheetStyles = (colors: ColorScheme) =>
+  StyleSheet.create({
+    root: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
+    sheet: { maxHeight: "88%", backgroundColor: colors.cardBackground, borderTopLeftRadius: 26, borderTopRightRadius: 26, ...elevation(3, colors) },
+    handleRow: { alignItems: "center", paddingTop: 8 },
+    handle: { width: 38, height: 5, borderRadius: 3, backgroundColor: colors.fillStrong },
+    head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingTop: 4, paddingBottom: 8, paddingLeft: 20, paddingRight: 12 },
+    title: { fontSize: 18, fontWeight: "800", letterSpacing: -0.4, color: colors.text },
+    done: { height: 44, paddingHorizontal: 8, justifyContent: "center" },
+    doneText: { fontSize: 16, fontWeight: "800", color: colors.primaryText },
+    body: { paddingHorizontal: 20, gap: 14 },
+  });
+
+// ─── Edit exercise sheet ────────────────────────────────────
 interface SetRow {
   reps: string;
   weight: string;
 }
 
-interface EditModalProps {
-  visible: boolean;
+function EditExerciseSheet({
+  exercise,
+  weightUnit,
+  onSave,
+  onClose,
+}: {
   exercise: RoutineExercise | null;
-  routineColor?: string;
   weightUnit: WeightUnit;
-  onSave: (id: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], color?: string) => void;
+  onSave: (id: string, configs: RoutineSetConfig[]) => void;
   onClose: () => void;
-}
-
-function EditExerciseModal({ visible, exercise, routineColor, weightUnit, onSave, onClose }: EditModalProps) {
+}) {
   const { colors } = useTheme();
-  const editStyles = useMemo(() => createEditStyles(colors), [colors]);
-  const [setRows, setSetRows] = useState<SetRow[]>([]);
-  const [exerciseColor, setExerciseColor] = useState<string | null>(null);
+  const styles = useMemo(() => createEditStyles(colors), [colors]);
+  const router = useRouter();
+  const { findByName } = useExerciseLibrary();
+  const [rows, setRows] = useState<SetRow[]>([]);
+  const step = weightStep(weightUnit);
 
-  React.useEffect(() => {
-    if (exercise) {
-      const rows: SetRow[] = [];
-      for (let i = 0; i < exercise.sets; i++) {
-        rows.push({
-          reps: (exercise.setConfigs?.[i]?.reps ?? exercise.reps).toString(),
-          weight: trimNumber(
-            toDisplayWeight(exercise.setConfigs?.[i]?.weight ?? exercise.weight, weightUnit)
-          ),
-        });
-      }
-      setSetRows(rows);
-      setExerciseColor(exercise.color ?? null);
-    }
+  useEffect(() => {
+    if (!exercise) return;
+    setRows(
+      Array.from({ length: exercise.sets }, (_, i) => ({
+        reps: String(exercise.setConfigs?.[i]?.reps ?? exercise.reps),
+        weight: trimNumber(toDisplayWeight(exercise.setConfigs?.[i]?.weight ?? exercise.weight, weightUnit)),
+      })),
+    );
   }, [exercise, weightUnit]);
 
-  const handleAddSet = () => {
-    const lastRow = setRows[setRows.length - 1];
-    setSetRows([...setRows, { reps: lastRow?.reps ?? "10", weight: lastRow?.weight ?? "0" }]);
-  };
-
-  const handleRemoveSet = (index: number) => {
-    if (setRows.length <= 1) return;
-    setSetRows(setRows.filter((_, i) => i !== index));
-  };
-
-  const updateRow = (index: number, field: "reps" | "weight", value: string) => {
-    setSetRows(setRows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
-  };
-
-  const handleSave = () => {
+  const save = useCallback(() => {
     if (!exercise) return;
     // Inputs are in the user's display unit; storage is always pounds.
-    const configs: RoutineSetConfig[] = setRows.map((r) => ({
-      reps: parseInt(r.reps, 10) || 1,
-      weight: fromDisplayWeight(parseFloat(r.weight) || 0, weightUnit),
+    const configs = rows.map((r) => ({
+      reps: Math.max(1, parseInt(r.reps, 10) || 1),
+      weight: fromDisplayWeight(Math.max(0, parseFloat(r.weight) || 0), weightUnit),
     }));
-    const firstReps = configs[0]?.reps ?? 10;
-    const firstWeight = configs[0]?.weight ?? 0;
-    onSave(exercise.id, setRows.length, firstReps, firstWeight, configs, exerciseColor ?? undefined);
+    onSave(exercise.id, configs.length ? configs : [{ reps: DEFAULT_REPS, weight: 0 }]);
     if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
+  }, [exercise, rows, weightUnit, onSave]);
 
-  const activeColor = exerciseColor || routineColor;
+  const update = (i: number, field: keyof SetRow, value: string) =>
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [field]: value } : r)));
+  const bump = (i: number, field: keyof SetRow, delta: number) =>
+    setRows((rs) =>
+      rs.map((r, idx) => {
+        if (idx !== i) return r;
+        const cur = parseFloat(r[field]) || 0;
+        const next = field === "reps" ? Math.max(1, Math.round(cur + delta)) : Math.max(0, cur + delta);
+        return { ...r, [field]: trimNumber(next) };
+      }),
+    );
 
-  if (!exercise) return null;
+  const demo = exercise ? findByName(exercise.exerciseName) : undefined;
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <View style={editStyles.overlay}>
-        <View style={editStyles.card}>
-          <View style={editStyles.header}>
-            <Text style={editStyles.title}>{exercise.exerciseName}</Text>
-            <TouchableOpacity
-              onPress={onClose}
-              style={editStyles.closeBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Close without saving"
-            >
-              <X size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Column headers */}
-          <View style={editStyles.columnHeaders}>
-            <Text style={[editStyles.columnLabel, { width: 36 }]}>SET</Text>
-            <Text style={[editStyles.columnLabel, { flex: 1 }]}>REPS</Text>
-            <Text style={[editStyles.columnLabel, { flex: 1 }]}>WEIGHT ({weightUnit})</Text>
-            <View style={{ width: 28 }} />
-          </View>
-
-          {/* Set rows */}
-          <ScrollView style={editStyles.setList} showsVerticalScrollIndicator={false}>
-            {setRows.map((row, index) => (
-              <View key={index} style={editStyles.setRow}>
-                <View style={editStyles.setNumber}>
-                  <Text style={editStyles.setNumberText}>{index + 1}</Text>
-                </View>
-                <TextInput
-                  style={editStyles.setInput}
-                  value={row.reps}
-                  onChangeText={(v) => updateRow(index, "reps", v)}
-                  keyboardType="number-pad"
-                  selectTextOnFocus
-                  placeholder="10"
-                  placeholderTextColor={colors.textTertiary}
-                />
-                <TextInput
-                  style={editStyles.setInput}
-                  value={row.weight}
-                  onChangeText={(v) => updateRow(index, "weight", v)}
-                  keyboardType="decimal-pad"
-                  selectTextOnFocus
-                  placeholder="0"
-                  placeholderTextColor={colors.textTertiary}
-                  accessibilityLabel={`Weight for set ${index + 1}`}
-                />
-                <TouchableOpacity
-                  onPress={() => handleRemoveSet(index)}
-                  style={[
-                    editStyles.removeSetBtn,
-                    setRows.length > 1 && { backgroundColor: colors.error },
-                  ]}
-                  disabled={setRows.length <= 1}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: setRows.length <= 1 }}
-                  accessibilityLabel={`Remove set ${index + 1}`}
-                >
-                  <Trash2 size={12} color={setRows.length <= 1 ? colors.textTertiary : colors.white} />
-                </TouchableOpacity>
+    <Sheet visible={exercise !== null} title="Edit exercise" doneLabel="Save" onDone={save} onDismiss={onClose}>
+      {exercise && (
+        <>
+          <View style={styles.head}>
+            <Thumb name={exercise.exerciseName} width={40} height={71} />
+            <View style={styles.headInfo}>
+              <Text style={styles.name}>{exercise.exerciseName}</Text>
+              <View style={styles.metaRow}>
+                <View style={[styles.dot, { backgroundColor: muscleColor(exercise.muscleGroup, colors) }]} />
+                <Text style={styles.meta}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>
               </View>
-            ))}
-          </ScrollView>
-
-          {/* Add set button */}
-          <TouchableOpacity
-            style={editStyles.addSetBtn}
-            onPress={handleAddSet}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Add another set"
-          >
-            <Plus size={14} color={colors.primary} />
-            <Text style={editStyles.addSetText}>Add Set</Text>
-          </TouchableOpacity>
-
-          {/* Per-exercise color */}
-          <View style={editStyles.colorSection}>
-            <Text style={editStyles.colorSectionLabel}>Card Color</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={editStyles.colorRow}>
-              {ROUTINE_COLORS.map((c) => {
-                const isSelected = exerciseColor === c.value || (!exerciseColor && !c.value);
-                return (
-                  <TouchableOpacity
-                    key={c.label}
-                    onPress={() => {
-                      setExerciseColor(c.value);
-                      if (Platform.OS !== "web") void Haptics.selectionAsync();
-                    }}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`${c.label} card colour`}
-                    style={[
-                      editStyles.colorDot,
-                      c.value ? { backgroundColor: c.value } : editStyles.colorDotDefault,
-                      isSelected && editStyles.colorDotSelected,
-                    ]}
-                    activeOpacity={0.7}
-                  >
-                    {isSelected && <Check size={12} color={c.value ? "#fff" : colors.text} strokeWidth={3} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            {activeColor && (
-              <View style={[editStyles.colorPreview, { backgroundColor: `${activeColor}15`, borderColor: `${activeColor}30` }]}>
-                <View style={[editStyles.colorPreviewDot, { backgroundColor: activeColor }]} />
-                <Text style={[editStyles.colorPreviewText, { color: activeColor }]}>
-                  {exerciseColor ? "Custom color" : "Using routine color"}
-                </Text>
-              </View>
+            </View>
+            {demo && (
+              <TouchableOpacity
+                style={styles.watch}
+                onPress={() => {
+                  onClose();
+                  router.push({ pathname: "/exercise/[slug]", params: { slug: demo.slug } });
+                }}
+                accessibilityRole="button"
+              >
+                <Play size={13} color={colors.primaryText} fill={colors.primaryText} />
+                <Text style={styles.watchText}>Watch form</Text>
+              </TouchableOpacity>
             )}
           </View>
 
-          <View style={editStyles.buttons}>
-            <TouchableOpacity
-              style={editStyles.cancelBtn}
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel"
-            >
-              <Text style={editStyles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleSave}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={`Save changes to ${exercise.exerciseName}`}
-            >
-              <View style={[editStyles.saveBtn, { backgroundColor: colors.primary }]}>
-                <Check size={18} color="#fff" />
-                <Text style={editStyles.saveText}>Save</Text>
-              </View>
-            </TouchableOpacity>
+          <View style={styles.colHead}>
+            <Text style={[styles.colLabel, { width: 38 }]}>Set</Text>
+            <Text style={[styles.colLabel, styles.flexCenter]}>Weight ({weightUnit})</Text>
+            <Text style={[styles.colLabel, styles.flexCenter]}>Reps</Text>
+            <View style={{ width: 36 }} />
           </View>
-        </View>
-      </View>
-    </Modal>
+
+          {rows.map((row, i) => (
+            <View key={i} style={styles.setRow}>
+              <Text style={styles.setNum}>{i + 1}</Text>
+              {(["weight", "reps"] as const).map((field) => (
+                <View key={field} style={styles.stepper}>
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => bump(i, field, field === "weight" ? -step : -1)}
+                    accessibilityLabel={`Decrease ${field} for set ${i + 1}`}
+                  >
+                    <Text style={styles.stepText}>−</Text>
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.stepValue}
+                    value={row[field]}
+                    onChangeText={(v) => update(i, field, v.replace(/[^0-9.]/g, ""))}
+                    keyboardType={field === "weight" ? "decimal-pad" : "number-pad"}
+                    selectTextOnFocus
+                    accessibilityLabel={`${field === "weight" ? "Weight" : "Reps"} for set ${i + 1}`}
+                  />
+                  <TouchableOpacity
+                    style={styles.stepBtn}
+                    onPress={() => bump(i, field, field === "weight" ? step : 1)}
+                    accessibilityLabel={`Increase ${field} for set ${i + 1}`}
+                  >
+                    <Text style={styles.stepText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={[styles.remove, rows.length <= 1 && styles.dim]}
+                disabled={rows.length <= 1}
+                onPress={() => setRows((rs) => rs.filter((_, idx) => idx !== i))}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove set ${i + 1}`}
+              >
+                <X size={18} color={colors.error} strokeWidth={2.4} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={styles.addSet}
+            onPress={() => setRows((rs) => [...rs, rs[rs.length - 1] ?? { reps: String(DEFAULT_REPS), weight: "0" }])}
+            accessibilityRole="button"
+          >
+            <Text style={styles.addSetText}>+ Add set</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </Sheet>
   );
 }
 
-const createEditStyles = (colors: ColorScheme) => StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  card: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 24,
-    width: "90%",
-    maxHeight: "80%",
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: colors.text,
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  closeBtn: {
-    padding: 4,
-  },
-  columnHeaders: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 2,
-    marginBottom: 8,
-  },
-  columnLabel: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: colors.textTertiary,
-    letterSpacing: 0.8,
-    textAlign: "center" as const,
-  },
-  setList: {
-    maxHeight: 240,
-    marginBottom: 12,
-  },
-  setRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  setNumber: {
-    width: 36,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  setNumberText: {
-    fontSize: 14,
-    fontWeight: "800" as const,
-    color: colors.indigo,
-  },
-  setInput: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: colors.text,
-    textAlign: "center" as const,
-    borderWidth: 1.5,
-    borderColor: colors.glassBorder,
-  },
-  removeSetBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 7,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-  },
-  addSetBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: `${colors.primary}26`,
-    backgroundColor: `${colors.primary}0A`,
-    marginBottom: 16,
-  },
-  addSetText: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: colors.primary,
-  },
-  colorSection: {
-    marginBottom: 16,
-  },
-  colorSectionLabel: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: colors.textTertiary,
-    letterSpacing: 0.5,
-    textTransform: "uppercase" as const,
-    marginBottom: 8,
-  },
-  colorRow: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  colorDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  colorDotDefault: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  colorDotSelected: {
-    borderWidth: 2.5,
-    borderColor: colors.text,
-  },
-  colorPreview: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  colorPreviewDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  colorPreviewText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-  },
-  buttons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    alignItems: "center",
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
-  },
-  saveBtn: {
-    flex: 1,
-    flexDirection: "row",
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    shadowColor: colors.indigo,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  saveText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: "#fff",
-  },
-});
+const createEditStyles = (colors: ColorScheme) =>
+  StyleSheet.create({
+    head: { flexDirection: "row", alignItems: "center", gap: 12 },
+    headInfo: { flex: 1, gap: 3 },
+    name: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5, color: colors.text },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    dot: { width: 7, height: 7, borderRadius: 4 },
+    meta: { fontSize: 13, fontWeight: "600", color: colors.textTertiary },
+    watch: { flexDirection: "row", alignItems: "center", gap: 6, height: 40, paddingLeft: 10, paddingRight: 14, borderRadius: 999, backgroundColor: colors.primaryTint },
+    watchText: { fontSize: 13, fontWeight: "800", color: colors.primaryText },
+    colHead: { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 4 },
+    colLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase", color: colors.textTertiary },
+    flexCenter: { flex: 1, textAlign: "center" },
+    setRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    setNum: { width: 38, fontSize: 15, fontWeight: "800", color: colors.textSecondary },
+    stepper: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: colors.fill, borderRadius: 12, padding: 2 },
+    stepBtn: { width: 36, height: 40, alignItems: "center", justifyContent: "center" },
+    stepText: { fontSize: 18, fontWeight: "700", color: colors.text },
+    stepValue: { flex: 1, minWidth: 0, textAlign: "center", fontSize: 16, fontWeight: "800", color: colors.text, padding: 0, fontVariant: ["tabular-nums"] },
+    remove: { width: 36, height: 44, alignItems: "center", justifyContent: "center" },
+    dim: { opacity: 0.3 },
+    addSet: { height: 48, borderRadius: 14, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
+    addSetText: { fontSize: 15, fontWeight: "700", color: colors.text },
+  });
 
-// ═══ MAIN SCREEN ════════════════════════════════════════════
+// ─── Add exercise sheet ─────────────────────────────────────
+function AddExerciseSheet({
+  visible,
+  addedNames,
+  onAdd,
+  onCreateCustom,
+  onClose,
+}: {
+  visible: boolean;
+  addedNames: Set<string>;
+  onAdd: (exercise: Exercise) => void;
+  onCreateCustom: (name: string, group: MuscleGroup) => void;
+  onClose: () => void;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createAddStyles(colors), [colors]);
+  const router = useRouter();
+  const { allExercises } = useGym();
+  const { findByName } = useExerciseLibrary();
+  const [query, setQuery] = useState("");
+  const [group, setGroup] = useState<MuscleGroup | "all">("all");
+  const [showCustom, setShowCustom] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [customGroup, setCustomGroup] = useState<MuscleGroup>("chest");
+
+  useEffect(() => {
+    if (!visible) return;
+    setQuery("");
+    setGroup("all");
+    setShowCustom(false);
+    setCustomName("");
+  }, [visible]);
+
+  const q = query.trim().toLowerCase();
+  const list = useMemo(
+    () =>
+      allExercises
+        .filter((e) => (group === "all" || e.muscleGroup === group) && (!q || e.name.toLowerCase().includes(q)))
+        .sort((a, b) => {
+          // Prefix matches first — "bench" should surface "Bench Press"
+          // before "Close-Grip Bench Press".
+          if (q) {
+            const d = (a.name.toLowerCase().startsWith(q) ? 0 : 1) - (b.name.toLowerCase().startsWith(q) ? 0 : 1);
+            if (d !== 0) return d;
+          }
+          // Exercises with a form demo float up when browsing.
+          const demo = (findByName(a.name) ? 0 : 1) - (findByName(b.name) ? 0 : 1);
+          return demo !== 0 ? demo : a.name.localeCompare(b.name);
+        }),
+    [allExercises, group, q, findByName],
+  );
+
+  const openCustom = () => {
+    setCustomName(query.trim());
+    if (group !== "all") setCustomGroup(group);
+    setShowCustom(true);
+  };
+
+  const createCustom = () => {
+    const name = customName.trim();
+    if (!name) return;
+    onCreateCustom(name, customGroup);
+    setShowCustom(false);
+    setCustomName("");
+    setQuery("");
+  };
+
+  return (
+    <Sheet visible={visible} title="Add exercises" onDone={onClose} onDismiss={onClose}>
+      <View style={styles.search}>
+        <Search size={18} color={colors.textTertiary} />
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search exercises"
+          placeholderTextColor={colors.textTertiary}
+          autoCorrect={false}
+          returnKeyType="search"
+          accessibilityLabel="Search exercises"
+        />
+        {query.length > 0 && (
+          <TouchableOpacity onPress={() => setQuery("")} hitSlop={10} accessibilityLabel="Clear search">
+            <X size={16} color={colors.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled">
+        {(["all", ...MUSCLE_GROUPS] as const).map((g) => {
+          const on = group === g;
+          return (
+            <TouchableOpacity
+              key={g}
+              onPress={() => setGroup(g)}
+              style={[styles.chip, on && { backgroundColor: colors.text }]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+            >
+              {g !== "all" && <View style={[styles.dot8, { backgroundColor: muscleColor(g, colors) }]} />}
+              <Text style={[styles.chipText, on && { color: colors.background }]}>{g === "all" ? "All" : MUSCLE_GROUP_LABELS[g]}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {showCustom ? (
+        <View style={styles.custom}>
+          <Text style={styles.customLabel}>Custom exercise</Text>
+          <TextInput
+            style={styles.customInput}
+            value={customName}
+            onChangeText={(t) => setCustomName(t.slice(0, 60))}
+            placeholder="Exercise name"
+            placeholderTextColor={colors.textTertiary}
+            autoFocus
+            accessibilityLabel="Custom exercise name"
+          />
+          <View style={styles.customChips}>
+            {MUSCLE_GROUPS.map((g) => {
+              const on = customGroup === g;
+              return (
+                <TouchableOpacity
+                  key={g}
+                  onPress={() => setCustomGroup(g)}
+                  style={[styles.customChip, on && { backgroundColor: colors.text }]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                >
+                  <View style={[styles.dot7, { backgroundColor: muscleColor(g, colors) }]} />
+                  <Text style={[styles.customChipText, on && { color: colors.background }]}>{MUSCLE_GROUP_LABELS[g]}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <TouchableOpacity
+            style={[styles.customBtn, !customName.trim() && styles.dim]}
+            disabled={!customName.trim()}
+            onPress={createCustom}
+            accessibilityRole="button"
+          >
+            <Text style={styles.customBtnText}>Create &amp; add</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.customOpen} onPress={openCustom} accessibilityRole="button">
+          <Plus size={16} color={colors.text} strokeWidth={2.6} />
+          <Text style={styles.customOpenText}>Create custom exercise</Text>
+        </TouchableOpacity>
+      )}
+
+      <View>
+        {list.map((ex, i) => {
+          const added = addedNames.has(ex.name.toLowerCase());
+          const demo = findByName(ex.name);
+          return (
+            <View key={ex.id} style={[styles.item, i < list.length - 1 && styles.itemBorder]}>
+              {demo ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    onClose();
+                    router.push({ pathname: "/exercise/[slug]", params: { slug: demo.slug } });
+                  }}
+                  accessibilityLabel={`Watch ${ex.name} form demo`}
+                >
+                  <Thumb name={ex.name} width={34} height={60} />
+                </TouchableOpacity>
+              ) : (
+                <Thumb name={ex.name} width={34} height={60} />
+              )}
+              <View style={styles.itemInfo}>
+                <Text style={styles.itemName} numberOfLines={1}>{ex.name}</Text>
+                <View style={styles.itemMetaRow}>
+                  <View style={[styles.dot7, { backgroundColor: muscleColor(ex.muscleGroup, colors) }]} />
+                  <Text style={styles.itemMeta}>
+                    {MUSCLE_GROUP_LABELS[ex.muscleGroup]}
+                    {ex.isCustom ? " · Custom" : demo ? " · Form demo" : ""}
+                  </Text>
+                </View>
+              </View>
+              {added ? (
+                <View style={[styles.addBtn, { backgroundColor: colors.successLight }]} accessibilityLabel={`${ex.name}, already in this routine`}>
+                  <Check size={18} color={colors.success} strokeWidth={3} />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addBtn}
+                  onPress={() => onAdd(ex)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${ex.name}`}
+                >
+                  <Plus size={20} color={colors.primaryText} strokeWidth={2.6} />
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+        {list.length === 0 && <Text style={styles.empty}>No matches. Create it as a custom exercise above.</Text>}
+      </View>
+    </Sheet>
+  );
+}
+
+const createAddStyles = (colors: ColorScheme) =>
+  StyleSheet.create({
+    search: { height: 46, borderRadius: 14, backgroundColor: colors.fill, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14 },
+    searchInput: { flex: 1, height: "100%", fontSize: 16, fontWeight: "600", color: colors.text },
+    bleed: { marginHorizontal: -20, flexGrow: 0 },
+    chips: { gap: 6, paddingHorizontal: 20 },
+    chip: { height: 36, paddingHorizontal: 12, borderRadius: 999, backgroundColor: colors.fill, flexDirection: "row", alignItems: "center", gap: 6 },
+    chipText: { fontSize: 13, fontWeight: "700", color: colors.textSecondary },
+    dot8: { width: 8, height: 8, borderRadius: 4 },
+    dot7: { width: 7, height: 7, borderRadius: 4 },
+    dim: { opacity: 0.4 },
+    customOpen: {
+      height: 48,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderStyle: "dashed",
+      borderColor: colors.fillStrong,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    customOpenText: { fontSize: 14, fontWeight: "700", color: colors.text },
+    custom: { backgroundColor: colors.card2, borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator, padding: 14, gap: 12 },
+    customLabel: { fontSize: 13, fontWeight: "800", color: colors.textTertiary },
+    customInput: {
+      height: 46,
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.separator,
+      backgroundColor: colors.cardBackground,
+      paddingHorizontal: 14,
+      fontSize: 16,
+      fontWeight: "600",
+      color: colors.text,
+    },
+    customChips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    customChip: { height: 34, paddingHorizontal: 11, borderRadius: 999, backgroundColor: colors.fill, flexDirection: "row", alignItems: "center", gap: 6 },
+    customChipText: { fontSize: 12, fontWeight: "700", color: colors.textSecondary },
+    customBtn: { height: 46, borderRadius: 12, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+    customBtnText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+    item: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 72, paddingVertical: 6 },
+    itemBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator },
+    itemInfo: { flex: 1, minWidth: 0, gap: 3 },
+    itemName: { fontSize: 15, fontWeight: "700", color: colors.text },
+    itemMetaRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    itemMeta: { fontSize: 12, fontWeight: "600", color: colors.textTertiary },
+    addBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryTint, alignItems: "center", justifyContent: "center" },
+    empty: { paddingVertical: 24, textAlign: "center", fontSize: 14, fontWeight: "600", color: colors.textTertiary },
+  });
+
+// ─── Screen ─────────────────────────────────────────────────
 export default function RoutineDetailScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -749,7 +720,6 @@ export default function RoutineDetailScreen() {
   const { routineId } = useLocalSearchParams<{ routineId: string }>();
   const {
     routines,
-    allExercises,
     addExerciseToRoutine,
     removeExerciseFromRoutine,
     reorderExerciseInRoutine,
@@ -762,1024 +732,388 @@ export default function RoutineDetailScreen() {
   const wu = settings.weightUnit;
   const routine = useMemo(() => routines.find((r) => r.id === routineId), [routines, routineId]);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup>("chest");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [customSets, setCustomSets] = useState("3");
-  const [customReps, setCustomReps] = useState("10");
-  const [customWeight, setCustomWeight] = useState("0");
-  const [editingName, setEditingName] = useState(false);
-  const [routineName, setRoutineName] = useState(routine?.name ?? "");
-  const [editingExercise, setEditingExercise] = useState<RoutineExercise | null>(null);
-
-  const trimmedQuery = searchQuery.trim().toLowerCase();
-
-  /**
-   * Searching used to only filter within the selected muscle tab, so typing
-   * "curl" while Chest was active returned nothing even though the exercise
-   * exists. A query now searches the whole library and the tabs act as the
-   * browse mode when the field is empty.
-   */
-  const filteredExercises = useMemo(() => {
-    if (trimmedQuery.length > 0) {
-      return allExercises
-        .filter((e) => e.name.toLowerCase().includes(trimmedQuery))
-        .sort((a, b) => {
-          // Prefix matches first — "bench" should surface "Bench Press"
-          // before "Close-Grip Bench Press".
-          const aStarts = a.name.toLowerCase().startsWith(trimmedQuery) ? 0 : 1;
-          const bStarts = b.name.toLowerCase().startsWith(trimmedQuery) ? 0 : 1;
-          if (aStarts !== bStarts) return aStarts - bStarts;
-          return a.name.localeCompare(b.name);
-        });
-    }
-    return allExercises.filter((e) => e.muscleGroup === selectedMuscle);
-  }, [allExercises, selectedMuscle, trimmedQuery]);
-
-  /**
-   * Whether the query names something that doesn't exist yet, i.e. the
-   * "create a custom exercise" path is live. Compared against the *trimmed*
-   * query so a trailing space doesn't defeat the exact-match check.
-   */
-  const canCreateCustom = useMemo(
-    () =>
-      trimmedQuery.length > 0 &&
-      !filteredExercises.some((e) => e.name.toLowerCase() === trimmedQuery),
-    [trimmedQuery, filteredExercises]
-  );
+  const [name, setName] = useState(routine?.name ?? "");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editing, setEditing] = useState<RoutineExercise | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   /** Exercises already in this routine can't be added twice. */
   const addedNames = useMemo(
     () => new Set((routine?.exercises ?? []).map((e) => e.exerciseName.toLowerCase())),
-    [routine]
+    [routine],
   );
 
-  const handleAddExercise = useCallback(
-    (exercise: Exercise) => {
-      if (!routineId) return;
-      // Guard: prevent adding duplicate exercise
-      if (routine?.exercises.some((e) => e.exerciseName === exercise.name)) {
-        Alert.alert("Already Added", `${exercise.name} is already in this routine.`);
-        return;
-      }
-      const numSets = parseInt(customSets, 10) || 3;
-      const numReps = parseInt(customReps, 10) || 10;
-      const numWeight = fromDisplayWeight(parseFloat(customWeight) || 0, wu);
-      const routineExercise: RoutineExercise = {
-        id: generateId(),
-        exerciseId: exercise.id,
-        exerciseName: exercise.name,
-        muscleGroup: exercise.muscleGroup,
-        sets: numSets,
-        reps: numReps,
-        weight: numWeight,
-        setConfigs: Array.from({ length: numSets }, () => ({ reps: numReps, weight: numWeight })),
-      };
-      addExerciseToRoutine(routineId, routineExercise);
-      if (Platform.OS !== "web") {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      setShowAddModal(false);
-      setSearchQuery("");
-      setCustomSets("3");
-      setCustomReps("10");
-      setCustomWeight("0");
-    },
-    [routineId, routine, customSets, customReps, customWeight, wu, addExerciseToRoutine]
-  );
-
-  const handleAddCustom = useCallback((nameOverride?: string) => {
-    const exerciseName = nameOverride?.trim() || "";
-    if (!exerciseName || !routineId) return;
-    // Guard: prevent adding duplicate exercise
-    if (routine?.exercises.some((e) => e.exerciseName.toLowerCase() === exerciseName.toLowerCase())) {
-      Alert.alert("Already Added", `${exerciseName} is already in this routine.`);
-      return;
-    }
-    const exercise = addCustomExercise(exerciseName, selectedMuscle);
-    if (!exercise) return;
-    const numSets = parseInt(customSets, 10) || 3;
-    const numReps = parseInt(customReps, 10) || 10;
-    const numWeight = fromDisplayWeight(parseFloat(customWeight) || 0, wu);
-    const routineExercise: RoutineExercise = {
+  const buildEntry = useCallback(
+    (exercise: Exercise): RoutineExercise => ({
       id: generateId(),
       exerciseId: exercise.id,
       exerciseName: exercise.name,
       muscleGroup: exercise.muscleGroup,
-      sets: numSets,
-      reps: numReps,
-      weight: numWeight,
-      setConfigs: Array.from({ length: numSets }, () => ({ reps: numReps, weight: numWeight })),
-    };
-    addExerciseToRoutine(routineId, routineExercise);
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-    setShowAddModal(false);
-    setSearchQuery("");
-    setCustomSets("3");
-    setCustomReps("10");
-    setCustomWeight("0");
-  }, [routineId, routine, selectedMuscle, customSets, customReps, customWeight, wu, addCustomExercise, addExerciseToRoutine]);
+      sets: DEFAULT_SETS,
+      reps: DEFAULT_REPS,
+      weight: 0,
+      setConfigs: Array.from({ length: DEFAULT_SETS }, () => ({ reps: DEFAULT_REPS, weight: 0 })),
+    }),
+    [],
+  );
 
-  const handleRemoveExercise = useCallback(
-    (exerciseId: string) => {
-      if (!routineId) return;
-      removeExerciseFromRoutine(routineId, exerciseId);
-      if (Platform.OS !== "web") {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+  const handleAddExercise = useCallback(
+    (exercise: Exercise) => {
+      if (!routineId || addedNames.has(exercise.name.toLowerCase())) return;
+      addExerciseToRoutine(routineId, buildEntry(exercise));
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
-    [routineId, removeExerciseFromRoutine]
+    [routineId, addedNames, addExerciseToRoutine, buildEntry],
+  );
+
+  const handleCreateCustom = useCallback(
+    (exerciseName: string, group: MuscleGroup) => {
+      if (!routineId) return;
+      if (addedNames.has(exerciseName.toLowerCase())) {
+        Alert.alert("Already added", `${exerciseName} is already in this routine.`);
+        return;
+      }
+      const exercise = addCustomExercise(exerciseName, group);
+      if (!exercise) return;
+      addExerciseToRoutine(routineId, buildEntry(exercise));
+      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    },
+    [routineId, addedNames, addCustomExercise, addExerciseToRoutine, buildEntry],
   );
 
   const handleEditSave = useCallback(
-    (exerciseId: string, sets: number, reps: number, weight: number, setConfigs: RoutineSetConfig[], color?: string) => {
+    (exerciseId: string, configs: RoutineSetConfig[]) => {
       if (!routine || !routineId) return;
-      const updatedExercises = routine.exercises.map((e) =>
-        e.id === exerciseId ? { ...e, sets, reps, weight, setConfigs, color } : e
+      const exercises = routine.exercises.map((e) =>
+        e.id === exerciseId
+          ? { ...e, sets: configs.length, reps: configs[0].reps, weight: configs[0].weight, setConfigs: configs }
+          : e,
       );
-      updateRoutine(routineId, { exercises: updatedExercises });
-      setEditingExercise(null);
+      updateRoutine(routineId, { exercises });
+      setEditing(null);
     },
-    [routine, routineId, updateRoutine]
+    [routine, routineId, updateRoutine],
   );
 
   const handleDeleteRoutine = useCallback(() => {
-    Alert.alert("Delete Routine", "Are you sure you want to delete this routine?", [
+    if (!routine) return;
+    Alert.alert(`Delete “${routine.name}”?`, "This removes the routine and its schedule. Past workouts stay in your history.", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete",
+        text: "Delete routine",
         style: "destructive",
         onPress: () => {
-          if (routineId) {
-            deleteRoutine(routineId);
-            router.back();
-          }
+          deleteRoutine(routine.id);
+          router.back();
         },
       },
     ]);
-  }, [routineId, deleteRoutine, router]);
+  }, [routine, deleteRoutine, router]);
 
-  const handleSaveName = useCallback(() => {
-    if (routineId && routineName.trim()) {
-      updateRoutine(routineId, { name: routineName.trim() });
-    }
-    setEditingName(false);
-  }, [routineId, routineName, updateRoutine]);
-
-  const handleToggleDay = useCallback((day: WeekDay) => {
-    if (!routine || !routineId) return;
-    const current = routine.scheduledDays || [];
-    const updated = current.includes(day)
-      ? current.filter((d) => d !== day)
-      : [...current, day];
-    updateRoutine(routineId, { scheduledDays: updated });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routine, routineId, updateRoutine]);
-
-  const handleToggleRestTimer = useCallback(() => {
+  const saveName = useCallback(() => {
     if (!routineId || !routine) return;
-    const current = routine.restTimerEnabled !== false; // default true
-    updateRoutine(routineId, { restTimerEnabled: !current });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, routine, updateRoutine]);
+    const trimmed = name.trim();
+    if (trimmed && trimmed !== routine.name) updateRoutine(routineId, { name: trimmed });
+    else setName(routine.name);
+  }, [routineId, routine, name, updateRoutine]);
 
-  const handleSetRestDuration = useCallback((duration: number) => {
-    if (!routineId) return;
-    updateRoutine(routineId, { restTimerDuration: duration });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, updateRoutine]);
-
-  const handleSetRestAlert = useCallback((alert: RestTimerAlert) => {
-    if (!routineId) return;
-    updateRoutine(routineId, { restTimerAlert: alert });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
-  }, [routineId, updateRoutine]);
+  const toggleDay = useCallback(
+    (day: WeekDay) => {
+      if (!routine || !routineId) return;
+      const current = routine.scheduledDays ?? [];
+      const updated = current.includes(day) ? current.filter((d) => d !== day) : ALL_WEEKDAYS.filter((d) => d === day || current.includes(d));
+      updateRoutine(routineId, { scheduledDays: updated });
+      if (Platform.OS !== "web") void Haptics.selectionAsync();
+    },
+    [routine, routineId, updateRoutine],
+  );
 
   if (!routine) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>Routine not found</Text>
+      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
+        <Text style={styles.notFound}>Routine not found</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.textBtn}>
+          <Text style={styles.textBtnLabel}>Back to routines</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
+  const accent = routine.color ?? colors.primary;
+  const scheduled = routine.scheduledDays ?? [];
+  const restOn = routine.restTimerEnabled !== false;
+  // Falls back to the user's configured default so the stepper agrees with the timer.
+  const rest = routine.restTimerDuration ?? settings.defaultRestTimer;
+  const setRest = (next: number) => {
+    updateRoutine(routine.id, { restTimerDuration: Math.min(REST_MAX, Math.max(REST_MIN, next)) });
+    if (Platform.OS !== "web") void Haptics.selectionAsync();
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          accessibilityRole="button"
-          accessibilityLabel="Back to routines"
-        >
-          <ArrowLeft size={24} color={colors.text} />
-        </TouchableOpacity>
-        {editingName ? (
-          <TextInput
-            style={styles.nameInput}
-            value={routineName}
-            onChangeText={setRoutineName}
-            onBlur={handleSaveName}
-            onSubmitEditing={handleSaveName}
-            autoFocus
-          />
-        ) : (
-          <TouchableOpacity
-            onPress={() => { setRoutineName(routine.name); setEditingName(true); }}
-            style={styles.titleContainer}
-            accessibilityRole="button"
-            accessibilityLabel={`Routine name, ${routine.name}. Tap to rename.`}
-          >
-            <Text style={styles.headerTitle}>{routine.name}</Text>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Back to routines">
+            <ChevronLeft size={22} color={colors.primaryText} strokeWidth={2.4} />
+            <Text style={styles.backText}>Routines</Text>
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          onPress={handleDeleteRoutine}
-          style={styles.deleteButton}
-          accessibilityRole="button"
-          accessibilityLabel={`Delete the ${routine.name} routine`}
-        >
-          <Trash2 size={20} color={colors.error} />
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={() => {
+              saveName();
+              router.back();
+            }}
+            style={styles.textBtn}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.textBtnLabel, { fontWeight: "800" }]}>Done</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* Day Scheduler */}
-      <View style={styles.dayPickerRow}>
-        {ALL_WEEKDAYS.map((day) => {
-          const active = routine.scheduledDays?.includes(day);
-          return (
-            <TouchableOpacity
-              key={day}
-              onPress={() => handleToggleDay(day)}
-              activeOpacity={0.7}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: active }}
-              accessibilityLabel={`Schedule on ${WEEKDAY_LABELS[day]}`}
-            >
-              {active ? (
-                <View style={[styles.dayChip, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.dayChipTextActive}>{WEEKDAY_SHORT[day]}</Text>
-                </View>
-              ) : (
-                <View style={[styles.dayChip, styles.dayChipInactive]}>
-                  <Text style={styles.dayChipText}>{WEEKDAY_SHORT[day]}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        <TextInput
+          style={styles.nameInput}
+          value={name}
+          onChangeText={(t) => setName(t.slice(0, 50))}
+          onBlur={saveName}
+          onSubmitEditing={saveName}
+          returnKeyType="done"
+          placeholder="Routine name"
+          placeholderTextColor={colors.textTertiary}
+          accessibilityLabel="Routine name"
+        />
 
-      {/* Rest Timer Settings */}
-      <View style={styles.colorPickerSection}>
-        <TouchableOpacity
-          style={styles.restTimerToggleRow}
-          onPress={handleToggleRestTimer}
-          activeOpacity={0.7}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: routine.restTimerEnabled !== false }}
-          accessibilityLabel="Rest timer for this routine"
-        >
-          <Timer size={14} color={colors.textTertiary} />
-          <Text style={styles.colorPickerLabel}>Rest Timer</Text>
-          <View style={[styles.toggleTrack, routine.restTimerEnabled !== false && styles.toggleTrackOn]}>
-            <View style={[styles.toggleThumb, routine.restTimerEnabled !== false && styles.toggleThumbOn]} />
-          </View>
-        </TouchableOpacity>
-
-        {routine.restTimerEnabled !== false && (
-          <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.colorPickerRow}
-            >
-              {REST_TIMER_DURATIONS.map((dur) => {
-                // Falls back to the user's configured default, not a hardcoded
-                // 60s — otherwise the highlighted pill disagrees with the timer.
-                const isActive = (routine.restTimerDuration ?? settings.defaultRestTimer) === dur;
+        <View style={styles.card}>
+          <View style={styles.block}>
+            <Text style={styles.blockLabel}>Color</Text>
+            <View style={styles.swatches}>
+              {ROUTINE_COLORS.map((c) => {
+                const on = routine.color === c;
                 return (
                   <TouchableOpacity
-                    key={dur}
-                    onPress={() => handleSetRestDuration(dur)}
-                    activeOpacity={0.7}
-                    style={[styles.restDurPill, isActive && styles.restDurPillActive]}
+                    key={c}
+                    onPress={() => {
+                      updateRoutine(routine.id, { color: c });
+                      if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    }}
+                    style={[styles.swatchRing, on && { borderColor: c }]}
                     accessibilityRole="radio"
-                    accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={`${dur} second rest between sets`}
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={`Routine color ${c}`}
                   >
-                    <Text style={[styles.restDurText, isActive && styles.restDurTextActive]}>
-                      {dur < 60 ? `${dur}s` : dur % 60 === 0 ? `${dur / 60}m` : `${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, "0")}`}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            <View style={styles.restAlertRow}>
-              <Bell size={12} color={colors.textTertiary} />
-              <Text style={styles.restAlertLabel}>Alert:</Text>
-              {REST_ALERT_OPTIONS.map((opt) => {
-                const isActive = (routine.restTimerAlert ?? "vibrate") === opt.value;
-                return (
-                  <TouchableOpacity
-                    key={opt.value}
-                    onPress={() => handleSetRestAlert(opt.value)}
-                    activeOpacity={0.7}
-                    style={[styles.restAlertChip, isActive && styles.restAlertChipActive]}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isActive }}
-                    accessibilityLabel={`Alert with ${opt.label.toLowerCase()} when rest ends`}
-                  >
-                    <Text style={[styles.restAlertChipText, isActive && styles.restAlertChipTextActive]}>
-                      {opt.label}
-                    </Text>
+                    <View style={[styles.swatch, { backgroundColor: c }]} />
                   </TouchableOpacity>
                 );
               })}
             </View>
-          </>
-        )}
-      </View>
-
-      {/* Hint text */}
-      {routine.exercises.length > 0 && (
-        <Text style={styles.hintText}>Tap to edit · Swipe left to delete · Arrows reorder</Text>
-      )}
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {routine.exercises.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No exercises yet</Text>
-            <Text style={styles.emptySubtitle}>Add exercises to build your routine</Text>
           </View>
-        ) : (
-          routine.exercises.map((exercise, index) => (
-            <SwipeableExerciseRow
-              key={exercise.id}
-              exercise={exercise}
-              index={index}
-              onDelete={() => handleRemoveExercise(exercise.id)}
-              onTap={() => setEditingExercise(exercise)}
-              weightUnit={wu}
-              accentColor={exercise.color || routine.color}
-              onMove={
-                routine.exercises.length > 1
-                  ? (direction) => {
-                      if (!routineId) return;
-                      reorderExerciseInRoutine(routineId, exercise.id, direction);
-                      if (Platform.OS !== "web") void Haptics.selectionAsync();
-                    }
-                  : undefined
-              }
-              canMoveUp={index > 0}
-              canMoveDown={index < routine.exercises.length - 1}
+
+          <View style={[styles.block, styles.blockDivider]}>
+            <Text style={styles.blockLabel}>Schedule</Text>
+            <View style={styles.dayRow}>
+              {ALL_WEEKDAYS.map((day) => {
+                const on = scheduled.includes(day);
+                return (
+                  <TouchableOpacity
+                    key={day}
+                    onPress={() => toggleDay(day)}
+                    style={[styles.dayBtn, { backgroundColor: on ? accent : colors.fill }]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={`Schedule on ${WEEKDAY_LABELS[day]}`}
+                  >
+                    <Text style={[styles.dayText, { color: on ? "#fff" : colors.textSecondary }]}>{DAY_LETTER[day]}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={[styles.settingRow, styles.blockDivider]}>
+            <View style={styles.flex}>
+              <Text style={styles.settingTitle}>Rest timer</Text>
+              <Text style={styles.settingSub}>Between sets in this routine</Text>
+            </View>
+            <Switch
+              value={restOn}
+              onValueChange={(v) => updateRoutine(routine.id, { restTimerEnabled: v })}
+              trackColor={{ true: colors.primary, false: colors.fillStrong }}
+              thumbColor="#fff"
+              accessibilityLabel="Rest timer for this routine"
             />
-          ))
+          </View>
+
+          {restOn && (
+            <View style={styles.alertRow}>
+              <Text style={styles.settingSub}>Duration</Text>
+              <View style={styles.restStepper}>
+                <TouchableOpacity style={styles.restBtn} onPress={() => setRest(rest - 15)} accessibilityLabel="Shorter rest">
+                  <Text style={styles.restBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.restValue}>{formatRest(rest)}</Text>
+                <TouchableOpacity style={styles.restBtn} onPress={() => setRest(rest + 15)} accessibilityLabel="Longer rest">
+                  <Text style={styles.restBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {restOn && (
+            <View style={styles.alertRow}>
+              <Text style={styles.settingSub}>Alert</Text>
+              <View style={styles.alertChips}>
+                {REST_ALERT_OPTIONS.map((opt) => {
+                  const on = (routine.restTimerAlert ?? "vibrate") === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => updateRoutine(routine.id, { restTimerAlert: opt.value })}
+                      style={[styles.alertChip, on && { backgroundColor: colors.primaryTint }]}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: on }}
+                    >
+                      <Text style={[styles.alertChipText, on && { color: colors.primaryText }]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.exHead}>
+          <Text style={styles.sectionLabel}>Exercises · {routine.exercises.length}</Text>
+          {routine.exercises.length > 1 && (
+            <TouchableOpacity onPress={() => setReordering((r) => !r)} accessibilityRole="button">
+              <Text style={styles.textBtnLabel}>{reordering ? "Done" : "Reorder"}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {routine.exercises.length > 0 ? (
+          <>
+            <View style={[styles.card, styles.listCard]}>
+              {routine.exercises.map((exercise, index) => (
+                <ExerciseRow
+                  key={exercise.id}
+                  exercise={exercise}
+                  index={index}
+                  last={index === routine.exercises.length - 1}
+                  reordering={reordering}
+                  weightUnit={wu}
+                  onDelete={() => {
+                    removeExerciseFromRoutine(routine.id, exercise.id);
+                    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }}
+                  onTap={() => setEditing(exercise)}
+                  onMove={(dir) => {
+                    reorderExerciseInRoutine(routine.id, exercise.id, dir);
+                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                  }}
+                  canMoveUp={index > 0}
+                  canMoveDown={index < routine.exercises.length - 1}
+                />
+              ))}
+            </View>
+            <Text style={styles.hint}>Tap to edit sets · swipe left to delete</Text>
+          </>
+        ) : (
+          <View style={styles.emptyList}>
+            <Text style={styles.emptyText}>No exercises yet. Add your first one below.</Text>
+          </View>
         )}
 
-        <TouchableOpacity
-          style={styles.addExerciseButton}
-          onPress={() => setShowAddModal(true)}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Add an exercise to this routine"
-        >
-          <Plus size={20} color={colors.primary} />
-          <Text style={styles.addExerciseText}>Add Exercise</Text>
+        <TouchableOpacity style={styles.addExercise} onPress={() => setShowAdd(true)} accessibilityRole="button" accessibilityLabel="Add an exercise to this routine">
+          <Plus size={18} color={colors.primaryText} strokeWidth={2.6} />
+          <Text style={styles.addExerciseText}>Add exercise</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteRoutine} onPress={handleDeleteRoutine} accessibilityRole="button">
+          <Text style={styles.deleteRoutineText}>Delete routine</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Edit Exercise Modal */}
-      <EditExerciseModal
-        visible={editingExercise !== null}
-        exercise={editingExercise}
-        routineColor={routine.color}
-        weightUnit={wu}
-        onSave={handleEditSave}
-        onClose={() => setEditingExercise(null)}
+      <EditExerciseSheet exercise={editing} weightUnit={wu} onSave={handleEditSave} onClose={() => setEditing(null)} />
+      <AddExerciseSheet
+        visible={showAdd}
+        addedNames={addedNames}
+        onAdd={handleAddExercise}
+        onCreateCustom={handleCreateCustom}
+        onClose={() => setShowAdd(false)}
       />
-
-      {/* Add Exercise Modal */}
-      <Modal visible={showAddModal} animationType="slide">
-        <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={() => { setShowAddModal(false); setSearchQuery(""); }}
-              accessibilityRole="button"
-              accessibilityLabel="Cancel adding an exercise"
-            >
-              <Text style={styles.modalClose}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Exercise</Text>
-            <View style={{ width: 60 }} />
-          </View>
-
-          <View style={styles.setsRepsRow}>
-            <View style={styles.setsRepsField}>
-              <Text style={styles.setsRepsLabel}>Sets</Text>
-              <TextInput
-                style={styles.setsRepsInput}
-                value={customSets}
-                onChangeText={setCustomSets}
-                keyboardType="number-pad"
-              />
-            </View>
-            <View style={styles.setsRepsField}>
-              <Text style={styles.setsRepsLabel}>Reps</Text>
-              <TextInput
-                style={styles.setsRepsInput}
-                value={customReps}
-                onChangeText={setCustomReps}
-                keyboardType="number-pad"
-              />
-            </View>
-            <View style={styles.setsRepsField}>
-              <Text style={styles.setsRepsLabel}>Weight ({wu})</Text>
-              <TextInput
-                style={styles.setsRepsInput}
-                value={customWeight}
-                onChangeText={setCustomWeight}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor={colors.textTertiary}
-              />
-            </View>
-          </View>
-
-          {canCreateCustom && (
-            <Text style={styles.groupPickerLabel}>MUSCLE GROUP FOR THE NEW EXERCISE</Text>
-          )}
-          {(trimmedQuery.length === 0 || canCreateCustom) && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.muscleScroll} contentContainerStyle={styles.muscleScrollContent}>
-            {MUSCLE_GROUPS.map((mg) => (
-              <TouchableOpacity
-                key={mg}
-                onPress={() => setSelectedMuscle(mg)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: selectedMuscle === mg }}
-                accessibilityLabel={MUSCLE_GROUP_LABELS[mg]}
-              >
-                {selectedMuscle === mg ? (
-                  <View style={[styles.musclePill, { backgroundColor: muscleColor(mg, colors) }]}>
-                    <Text style={styles.musclePillTextActive}>
-                      {MUSCLE_GROUP_LABELS[mg]}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={[styles.musclePill, styles.musclePillInactive]}>
-                    <Text style={styles.musclePillText}>
-                      {MUSCLE_GROUP_LABELS[mg]}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          )}
-
-          <View style={styles.searchRow}>
-            <Search size={18} color={colors.textTertiary} />
-            <TextInput
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search all exercises, or name a new one"
-              placeholderTextColor={colors.textTertiary}
-              autoCorrect={false}
-              returnKeyType="search"
-              accessibilityLabel="Search exercises"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity
-                onPress={() => setSearchQuery("")}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityRole="button"
-                accessibilityLabel="Clear search"
-              >
-                <X size={16} color={colors.textTertiary} />
-              </TouchableOpacity>
-            )}
-          </View>
-          {trimmedQuery.length > 0 && (
-            <Text style={styles.searchCount}>
-              {filteredExercises.length} match{filteredExercises.length === 1 ? "" : "es"} across all muscle groups
-            </Text>
-          )}
-
-          <ScrollView style={styles.exercisesList} contentContainerStyle={styles.exercisesListContent}>
-            {canCreateCustom && (
-              <TouchableOpacity
-                style={styles.customExerciseRow}
-                onPress={() => handleAddCustom(searchQuery.trim())}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`Create ${searchQuery.trim()} as a custom ${MUSCLE_GROUP_LABELS[selectedMuscle]} exercise and add it`}
-              >
-                <Plus size={18} color={colors.primary} />
-                <View style={styles.exerciseListInfo}>
-                  <Text style={styles.customExerciseText} numberOfLines={1}>
-                    Create &ldquo;{searchQuery.trim()}&rdquo;
-                  </Text>
-                  <Text style={styles.exerciseListGroup}>
-                    New custom exercise · {MUSCLE_GROUP_LABELS[selectedMuscle]}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {filteredExercises.length === 0 && trimmedQuery.length === 0 && (
-              <Text style={styles.pickerEmpty}>
-                No exercises in this group yet. Type a name above to create one.
-              </Text>
-            )}
-
-            {filteredExercises.map((exercise) => {
-              const added = addedNames.has(exercise.name.toLowerCase());
-              return (
-                <TouchableOpacity
-                  key={exercise.id}
-                  style={[styles.exerciseListItem, added && styles.exerciseListItemAdded]}
-                  onPress={() => handleAddExercise(exercise)}
-                  activeOpacity={added ? 1 : 0.7}
-                  disabled={added}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: added }}
-                  accessibilityLabel={
-                    added
-                      ? `${exercise.name}, already in this routine`
-                      : `Add ${exercise.name}, ${MUSCLE_GROUP_LABELS[exercise.muscleGroup]}`
-                  }
-                >
-                  <View style={styles.exerciseListInfo}>
-                    <Text style={styles.exerciseListName} numberOfLines={1}>{exercise.name}</Text>
-                    {/* Searching spans every group, so name the group on each row. */}
-                    <Text style={styles.exerciseListGroup}>
-                      {MUSCLE_GROUP_LABELS[exercise.muscleGroup]}
-                    </Text>
-                  </View>
-                  {exercise.isCustom && <Tag label="Custom" color={colors.violet} size="sm" />}
-                  {added ? (
-                    <Check size={18} color={colors.emerald} />
-                  ) : (
-                    <Plus size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Modal>
     </View>
   );
 }
 
-const createStyles = (colors: ColorScheme) => StyleSheet.create({
-  exerciseListInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  exerciseListGroup: {
-    ...Type.caption,
-    fontWeight: "600",
-    color: colors.textTertiary,
-  },
-  exerciseListItemAdded: {
-    opacity: 0.5,
-  },
-  groupPickerLabel: {
-    ...Type.overline,
-    color: colors.textTertiary,
-    paddingHorizontal: Layout.gutter,
-    paddingBottom: Space.xs + 2,
-  },
-  searchCount: {
-    ...Type.caption,
-    ...numeric,
-    color: colors.textTertiary,
-    paddingHorizontal: Layout.gutter,
-    paddingBottom: Space.sm,
-  },
-  pickerEmpty: {
-    ...Type.subhead,
-    color: colors.textTertiary,
-    textAlign: "center",
-    paddingVertical: Space.xxl,
-    paddingHorizontal: Space.xl,
-    lineHeight: 20,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  backButton: {
-    padding: 10,
-  },
-  titleContainer: {
-    flex: 1,
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: colors.text,
-    textAlign: "center" as const,
-    letterSpacing: -0.3,
-  },
-  nameInput: {
-    fontSize: 20,
-    fontWeight: "700" as const,
-    color: colors.text,
-    flex: 1,
-    textAlign: "center" as const,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
-    paddingBottom: 4,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  dayPickerRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  dayChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-    minWidth: 42,
-    alignItems: "center",
-  },
-  dayChipInactive: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  dayChipText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: colors.textTertiary,
-  },
-  dayChipTextActive: {
-    fontSize: 11,
-    fontWeight: "700" as const,
-    color: "#fff",
-  },
-  colorPickerSection: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 8,
-  },
-  colorPickerHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  colorPickerLabel: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: colors.textTertiary,
-    letterSpacing: 0.3,
-    textTransform: "uppercase" as const,
-  },
-  colorPickerRow: {
-    gap: 8,
-  },
-  colorSwatch: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  colorSwatchDefault: {
-    borderWidth: 1.5,
-    borderColor: colors.glassBorder,
-  },
-  colorSwatchSelected: {
-    borderWidth: 2.5,
-    borderColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emojiSwatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-  },
-  emojiSwatchSelected: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-  },
-  emojiSwatchText: {
-    fontSize: 18,
-  },
-  restTimerToggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  toggleTrack: {
-    width: 40,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.surface,
-    justifyContent: "center",
-    paddingHorizontal: 2,
-    marginLeft: "auto",
-  },
-  toggleTrackOn: {
-    backgroundColor: colors.primary,
-  },
-  toggleThumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.white,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  toggleThumbOn: {
-    alignSelf: "flex-end",
-  },
-  restDurPill: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  restDurPillActive: {
-    backgroundColor: `${colors.primary}1A`,
-    borderColor: colors.primary,
-  },
-  restDurText: {
-    fontSize: 13,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
-  },
-  restDurTextActive: {
-    color: colors.primary,
-  },
-  restAlertRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 10,
-  },
-  restAlertLabel: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    fontWeight: "600" as const,
-    marginRight: 2,
-  },
-  restAlertChip: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-  },
-  restAlertChipActive: {
-    backgroundColor: `${colors.primary}1A`,
-  },
-  restAlertChipText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
-  },
-  restAlertChipTextActive: {
-    color: colors.primary,
-    fontWeight: "700" as const,
-  },
-  hintText: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    textAlign: "center",
-    marginBottom: 4,
-    letterSpacing: 0.2,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 20,
-    paddingTop: 8,
-    paddingBottom: 40,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600" as const,
-    color: colors.text,
-    marginBottom: 4,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  addExerciseButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderStyle: "dashed" as const,
-    marginTop: 8,
-  },
-  addExerciseText: {
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: colors.primary,
-  },
-  errorText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: "center" as const,
-    marginTop: 40,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.glassBorder,
-  },
-  modalClose: {
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: "600" as const,
-    width: 60,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "700" as const,
-    color: colors.text,
-    letterSpacing: -0.3,
-  },
-  setsRepsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-  },
-  setsRepsField: {
-    flex: 1,
-  },
-  setsRepsLabel: {
-    fontSize: 12,
-    fontWeight: "600" as const,
-    color: colors.textSecondary,
-    marginBottom: 6,
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.5,
-  },
-  setsRepsInput: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    fontWeight: "600" as const,
-    color: colors.text,
-    textAlign: "center" as const,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  muscleScroll: {
-    maxHeight: 48,
-    marginTop: 16,
-  },
-  muscleScrollContent: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  musclePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  musclePillInactive: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  musclePillText: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: colors.text,
-  },
-  musclePillTextActive: {
-    fontSize: 14,
-    fontWeight: "600" as const,
-    color: colors.white,
-  },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    marginHorizontal: 20,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-  },
-  searchInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 15,
-    color: colors.text,
-  },
-  exercisesList: {
-    flex: 1,
-    marginTop: 12,
-  },
-  exercisesListContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-  },
-  customExerciseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Space.md,
-    paddingVertical: Space.md,
-    paddingHorizontal: Space.base,
-    backgroundColor: tint(colors.primary, 0.08),
-    borderRadius: Radius.sm,
-    marginBottom: Space.sm,
-    borderWidth: 1,
-    borderColor: tint(colors.primary, 0.22),
-    minHeight: Layout.rowHeight,
-  },
-  customExerciseText: {
-    fontSize: 15,
-    fontWeight: "600" as const,
-    color: colors.primary,
-    flex: 1,
-  },
-  exerciseListItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Space.md,
-    paddingVertical: Space.md,
-    minHeight: Layout.rowHeight,
-    borderBottomWidth: Layout.hairline,
-    borderBottomColor: colors.separator,
-  },
-  exerciseListName: {
-    ...Type.body,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  customBadge: {
-    backgroundColor: `${colors.primary}14`,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  customBadgeText: {
-    fontSize: 11,
-    fontWeight: "600" as const,
-    color: colors.primary,
-  },
-});
+const createStyles = (colors: ColorScheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    center: { alignItems: "center", justifyContent: "center", gap: 8 },
+    notFound: { fontSize: 17, fontWeight: "700", color: colors.textSecondary },
+    flex: { flex: 1, minWidth: 0 },
+    scroll: { paddingHorizontal: 20, gap: 16 },
+    topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    back: { height: 44, marginLeft: -6, flexDirection: "row", alignItems: "center", gap: 2 },
+    backText: { fontSize: 16, fontWeight: "600", color: colors.primaryText },
+    textBtn: { height: 44, paddingHorizontal: 4, justifyContent: "center" },
+    textBtnLabel: { fontSize: 15, fontWeight: "700", color: colors.primaryText },
+    nameInput: {
+      height: 52,
+      marginTop: -8,
+      borderBottomWidth: 2,
+      borderBottomColor: colors.separator,
+      fontSize: 30,
+      fontWeight: "800",
+      letterSpacing: -1,
+      color: colors.text,
+      padding: 0,
+    },
+    card: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: 22,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.separator,
+      padding: 16,
+      gap: 16,
+      ...elevation(1, colors),
+    },
+    listCard: { padding: 0, gap: 0, overflow: "hidden" },
+    block: { gap: 10 },
+    blockDivider: { paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+    blockLabel: { fontSize: 13, fontWeight: "700", color: colors.textTertiary },
+    swatches: { flexDirection: "row", justifyContent: "space-between", gap: 2 },
+    swatchRing: { flex: 1, maxWidth: 42, aspectRatio: 1, borderRadius: 999, borderWidth: 2, borderColor: "transparent", alignItems: "center", justifyContent: "center" },
+    swatch: { width: "76%", height: "76%", borderRadius: 999 },
+    dayRow: { flexDirection: "row", gap: 6 },
+    dayBtn: { flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    dayText: { fontSize: 14, fontWeight: "800" },
+    settingRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    settingTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
+    settingSub: { fontSize: 12, fontWeight: "500", color: colors.textTertiary, marginTop: 2 },
+    restStepper: { flexDirection: "row", alignItems: "center", backgroundColor: colors.fill, borderRadius: 12, padding: 2 },
+    restBtn: { width: 36, height: 40, alignItems: "center", justifyContent: "center" },
+    restBtnText: { fontSize: 20, fontWeight: "700", color: colors.text },
+    restValue: { minWidth: 40, textAlign: "center", fontSize: 15, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
+    alertRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: -4 },
+    alertChips: { flex: 1, flexDirection: "row", gap: 6, justifyContent: "flex-end" },
+    alertChip: { height: 32, paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.fill, justifyContent: "center" },
+    alertChipText: { fontSize: 12, fontWeight: "700", color: colors.textSecondary },
+    exHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4, paddingHorizontal: 2, minHeight: 36 },
+    sectionLabel: { fontSize: 13, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase", color: colors.textTertiary },
+    hint: { fontSize: 12, fontWeight: "500", color: colors.textTertiary, textAlign: "center", marginTop: -6 },
+    emptyList: { padding: 22, borderRadius: 22, borderWidth: 1, borderStyle: "dashed", borderColor: colors.fillStrong },
+    emptyText: { textAlign: "center", fontSize: 14, fontWeight: "600", color: colors.textTertiary },
+    addExercise: {
+      height: 52,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderStyle: "dashed",
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryTint,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+    },
+    addExerciseText: { fontSize: 15, fontWeight: "800", color: colors.primaryText },
+    deleteRoutine: { height: 48, alignItems: "center", justifyContent: "center" },
+    deleteRoutineText: { fontSize: 15, fontWeight: "700", color: colors.error },
+  });
