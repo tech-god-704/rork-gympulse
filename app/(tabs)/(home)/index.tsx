@@ -72,6 +72,8 @@ interface CompletionStats {
   newLevel: number;
   newLevelTitle: string;
   newAchievementNames: string[];
+  routineName: string;
+  totalXP: number;
 }
 
 const EMPTY_STATS: CompletionStats = {
@@ -86,6 +88,8 @@ const EMPTY_STATS: CompletionStats = {
   newLevel: 0,
   newLevelTitle: "",
   newAchievementNames: [],
+  routineName: "",
+  totalXP: 0,
 };
 
 export default function TodayScreen() {
@@ -263,6 +267,8 @@ export default function TodayScreen() {
         newLevel: previewLevel,
         newLevelTitle: getLevelDefinition(previewLevel).title,
         newAchievementNames: unlockedNames,
+        routineName: session.routineName,
+        totalXP: previewTotalXP,
       });
 
       setTimeout(() => {
@@ -682,6 +688,8 @@ export default function TodayScreen() {
         newLevel={completionStats.newLevel}
         newLevelTitle={completionStats.newLevelTitle}
         newAchievementNames={completionStats.newAchievementNames}
+        routineName={completionStats.routineName}
+        totalXP={completionStats.totalXP}
         onDismiss={handleDismissConfetti}
       />
     </Screen>

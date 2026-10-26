@@ -1,89 +1,121 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, CheckCircle2, AlertTriangle, Wind, Wrench } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { X, Repeat, Wind } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 import { MUSCLE_GROUP_LABELS } from "@/types";
+import { elevation, muscleColor } from "@/constants/theme";
 import ExerciseDemoVideo from "@/components/ExerciseDemoVideo";
+
+const VIDEO_HEIGHT = 440;
 
 export default function ExerciseGuideScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { getBySlug } = useExerciseLibrary();
   const exercise = getBySlug(slug);
 
-  // 9:16 clip, capped so the coaching text is still visible without scrolling far.
-  const videoHeight = Math.min((width - 36) * (16 / 9), 460);
-
   if (!exercise) {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={styles.sectionText}>Exercise not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.doneButton}>
-          <Text style={styles.doneText}>Close</Text>
+        <Text style={styles.body}>Exercise not found.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeFallback}>
+          <Text style={styles.closeFallbackText}>Close</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const sections = [
-    { title: "Setup", icon: <Wrench size={16} color={colors.primary} />, items: exercise.setup, numbered: true },
-    { title: "How to do it", icon: <CheckCircle2 size={16} color={colors.emerald} />, items: exercise.cues, numbered: true },
-    { title: "Avoid", icon: <AlertTriangle size={16} color={colors.amber} />, items: exercise.commonMistakes, numbered: false },
-  ];
+  const accent = muscleColor(exercise.muscleGroup, colors);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text style={styles.title} numberOfLines={1}>{exercise.name}</Text>
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {MUSCLE_GROUP_LABELS[exercise.muscleGroup]} · {exercise.equipment}
-          </Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.videoWrap}>
+          <ExerciseDemoVideo slug={exercise.slug} height={VIDEO_HEIGHT} borderRadius={0} />
+          <LinearGradient colors={["rgba(0,0,0,0.35)", "transparent"]} style={styles.topShade} pointerEvents="none" />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.close, { top: insets.top + 8 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Close form guide"
+          >
+            <X size={18} color="#fff" />
+          </TouchableOpacity>
+          <View style={[styles.loopChip, { top: insets.top + 18 }]}>
+            <Repeat size={12} color="#fff" />
+            <Text style={styles.loopText}>Loop · 0:08</Text>
+          </View>
         </View>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.closeButton}
-          accessibilityLabel="Close form guide"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <X size={20} color={colors.text} />
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]} showsVerticalScrollIndicator={false}>
-        <ExerciseDemoVideo slug={exercise.slug} height={videoHeight} borderRadius={14} />
-
-        <Text style={styles.target}>Targets: {exercise.targetArea}</Text>
-
-        {sections.map((s) => (
-          <View key={s.title} style={styles.card}>
-            <View style={styles.cardHeader}>
-              {s.icon}
-              <Text style={styles.cardTitle}>{s.title}</Text>
+        <View style={styles.content}>
+          <View style={styles.headBlock}>
+            <View style={styles.metaRow}>
+              <View style={styles.musclePill}>
+                <View style={[styles.dot, { backgroundColor: accent }]} />
+                <Text style={styles.muscleText}>{MUSCLE_GROUP_LABELS[exercise.muscleGroup]}</Text>
+              </View>
+              <Text style={styles.equipment}>{exercise.equipment}</Text>
             </View>
-            {s.items.map((item, i) => (
+            <Text style={styles.name}>{exercise.name}</Text>
+            <Text style={styles.targets}>
+              <Text style={styles.targetsLabel}>TARGETS  </Text>
+              {exercise.targetArea}
+            </Text>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Setup</Text>
+            {exercise.setup.map((item, i) => (
               <View key={item} style={styles.row}>
-                <Text style={styles.bullet}>{s.numbered ? `${i + 1}.` : "•"}</Text>
-                <Text style={styles.sectionText}>{item}</Text>
+                <View style={[styles.num, { backgroundColor: colors.fill }]}>
+                  <Text style={[styles.numText, { color: colors.text }]}>{i + 1}</Text>
+                </View>
+                <Text style={styles.body}>{item}</Text>
               </View>
             ))}
           </View>
-        ))}
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Wind size={16} color={colors.cyan} />
-            <Text style={styles.cardTitle}>Breathing</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>How to do it</Text>
+            {exercise.cues.map((item, i) => (
+              <View key={item} style={styles.row}>
+                <View style={[styles.num, { backgroundColor: colors.primary }]}>
+                  <Text style={[styles.numText, { color: "#fff" }]}>{i + 1}</Text>
+                </View>
+                <Text style={styles.body}>{item}</Text>
+              </View>
+            ))}
           </View>
-          <Text style={styles.sectionText}>{exercise.breathing}</Text>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Avoid</Text>
+            {exercise.commonMistakes.map((item) => (
+              <View key={item} style={styles.row}>
+                <View style={[styles.num, { backgroundColor: colors.errorLight }]}>
+                  <X size={12} color={colors.error} strokeWidth={3} />
+                </View>
+                <Text style={styles.body}>{item}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.breathing}>
+            <View style={styles.breathIcon}>
+              <Wind size={20} color={colors.primaryText} />
+            </View>
+            <View style={styles.breathText}>
+              <Text style={styles.cardTitle}>Breathing</Text>
+              <Text style={styles.body}>{exercise.breathing}</Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -94,45 +126,66 @@ const createStyles = (colors: ColorScheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     center: { alignItems: "center", justifyContent: "center", gap: 16 },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 18,
-      paddingTop: 12,
-      paddingBottom: 12,
-      gap: 12,
-    },
-    headerText: { flex: 1 },
-    title: { fontSize: 22, fontWeight: "800", color: colors.text, letterSpacing: -0.5 },
-    subtitle: { fontSize: 13, color: colors.textTertiary, marginTop: 2 },
-    closeButton: {
+    videoWrap: { height: VIDEO_HEIGHT, backgroundColor: colors.thumb },
+    topShade: { position: "absolute", top: 0, left: 0, right: 0, height: 120 },
+    close: {
+      position: "absolute",
+      left: 14,
       width: 44,
       height: 44,
-      borderRadius: 12,
-      backgroundColor: colors.surface,
+      borderRadius: 22,
+      backgroundColor: "rgba(0,0,0,0.4)",
       alignItems: "center",
       justifyContent: "center",
     },
-    scroll: { paddingHorizontal: 18, gap: 12 },
-    target: { fontSize: 13, fontWeight: "600", color: colors.textSecondary, marginTop: 4 },
+    loopChip: {
+      position: "absolute",
+      right: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: "rgba(0,0,0,0.4)",
+    },
+    loopText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.8, textTransform: "uppercase", color: "#fff" },
+    content: { padding: 20, gap: 14 },
+    headBlock: { gap: 8 },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    musclePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingVertical: 4,
+      paddingLeft: 8,
+      paddingRight: 10,
+      borderRadius: 999,
+      backgroundColor: colors.fill,
+    },
+    dot: { width: 8, height: 8, borderRadius: 4 },
+    muscleText: { fontSize: 13, fontWeight: "700", color: colors.text },
+    equipment: { fontSize: 13, fontWeight: "700", color: colors.textTertiary },
+    name: { fontSize: 30, fontWeight: "800", letterSpacing: -1.1, lineHeight: 36, color: colors.text },
+    targets: { fontSize: 15, fontWeight: "600", color: colors.textSecondary },
+    targetsLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: colors.primaryText },
     card: {
       backgroundColor: colors.cardBackground,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderRadius: 20,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.separator,
       padding: 16,
-      gap: 8,
+      gap: 12,
+      ...elevation(1, colors),
     },
-    cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 2 },
-    cardTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
-    row: { flexDirection: "row", gap: 8 },
-    bullet: { fontSize: 14, fontWeight: "700", color: colors.textTertiary, width: 18 },
-    sectionText: { flex: 1, fontSize: 14, lineHeight: 20, color: colors.textSecondary },
-    doneButton: {
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      borderRadius: 10,
-      backgroundColor: colors.primary,
-    },
-    doneText: { color: colors.white, fontWeight: "700" },
+    cardTitle: { fontSize: 16, fontWeight: "800", color: colors.text },
+    row: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+    num: { width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+    numText: { fontSize: 12, fontWeight: "800" },
+    body: { flex: 1, fontSize: 15, fontWeight: "500", lineHeight: 22, color: colors.textSecondary },
+    breathing: { flexDirection: "row", gap: 12, alignItems: "flex-start", padding: 16, borderRadius: 20, backgroundColor: colors.primaryTint },
+    breathIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: colors.cardBackground, alignItems: "center", justifyContent: "center" },
+    breathText: { flex: 1, gap: 3 },
+    closeFallback: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.primary },
+    closeFallbackText: { color: "#fff", fontWeight: "700" },
   });
