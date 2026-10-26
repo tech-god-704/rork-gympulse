@@ -334,12 +334,3 @@ export const DEFAULT_PREMIUM: PremiumStatus = {
   lastPaywallShown: null,
   workoutsSinceLastPaywall: 0,
 };
-
-export const PREMIUM_FEATURES = [
-  { emoji: "\u{1F4CA}", title: "Advanced Analytics", description: "Muscle heatmaps, volume trends, and progressive overload tracking" },
-  { emoji: "\u{1F3AF}", title: "Smart Workout Plans", description: "AI-personalized routines that adapt to your progress" },
-  { emoji: "\u{1F3C6}", title: "Unlimited Routines", description: "Create as many custom routines as you want" },
-  { emoji: "\u{23F1}\u{FE0F}", title: "Advanced Rest Timer", description: "Custom intervals, auto-progression, and voice cues" },
-  { emoji: "\u{1F4F1}", title: "Export & Backup", description: "Export workout data and cloud backup" },
-  { emoji: "\u{26A1}", title: "Priority Features", description: "Early access to new features and updates" },
-] as const;
