@@ -38,7 +38,7 @@ export default function ExerciseDemoThumb({ slug, exerciseName, width = 40, heig
       {media?.thumbnailUrl ? (
         <Image source={{ uri: media.thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : (
-        <Film size={16} color={colors.textTertiary} />
+        <Film size={16} color="rgba(255,255,255,0.4)" />
       )}
       <View style={styles.play}>
         <Play size={10} color="#fff" fill="#fff" />
@@ -52,7 +52,7 @@ const createStyles = (colors: ColorScheme) =>
     frame: {
       borderRadius: 8,
       overflow: "hidden",
-      backgroundColor: colors.surface,
+      backgroundColor: colors.thumb,
       alignItems: "center",
       justifyContent: "center",
     },
