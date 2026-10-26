@@ -251,3 +251,26 @@ export function dominantMuscleColor(
   });
   return muscleColor(best, colors);
 }
+
+// ─── Gradients (v4) ─────────────────────────────────────────
+// The signature gradient is reserved for hero moments: the Today hero, the rest
+// bar, workout completion, level-ups and the paywall CTA. Everything else stays flat.
+
+type GradientName = "hero" | "bar" | "pr";
+
+const GRADIENTS: Record<"light" | "dark", Record<GradientName, readonly [string, string, ...string[]]>> = {
+  light: {
+    hero: ["#1E3A8A", "#2563EB", "#3B82F6", "#6366F1"],
+    bar: ["#2563EB", "#6366F1"],
+    pr: ["#92400E", "#D97706", "#F2C94C"],
+  },
+  dark: {
+    hero: ["#172554", "#1D4ED8", "#3B82F6", "#6366F1"],
+    bar: ["#3B82F6", "#818CF8"],
+    pr: ["#92400E", "#D97706", "#F2C94C"],
+  },
+};
+
+export function gradient(name: GradientName, colors: ColorScheme): readonly [string, string, ...string[]] {
+  return GRADIENTS[colors.scheme][name];
+}

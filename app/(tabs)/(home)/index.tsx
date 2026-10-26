@@ -9,22 +9,20 @@ import {
   RefreshControl,
   Alert,
 } from "react-native";
-import { Flame, Target, Play, X, Clock, Dumbbell, ChevronRight, CheckCircle2, Layers } from "lucide-react-native";
+import { Flame, Play, Dumbbell, CheckCircle2, Layers } from "lucide-react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { type ColorScheme } from "@/constants/colors";
 import {
   Layout,
   Motion,
-  Radius,
   Space,
-  Type,
   dominantMuscleColor,
-  glow,
+  elevation,
+  gradient,
   muscleColor,
   numeric,
-  onColor,
-  surface,
   tint,
 } from "@/constants/theme";
 import { useTheme } from "@/providers/ThemeProvider";
@@ -34,26 +32,24 @@ import {
   getToday,
   getGreeting,
   estimateRoutineDuration,
-  formatRelativeDate,
   formatClock,
 } from "@/utils/helpers";
 import {
   WeekDay,
   Routine,
   WorkoutHistory,
-  MUSCLE_GROUP_LABELS,
   MuscleGroup,
-  DEFAULT_TRAINING_DAYS,
 } from "@/types";
 import ExerciseCard from "@/components/ExerciseCard";
-import ExerciseDemoStrip from "@/components/ExerciseDemoStrip";
-import ProgressRing from "@/components/ProgressRing";
-import RestTimer from "@/components/RestTimer";
 import ConfettiOverlay from "@/components/ConfettiOverlay";
-import XPBar from "@/components/XPBar";
-import { Button, Card, EmptyState, ProgressBar, Screen, ScreenHeader, StatTile, Tag } from "@/components/ui";
+import DemoTile from "@/components/DemoTile";
+import TodayHero from "@/components/today/TodayHero";
+import WeekStrip from "@/components/today/WeekStrip";
+import LevelCard from "@/components/today/LevelCard";
+import RestBar from "@/components/workout/RestBar";
+import { Button, Screen } from "@/components/ui";
+import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
 import {
-  getStreakMultiplier,
   getLevelDefinition,
   getAchievementById,
   calculateXPGain,
@@ -62,7 +58,7 @@ import {
   checkAchievements,
 } from "@/utils/gamification";
 import { summarizeSession, sessionProgress, streakFromDates } from "@/utils/workoutStats";
-import { formatVolume, formatWeight } from "@/utils/units";
+import { formatVolume } from "@/utils/units";
 
 interface CompletionStats {
   exercises: number;
@@ -111,7 +107,6 @@ export default function TodayScreen() {
     completeWorkout,
     cancelWorkout,
     getLiveSession,
-    getWorkoutsThisWeek,
     refreshData,
     history,
     lastPerformance,
@@ -122,8 +117,9 @@ export default function TodayScreen() {
   } = useGym();
 
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { exercises: libraryExercises, findByName } = useExerciseLibrary();
 
-  const [showRestTimer, setShowRestTimer] = useState(false);
+  const [restKey, setRestKey] = useState<number | null>(null);
   const [restTimerDuration, setRestTimerDuration] = useState(settings.defaultRestTimer);
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionStats, setCompletionStats] = useState<CompletionStats>(EMPTY_STATS);
@@ -150,8 +146,9 @@ export default function TodayScreen() {
   }, [currentSession, activeRoutine, colors]);
 
   const firstName = profile?.name?.split(" ")[0] ?? "Athlete";
-  const weeklyGoal = profile?.trainingDaysPerWeek ?? DEFAULT_TRAINING_DAYS;
-  const workoutsThisWeek = useMemo(() => getWorkoutsThisWeek(), [getWorkoutsThisWeek]);
+  // "Good evening" plus a name overflows next to the streak pill; v4 uses the short form.
+  const shortGreeting = getGreeting().replace(/^Good /, "");
+  const greetingWord = shortGreeting.charAt(0).toUpperCase() + shortGreeting.slice(1);
 
   const todayWeekDay = getTodayWeekDay() as WeekDay;
   const todaysRoutine = useMemo(
@@ -168,9 +165,7 @@ export default function TodayScreen() {
   }, [currentSession]);
 
   const today = new Date();
-  const dateLabel = today
-    .toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })
-    .toUpperCase();
+  const dateLabel = today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
   const sessionStartedAt = currentSession?.startedAt;
   useEffect(() => {
@@ -298,7 +293,7 @@ export default function TodayScreen() {
     (seconds?: number) => {
       if (!routineRestEnabled) return;
       setRestTimerDuration(seconds ?? activeRoutine?.restTimerDuration ?? settings.defaultRestTimer);
-      setShowRestTimer(true);
+      setRestKey(Date.now());
     },
     [routineRestEnabled, activeRoutine?.restTimerDuration, settings.defaultRestTimer]
   );
@@ -381,48 +376,52 @@ export default function TodayScreen() {
     (r) => r.id !== todaysRoutine?.id && r.exercises.length > 0
   );
 
-  // ── Routine card, shared by "today's plan" and the list below ──
-  const renderRoutineCard = (routine: Routine, featured: boolean) => {
+  // The hero shows today's scheduled routine, or the next one with exercises.
+  const heroRoutine = todaysRoutine && todaysRoutine.exercises.length > 0 ? todaysRoutine : otherRoutines[0];
+  const listRoutines = routines.filter((r) => r.id !== heroRoutine?.id && r.exercises.length > 0);
+  const weekdayName = today.toLocaleDateString("en-US", { weekday: "long" });
+
+  const demoSlugs = useMemo(() => {
+    const fromRoutine = (heroRoutine?.exercises ?? [])
+      .map((e) => findByName(e.exerciseName)?.slug)
+      .filter((s): s is string => Boolean(s));
+    const unique = [...new Set(fromRoutine)];
+    return unique.length > 0 ? unique : libraryExercises.slice(0, 8).map((e) => e.slug);
+  }, [heroRoutine, findByName, libraryExercises]);
+
+  const handleFinish = useCallback(() => {
+    const session = getLiveSession() ?? currentSession;
+    if (!session) return;
+    const done = sessionProgress(session).completedSets;
+    if (done === 0) {
+      Alert.alert("Nothing logged yet", "Check off at least one set before finishing, or tap End to discard.");
+      return;
+    }
+    Alert.alert("Finish workout?", `${done} of ${progress.totalSets} sets logged.`, [
+      { text: "Keep going", style: "cancel" },
+      { text: "Finish", onPress: () => triggerCompletionCheck(true) },
+    ]);
+  }, [getLiveSession, currentSession, progress.totalSets, triggerCompletionCheck]);
+
+  const renderRoutineRow = (routine: Routine) => {
     const groups = routineGroups(routine);
     const accent = routine.color ?? dominantMuscleColor(groups, colors) ?? colors.primary;
-    const fg = onColor(accent);
-
     return (
       <TouchableOpacity
         key={routine.id}
-        style={[
-          styles.routineCard,
-          surface(colors, 1, Radius.md),
-          featured && { borderColor: tint(accent, 0.45), borderWidth: 1.5 },
-        ]}
+        style={styles.routineRow}
         onPress={() => handleStartWorkout(routine.id)}
-        activeOpacity={0.78}
+        activeOpacity={0.75}
         accessibilityRole="button"
         accessibilityLabel={`Start ${routine.name}. ${describeRoutine(routine)}`}
       >
-        <View style={[styles.routineMark, { backgroundColor: accent }]}>
-          <Text style={[styles.routineMarkText, { color: fg }]}>
-            {routine.name.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-
+        <View style={[styles.routineMark, { backgroundColor: accent }]} />
         <View style={styles.routineInfo}>
           <Text style={styles.routineName} numberOfLines={1}>{routine.name}</Text>
           <Text style={styles.routineMeta} numberOfLines={1}>{describeRoutine(routine)}</Text>
-          {groups.length > 0 && (
-            <View style={styles.tagRow}>
-              {groups.slice(0, 3).map((g) => (
-                <Tag key={g} label={MUSCLE_GROUP_LABELS[g]} color={muscleColor(g, colors)} size="sm" />
-              ))}
-              {groups.length > 3 && (
-                <Text style={styles.moreTags}>+{groups.length - 3}</Text>
-              )}
-            </View>
-          )}
         </View>
-
-        <View style={[styles.playButton, { backgroundColor: accent }, glow(accent, colors, 0.3)]}>
-          <Play size={17} color={fg} fill={fg} />
+        <View style={[styles.playButton, { backgroundColor: tint(accent, 0.14) }]}>
+          <Play size={15} color={accent} fill={accent} />
         </View>
       </TouchableOpacity>
     );
@@ -430,270 +429,244 @@ export default function TodayScreen() {
 
   return (
     <Screen>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
-      >
-        <ScreenHeader eyebrow={dateLabel} title={`${getGreeting()}, ${firstName}`} />
-
-        <View style={styles.body}>
-          {/* ── Stats ── */}
-          <View style={styles.statsRow}>
-            <Card style={styles.statCard} padding={Space.base - 2}>
-              <StatTile
-                value={streak.currentStreak}
-                label="Day streak"
-                color={colors.amber}
-                icon={<Flame size={20} color={colors.amber} />}
-                accessory={streak.currentStreak >= 3 ? `${getStreakMultiplier(streak.currentStreak)}x` : undefined}
-              />
-            </Card>
-            <Card style={styles.statCard} padding={Space.base - 2}>
-              <StatTile
-                value={`${workoutsThisWeek}/${weeklyGoal}`}
-                label="This week"
-                color={colors.primary}
-                icon={<Target size={20} color={colors.primary} />}
-              />
-            </Card>
+      {currentSession ? (
+        <>
+          {/* ── Workout mode header ── */}
+          <View style={styles.wHeader}>
+            <View style={styles.wTopRow}>
+              <TouchableOpacity onPress={handleCancelWorkout} style={styles.wEnd} accessibilityRole="button" accessibilityLabel="End workout">
+                <Text style={styles.wEndText}>End</Text>
+              </TouchableOpacity>
+              <View style={styles.wCenter}>
+                <Text style={styles.wRoutine} numberOfLines={1}>{currentSession.routineName}</Text>
+                <Text style={styles.wClock}>{formatClock(elapsedSeconds)}</Text>
+              </View>
+              <TouchableOpacity onPress={handleFinish} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Finish workout">
+                <LinearGradient colors={gradient("hero", colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.wFinish}>
+                  <Text style={styles.wFinishText}>Finish</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.wProgressRow}>
+              <View style={styles.wTrack}>
+                <LinearGradient
+                  colors={gradient("bar", colors)}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.wFill, { width: `${Math.round(progress.fraction * 100)}%` }]}
+                />
+              </View>
+              <Text style={styles.wSets}>{progress.completedSets} of {progress.totalSets} sets</Text>
+            </View>
+            {upNext && (
+              <Text style={styles.wUpNext} numberOfLines={1}>
+                <Text style={styles.wUpNextLabel}>UP NEXT  </Text>
+                {upNext.exerciseName}
+              </Text>
+            )}
           </View>
 
-          {/* ── Level ── */}
-          <Card padding={Space.base}>
-            <XPBar totalXP={gamification.totalXP} level={gamification.level} compact />
-          </Card>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.wList}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {currentSession.exercises.map((exercise, index) => (
+              <ExerciseCard
+                key={exercise.routineExerciseId}
+                exercise={exercise}
+                exerciseId={exercise.routineExerciseId}
+                index={index}
+                active={upNext?.routineExerciseId === exercise.routineExerciseId}
+                onToggle={handleToggleExercise}
+                onSkip={skipExercise}
+                onRestTimer={handleRestTimer}
+                onToggleSet={handleToggleSet}
+                onUpdateSetWeight={updateSetWeight}
+                onUpdateSetReps={updateSetReps}
+                onAddSet={addSetToExercise}
+                onRemoveSet={removeSetFromExercise}
+                previousPerformance={lastPerformance[exercise.exerciseName]}
+                personalRecord={personalRecords[exercise.exerciseName]}
+                weightUnit={settings.weightUnit}
+                defaultRestTimer={activeRoutine?.restTimerDuration ?? settings.defaultRestTimer}
+                autoStartRestTimer={routineRestEnabled && settings.autoStartRestTimer}
+                accentColor={exerciseColorMap[exercise.routineExerciseId]}
+              />
+            ))}
+          </ScrollView>
 
-          {/* ── Form demo videos ── */}
-          {!currentSession && <ExerciseDemoStrip />}
+          <RestBar
+            startKey={restKey}
+            duration={restTimerDuration}
+            alertType={routineRestAlert}
+            onDone={() => setRestKey(null)}
+          />
+        </>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        >
+          {/* ── Header ── */}
+          <View style={styles.header}>
+            <View style={styles.headerText}>
+              <Text style={styles.date}>{dateLabel}</Text>
+              <Text style={styles.greeting} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+                {greetingWord}, {firstName}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/progress")}
+              style={styles.streakPill}
+              accessibilityRole="button"
+              accessibilityLabel={`${streak.currentStreak} day streak`}
+            >
+              <Flame size={17} color="#F59E0B" fill="#F59E0B" />
+              <Text style={styles.streakText}>{streak.currentStreak}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/(tabs)/profile")}
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
+            >
+              <LinearGradient colors={["#2563EB", "#6366F1"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+                <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
 
-          {currentSession ? (
-            <>
-              {/* ── Active workout hero ── */}
-              <View
-                style={[styles.hero, { backgroundColor: colors.primary }, glow(colors.primary, colors, 0.32)]}
-              >
-                <View style={styles.heroTop}>
-                  <View style={styles.heroText}>
-                    <View style={styles.liveRow}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.heroEyebrow}>IN PROGRESS</Text>
-                    </View>
-                    <Text style={styles.heroTitle} numberOfLines={2}>
-                      {currentSession.routineName}
-                    </Text>
-                  </View>
-                  <ProgressRing
-                    progress={progress.fraction}
-                    completed={progress.completedSets}
-                    total={progress.totalSets}
-                    size={68}
-                    onDark
-                  />
+          <View style={styles.body}>
+            {/* ── Hero / done / empty ── */}
+            {routines.length === 0 || !heroRoutine ? (
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIcon}>
+                  <Dumbbell size={26} color={colors.primary} />
                 </View>
-
-                <ProgressBar
-                  value={progress.fraction}
-                  height={6}
-                  color="rgba(255,255,255,0.95)"
-                  trackColor="rgba(255,255,255,0.22)"
-                  style={styles.heroBar}
-                />
-
-                <View style={styles.heroStats}>
-                  <View style={styles.heroStat}>
-                    <Clock size={13} color="rgba(255,255,255,0.7)" />
-                    <Text style={styles.heroStatText}>{formatClock(elapsedSeconds)}</Text>
-                  </View>
-                  <View style={styles.heroStat}>
-                    <CheckCircle2 size={13} color="rgba(255,255,255,0.7)" />
-                    <Text style={styles.heroStatText}>
-                      {progress.completedExercises}/{progress.totalExercises} done
-                    </Text>
-                  </View>
-                  {progress.volume > 0 && (
-                    <View style={styles.heroStat}>
-                      <Dumbbell size={13} color="rgba(255,255,255,0.7)" />
-                      <Text style={styles.heroStatText}>
-                        {formatVolume(progress.volume, settings.weightUnit)}
-                      </Text>
-                    </View>
-                  )}
+                <Text style={styles.emptyTitle}>No routines yet</Text>
+                <Text style={styles.emptyBody}>Pick a proven split or build your own, then start training from here.</Text>
+                <View style={styles.emptyActions}>
+                  <Button label="Browse splits" onPress={() => router.push("/(tabs)/routines")} icon={<Layers size={16} color="#fff" />} />
+                  <Button label="Create routine" variant="ghost" onPress={() => router.push("/(tabs)/routines")} />
                 </View>
               </View>
+            ) : trainedToday ? (
+              <View style={styles.doneCard}>
+                <View style={styles.doneRow}>
+                  <View style={styles.doneCheck}>
+                    <CheckCircle2 size={26} color="#fff" />
+                  </View>
+                  <View style={styles.doneText}>
+                    <Text style={styles.doneTitle}>Done for today</Text>
+                    <Text style={styles.doneName} numberOfLines={1}>{lastWorkout?.routineName}</Text>
+                  </View>
+                </View>
+                <Text style={styles.doneLine}>
+                  {lastWorkout?.duration ?? 0} min
+                  {(lastWorkout?.totalVolume ?? 0) > 0 ? ` · ${formatVolume(lastWorkout?.totalVolume ?? 0, settings.weightUnit)}` : ""}
+                  {(lastWorkout?.newPRs ?? 0) > 0 ? ` · ${lastWorkout?.newPRs} PR${(lastWorkout?.newPRs ?? 0) > 1 ? "s" : ""}` : ""}
+                </Text>
+                <View style={styles.doneActions}>
+                  <Button label="View progress" variant="ghost" size="sm" onPress={() => router.push("/(tabs)/progress")} />
+                  <Button label="Train again" size="sm" onPress={() => handleStartWorkout(heroRoutine.id)} />
+                </View>
+              </View>
+            ) : (
+              <TodayHero
+                routine={heroRoutine}
+                eyebrow={todaysRoutine?.id === heroRoutine.id ? `Today · ${weekdayName}` : "Up next"}
+                startLabel="Start workout"
+                onStart={() => handleStartWorkout(heroRoutine.id)}
+              />
+            )}
 
-              {/* ── What to do right now ── */}
-              {upNext && (
-                <Card
-                  padding={Space.md + 2}
-                  accentColor={muscleColor(upNext.muscleGroup, colors)}
-                  accessibilityLabel={`Up next: ${upNext.exerciseName}`}
-                >
-                  <Text style={styles.upNextEyebrow}>UP NEXT</Text>
-                  <Text style={styles.upNextName} numberOfLines={1}>{upNext.exerciseName}</Text>
-                  <Text style={styles.upNextMeta}>
-                    {(upNext.setDetails ?? []).filter((s) => s.completed).length}/
-                    {upNext.setDetails?.length ?? upNext.sets} sets ·{" "}
-                    {formatWeight(upNext.setDetails?.[0]?.weight ?? upNext.weight, settings.weightUnit)} ·{" "}
-                    {MUSCLE_GROUP_LABELS[upNext.muscleGroup]}
-                  </Text>
-                </Card>
-              )}
-
-              {/* ── Exercises ── */}
-              <View style={styles.section}>
-                <View style={styles.sectionHead}>
-                  <Text style={styles.sectionTitle}>Exercises</Text>
-                  <Text style={styles.sectionNote}>
-                    {progress.completedSets}/{progress.totalSets} sets
+            {/* ── Form demos ── */}
+            <View style={styles.section}>
+              <View style={styles.sectionHead}>
+                <View>
+                  <Text style={styles.sectionTitle}>Form demos</Text>
+                  <Text style={styles.sectionSub}>
+                    {heroRoutine && demoSlugs.length > 0 ? `From ${heroRoutine.name}` : `${libraryExercises.length} exercises`}
                   </Text>
                 </View>
-                <View style={styles.exerciseList}>
-                  {currentSession.exercises.map((exercise, index) => (
-                    <ExerciseCard
-                      key={exercise.routineExerciseId}
-                      exercise={exercise}
-                      exerciseId={exercise.routineExerciseId}
-                      index={index}
-                      onToggle={handleToggleExercise}
-                      onSkip={skipExercise}
-                      onRestTimer={handleRestTimer}
-                      onToggleSet={handleToggleSet}
-                      onUpdateSetWeight={updateSetWeight}
-                      onUpdateSetReps={updateSetReps}
-                      onAddSet={addSetToExercise}
-                      onRemoveSet={removeSetFromExercise}
-                      previousPerformance={lastPerformance[exercise.exerciseName]}
-                      personalRecord={personalRecords[exercise.exerciseName]}
-                      weightUnit={settings.weightUnit}
-                      defaultRestTimer={activeRoutine?.restTimerDuration ?? settings.defaultRestTimer}
-                      autoStartRestTimer={routineRestEnabled && settings.autoStartRestTimer}
-                      accentColor={exerciseColorMap[exercise.routineExerciseId]}
-                    />
+                <TouchableOpacity onPress={() => router.push("/exercise")} accessibilityRole="button" hitSlop={8}>
+                  <Text style={styles.seeAll}>See all</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.demoRow} style={styles.bleed}>
+                {demoSlugs.map((slug) => (
+                  <DemoTile key={slug} slug={slug} width={124} height={220} />
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* ── Week + level ── */}
+            <WeekStrip completedDates={streak.completedDates} streak={streak.currentStreak} />
+            <LevelCard totalXP={gamification.totalXP} level={gamification.level} onPress={() => router.push("/(tabs)/profile")} />
+
+            {/* ── Recent ── */}
+            <View style={styles.section}>
+              <View style={styles.sectionHead}>
+                <Text style={styles.sectionTitle}>Recent</Text>
+                {history.length > 0 && (
+                  <TouchableOpacity onPress={() => router.push("/(tabs)/progress")} hitSlop={8}>
+                    <Text style={styles.seeAll}>See all</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {history.length === 0 ? (
+                <View style={styles.listCard}>
+                  <Text style={styles.emptyRecentTitle}>No workouts yet</Text>
+                  <Text style={styles.emptyRecentBody}>Finish your first session and it&apos;ll show up here with sets, volume and PRs.</Text>
+                </View>
+              ) : (
+                <View style={styles.listCard}>
+                  {history.slice(0, 3).map((w, i) => {
+                    const d = new Date(w.completedAt);
+                    return (
+                      <View key={w.id} style={[styles.recentRow, i > 0 && styles.rowDivider]}>
+                        <View style={styles.dateBlock}>
+                          <Text style={styles.dow}>{d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase()}</Text>
+                          <Text style={styles.dayNum}>{d.getDate()}</Text>
+                        </View>
+                        <View style={styles.recentInfo}>
+                          <Text style={styles.recentName} numberOfLines={1}>{w.routineName}</Text>
+                          <Text style={styles.recentMeta}>
+                            {w.completedExercises ?? w.exerciseCount} exercises · {w.duration} min
+                          </Text>
+                        </View>
+                        {(w.totalVolume ?? 0) > 0 && (
+                          <Text style={styles.recentVol}>{formatVolume(w.totalVolume ?? 0, settings.weightUnit)}</Text>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+
+            {/* ── Other routines ── */}
+            {listRoutines.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHead}>
+                  <Text style={styles.sectionTitle}>Other routines</Text>
+                  <TouchableOpacity onPress={() => router.push("/(tabs)/routines")} hitSlop={8}>
+                    <Text style={styles.seeAll}>Manage</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.listCard}>
+                  {listRoutines.map((r, i) => (
+                    <View key={r.id} style={i > 0 ? styles.rowDivider : undefined}>{renderRoutineRow(r)}</View>
                   ))}
                 </View>
               </View>
-
-              <Button
-                label="Cancel workout"
-                variant="danger"
-                onPress={handleCancelWorkout}
-                icon={<X size={16} color={colors.error} />}
-                fullWidth
-              />
-            </>
-          ) : (
-            <>
-              {/* ── Last session recap ── */}
-              {lastWorkout && (
-                <Card padding={Space.base}>
-                  <View style={styles.recapHead}>
-                    <Text style={styles.recapEyebrow}>LAST WORKOUT</Text>
-                    <Text style={styles.recapDate}>{formatRelativeDate(lastWorkout.completedAt)}</Text>
-                  </View>
-                  <Text style={styles.recapName} numberOfLines={1}>{lastWorkout.routineName}</Text>
-                  <View style={styles.recapStats}>
-                    <Text style={styles.recapStat}>
-                      {lastWorkout.completedExercises ?? lastWorkout.exerciseCount} exercises
-                    </Text>
-                    <View style={styles.recapDot} />
-                    <Text style={styles.recapStat}>{lastWorkout.duration} min</Text>
-                    {(lastWorkout.totalVolume ?? 0) > 0 && (
-                      <>
-                        <View style={styles.recapDot} />
-                        <Text style={styles.recapStat}>
-                          {formatVolume(lastWorkout.totalVolume ?? 0, settings.weightUnit)}
-                        </Text>
-                      </>
-                    )}
-                    {(lastWorkout.newPRs ?? 0) > 0 && (
-                      <Tag
-                        label={`${lastWorkout.newPRs} PR${(lastWorkout.newPRs ?? 0) > 1 ? "s" : ""}`}
-                        color={colors.amber}
-                        size="sm"
-                      />
-                    )}
-                  </View>
-                </Card>
-              )}
-
-              {/* ── Today's plan ── */}
-              {todaysRoutine && todaysRoutine.exercises.length > 0 ? (
-                <View style={styles.section}>
-                  <View style={styles.sectionHead}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>Today&apos;s plan</Text>
-                    <Text style={styles.sectionNote}>scheduled</Text>
-                  </View>
-                  {renderRoutineCard(todaysRoutine, true)}
-                </View>
-              ) : routines.length > 0 ? (
-                <View style={styles.restNote}>
-                  <Text style={styles.restTitle}>
-                    {trainedToday ? "Today's work is done" : "Nothing scheduled today"}
-                  </Text>
-                  <Text style={styles.restBody}>
-                    {trainedToday
-                      ? "Rest up — or run another routine below."
-                      : "Pick any routine below to get moving."}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* ── All routines ── */}
-              {otherRoutines.length > 0 && (
-                <View style={styles.section}>
-                  {todaysRoutine && (
-                    <View style={styles.sectionHead}>
-                      <Text style={styles.sectionTitle}>Other routines</Text>
-                    </View>
-                  )}
-                  <View style={styles.routineList}>
-                    {otherRoutines.map((routine) => renderRoutineCard(routine, false))}
-                  </View>
-                </View>
-              )}
-
-              {routines.length === 0 && (
-                <Card padding={0}>
-                  <EmptyState
-                    icon={<Dumbbell size={30} color={colors.primary} />}
-                    title="Build your first routine"
-                    body="Start from a proven split like Push/Pull/Legs or Upper/Lower — every exercise comes pre-filled and you can tweak it after."
-                    action={
-                      <Button
-                        label="Get started"
-                        onPress={() => router.push("/(tabs)/routines")}
-                        trailingIcon={<ChevronRight size={17} color="#fff" />}
-                        haptic="medium"
-                      />
-                    }
-                    secondaryAction={
-                      <Button
-                        label="Browse splits"
-                        variant="ghost"
-                        size="sm"
-                        icon={<Layers size={15} color={colors.primary} />}
-                        onPress={() => router.push("/(tabs)/routines")}
-                      />
-                    }
-                  />
-                </Card>
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
-
-      <RestTimer
-        visible={showRestTimer}
-        onClose={() => setShowRestTimer(false)}
-        initialDuration={restTimerDuration}
-        alertType={routineRestAlert}
-      />
+            )}
+          </View>
+        </ScrollView>
+      )}
 
       <ConfettiOverlay
         visible={showConfetti}
@@ -716,227 +689,123 @@ export default function TodayScreen() {
 }
 
 const createStyles = (colors: ColorScheme) => StyleSheet.create({
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: Space.xxxl,
-  },
-  body: {
-    paddingHorizontal: Layout.gutter,
-    gap: Space.md,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: Space.md,
-  },
-  statCard: {
-    flex: 1,
-  },
-  section: {
-    gap: Space.md,
-  },
-  sectionHead: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: Space.sm,
-  },
-  sectionTitle: {
-    ...Type.title3,
-    fontWeight: "800",
-    color: colors.text,
-  },
-  sectionNote: {
-    ...Type.caption,
-    color: colors.textTertiary,
-    ...numeric,
-  },
-  // ── Hero ──
-  hero: {
-    borderRadius: Radius.lg,
-    padding: Space.lg,
-  },
-  heroTop: {
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: Space.xxxl },
+  body: { paddingHorizontal: 20, gap: 22 },
+  // ── Header ──
+  header: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 20, paddingTop: Space.sm, paddingBottom: 18 },
+  headerText: { flex: 1 },
+  date: { fontSize: 13, fontWeight: "600", color: colors.textTertiary },
+  greeting: { fontSize: 30, fontWeight: "800", letterSpacing: -1, lineHeight: 36, color: colors.text },
+  streakPill: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: Space.base,
+    gap: 5,
+    height: 44,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: colors.cardBackground,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.separator,
+    ...elevation(1, colors),
   },
-  heroText: {
-    flex: 1,
-  },
-  liveRow: {
-    flexDirection: "row",
+  streakText: { fontSize: 17, fontWeight: "800", color: colors.text, ...numeric },
+  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 17, fontWeight: "800", color: "#fff" },
+  // ── Empty / done ──
+  emptyCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.separator,
+    padding: 24,
     alignItems: "center",
-    gap: Space.xs + 2,
-    marginBottom: Space.xs + 2,
+    gap: 8,
+    ...elevation(1, colors),
   },
-  liveDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.95)",
+  emptyIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: colors.primaryTint, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  emptyTitle: { fontSize: 20, fontWeight: "800", color: colors.text },
+  emptyBody: { fontSize: 14, fontWeight: "500", color: colors.textTertiary, textAlign: "center", lineHeight: 20 },
+  emptyActions: { flexDirection: "row", gap: 10, marginTop: 10 },
+  doneCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.completedBorder,
+    padding: 20,
+    gap: 12,
+    ...elevation(1, colors),
   },
-  heroEyebrow: {
-    ...Type.overline,
-    color: "rgba(255,255,255,0.8)",
+  doneRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  doneCheck: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.success, alignItems: "center", justifyContent: "center" },
+  doneText: { flex: 1 },
+  doneTitle: { fontSize: 22, fontWeight: "800", letterSpacing: -0.6, color: colors.text },
+  doneName: { fontSize: 14, fontWeight: "600", color: colors.textTertiary },
+  doneLine: { fontSize: 14, fontWeight: "600", color: colors.textSecondary, ...numeric },
+  doneActions: { flexDirection: "row", gap: 10 },
+  // ── Sections ──
+  section: { gap: 12 },
+  sectionHead: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", gap: Space.sm },
+  sectionTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5, color: colors.text },
+  sectionSub: { fontSize: 13, fontWeight: "600", color: colors.textTertiary, marginTop: 1 },
+  seeAll: { fontSize: 15, fontWeight: "700", color: colors.primaryText },
+  bleed: { marginHorizontal: -20 },
+  demoRow: { gap: 10, paddingHorizontal: 20 },
+  listCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.separator,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    ...elevation(1, colors),
   },
-  heroTitle: {
-    ...Type.title2,
-    fontSize: 26,
-    color: "#fff",
-  },
-  heroBar: {
-    marginTop: Space.base,
-  },
-  heroStats: {
-    flexDirection: "row",
+  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+  emptyRecentTitle: { fontSize: 15, fontWeight: "800", color: colors.text, paddingTop: 14 },
+  emptyRecentBody: { fontSize: 13, fontWeight: "500", color: colors.textTertiary, paddingTop: 2, paddingBottom: 14, lineHeight: 18 },
+  recentRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 66 },
+  dateBlock: {
+    width: 44,
     alignItems: "center",
-    flexWrap: "wrap",
-    gap: Space.base,
-    marginTop: Space.md,
+    paddingRight: 12,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: colors.separator,
+    boxSizing: "content-box",
   },
-  heroStat: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Space.xs + 1,
+  dow: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, color: colors.textTertiary },
+  dayNum: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5, color: colors.text, ...numeric },
+  recentInfo: { flex: 1 },
+  recentName: { fontSize: 15, fontWeight: "800", color: colors.text },
+  recentMeta: { fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginTop: 1, ...numeric },
+  recentVol: { fontSize: 14, fontWeight: "700", color: colors.textSecondary, ...numeric },
+  routineRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64 },
+  routineMark: { width: 10, height: 36, borderRadius: 5 },
+  routineInfo: { flex: 1 },
+  routineName: { fontSize: 15, fontWeight: "800", color: colors.text },
+  routineMeta: { fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginTop: 1, ...numeric },
+  playButton: { width: Layout.touchTarget, height: Layout.touchTarget, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  // ── Workout mode ──
+  wHeader: {
+    paddingHorizontal: 20,
+    paddingTop: Space.xs,
+    paddingBottom: 12,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.separator,
   },
-  heroStatText: {
-    ...Type.footnote,
-    ...numeric,
-    fontWeight: "600",
-    color: "rgba(255,255,255,0.85)",
-  },
-  // ── Up next ──
-  upNextEyebrow: {
-    ...Type.overline,
-    color: colors.textTertiary,
-    marginBottom: Space.xs,
-  },
-  upNextName: {
-    ...Type.headline,
-    color: colors.text,
-  },
-  upNextMeta: {
-    ...Type.caption,
-    ...numeric,
-    fontWeight: "500",
-    color: colors.textTertiary,
-    marginTop: 3,
-  },
-  exerciseList: {
-    gap: Space.sm + 2,
-  },
-  // ── Recap ──
-  recapHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: Space.xs + 2,
-  },
-  recapEyebrow: {
-    ...Type.overline,
-    color: colors.textTertiary,
-  },
-  recapDate: {
-    ...Type.caption,
-    color: colors.textTertiary,
-    fontWeight: "600",
-  },
-  recapName: {
-    ...Type.headline,
-    color: colors.text,
-    marginBottom: Space.sm,
-  },
-  recapStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Space.sm,
-    flexWrap: "wrap",
-  },
-  recapStat: {
-    ...Type.caption,
-    ...numeric,
-    fontWeight: "600",
-    color: colors.textSecondary,
-  },
-  recapDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: colors.textTertiary,
-    opacity: 0.5,
-  },
-  // ── Rest note ──
-  restNote: {
-    alignItems: "center",
-    paddingVertical: Space.lg,
-    gap: Space.xs + 2,
-  },
-  restTitle: {
-    ...Type.title3,
-    fontWeight: "800",
-    color: colors.text,
-    textAlign: "center",
-  },
-  restBody: {
-    ...Type.subhead,
-    color: colors.textTertiary,
-    textAlign: "center",
-  },
-  // ── Routine cards ──
-  routineList: {
-    gap: Space.md,
-  },
-  routineCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Space.md,
-    padding: Space.base - 2,
-  },
-  routineMark: {
-    width: 46,
-    height: 46,
-    borderRadius: Radius.sm,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  routineMarkText: {
-    ...Type.title3,
-    fontWeight: "800",
-  },
-  routineInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  routineName: {
-    ...Type.headline,
-    color: colors.text,
-  },
-  routineMeta: {
-    ...Type.caption,
-    ...numeric,
-    fontWeight: "500",
-    color: colors.textTertiary,
-  },
-  tagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Space.xs + 2,
-    marginTop: Space.xs,
-    flexWrap: "wrap",
-  },
-  moreTags: {
-    ...Type.caption,
-    color: colors.textTertiary,
-    fontWeight: "700",
-  },
-  playButton: {
-    width: Layout.touchTarget,
-    height: Layout.touchTarget,
-    borderRadius: Radius.sm,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  wTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  wEnd: { height: 44, justifyContent: "center", minWidth: 64 },
+  wEndText: { fontSize: 17, fontWeight: "700", color: colors.error },
+  wCenter: { flex: 1, alignItems: "center" },
+  wRoutine: { fontSize: 13, fontWeight: "700", color: colors.textTertiary },
+  wClock: { fontSize: 24, fontWeight: "800", letterSpacing: -0.6, color: colors.text, ...numeric },
+  wFinish: { height: 40, paddingHorizontal: 18, borderRadius: 999, alignItems: "center", justifyContent: "center", minWidth: 64 },
+  wFinishText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  wProgressRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  wTrack: { flex: 1, height: 6, borderRadius: 999, backgroundColor: colors.fillStrong, overflow: "hidden" },
+  wFill: { height: "100%", borderRadius: 999 },
+  wSets: { fontSize: 12, fontWeight: "700", color: colors.textSecondary, ...numeric },
+  wUpNext: { fontSize: 14, fontWeight: "600", color: colors.textSecondary },
+  wUpNextLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: colors.primaryText },
+  wList: { padding: 16, paddingBottom: 140, gap: 12 },
 });

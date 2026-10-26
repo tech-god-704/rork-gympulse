@@ -20,42 +20,42 @@ const LightColors = {
   rose: "#F43F5E",
 
   // Background & surfaces
-  background: "#F4F4F7",
+  background: "#F3F4F7",
   cardBackground: "#FFFFFF",
-  cardBorder: "#E5E5EA",
+  cardBorder: "rgba(15,23,42,0.08)",
   surface: "#E5E5EA",
 
   // Semantic surface ramp — sunken < base < raised. Depth in light mode comes
   // from shadow; in dark mode it comes from these getting progressively lighter.
-  surfaceSunken: "#EBEBF0",
+  surfaceSunken: "#EBECF0",
   surfaceBase: "#FFFFFF",
   surfaceRaised: "#FFFFFF",
   /** Hairline divider. Distinct from `border`, which outlines whole controls. */
-  separator: "rgba(60,60,67,0.10)",
+  separator: "rgba(15,23,42,0.08)",
   /** Neutral fill for inactive chips, tracks and placeholders. */
   fill: "rgba(118,118,128,0.10)",
   fillStrong: "rgba(118,118,128,0.18)",
 
   // Glass effect (kept for modals/overlays only)
   glass: "rgba(255,255,255,0.92)",
-  glassBorder: "rgba(0,0,0,0.06)",
+  glassBorder: "rgba(15,23,42,0.08)",
 
   // Text
-  text: "#000000",
-  textSecondary: "#3C3C43",
-  textTertiary: "#8E8E93",
-  textMuted: "#8E8E93",
+  text: "#0B0D12",
+  textSecondary: "#3C4049",
+  textTertiary: "#686D76",
+  textMuted: "#686D76",
 
   // Status
-  success: "#34C759",
+  success: "#16A34A",
   successLight: "#D1FAE5",
   warning: "#FF9500",
-  error: "#FF3B30",
+  error: "#DC2626",
 
   // Basics
   white: "#FFFFFF",
   black: "#000000",
-  border: "#E5E5EA",
+  border: "rgba(15,23,42,0.10)",
   shadow: "#000000",
   overlay: "rgba(0,0,0,0.5)",
   dark: "#000000",
@@ -72,8 +72,8 @@ const LightColors = {
   errorBorder: "#FEE2E2",
 
   // Completed states
-  completedCard: "rgba(52,199,89,0.08)",
-  completedBorder: "rgba(52,199,89,0.25)",
+  completedCard: "rgba(22,163,74,0.08)",
+  completedBorder: "rgba(22,163,74,0.28)",
 
   // Muscle group colors (desaturated for professional look)
   muscleChest: "#EF4444",
@@ -85,15 +85,23 @@ const LightColors = {
   muscleCardio: "#06B6D4",
 
   // Achievement tier colors
-  tierBronze: "#CD7F32",
-  tierSilver: "#C0C0C0",
-  tierGold: "#FFD700",
-  tierDiamond: "#B9F2FF",
+  tierBronze: "#9A5B2E",
+  tierSilver: "#5F6773",
+  tierGold: "#A97C0A",
+  tierDiamond: "#0E8FB0",
 
   // XP bar
   xpBarBackground: "#E5E7EB",
   xpBarFill: "#6366F1",
   xpText: "#6366F1",
+
+  // v4 additions
+  card2: "#F7F8FA",
+  primaryText: "#2563EB",
+  primaryTint: "rgba(59,130,246,0.12)",
+  gold: "#A97C0A",
+  goldTint: "rgba(234,179,8,0.16)",
+  thumb: "#0F1218",
 };
 
 const DarkColors: ColorScheme = {
@@ -114,38 +122,38 @@ const DarkColors: ColorScheme = {
   rose: "#FB7185",
 
   // Background & surfaces
-  background: "#000000",
-  cardBackground: "#1C1C1E",
-  cardBorder: "#38383A",
-  surface: "#2C2C2E",
+  background: "#07080B",
+  cardBackground: "#14161B",
+  cardBorder: "rgba(255,255,255,0.08)",
+  surface: "#1B1E24",
 
-  surfaceSunken: "#0A0A0C",
-  surfaceBase: "#1C1C1E",
-  surfaceRaised: "#252528",
-  separator: "rgba(84,84,88,0.55)",
-  fill: "rgba(118,118,128,0.20)",
-  fillStrong: "rgba(118,118,128,0.32)",
+  surfaceSunken: "#0B0C10",
+  surfaceBase: "#14161B",
+  surfaceRaised: "#1B1E24",
+  separator: "rgba(255,255,255,0.08)",
+  fill: "rgba(255,255,255,0.06)",
+  fillStrong: "rgba(255,255,255,0.13)",
 
   // Glass effect
-  glass: "rgba(28,28,30,0.92)",
+  glass: "rgba(14,16,20,0.92)",
   glassBorder: "rgba(255,255,255,0.08)",
 
   // Text
-  text: "#FFFFFF",
-  textSecondary: "#EBEBF5",
-  textTertiary: "#636366",
-  textMuted: "#636366",
+  text: "#F4F5F7",
+  textSecondary: "#C8CBD2",
+  textTertiary: "#8C919B",
+  textMuted: "#8C919B",
 
   // Status
-  success: "#30D158",
+  success: "#34D399",
   successLight: "#0D3320",
   warning: "#FF9F0A",
-  error: "#FF453A",
+  error: "#FF6B6B",
 
   // Basics
   white: "#FFFFFF",
   black: "#000000",
-  border: "#38383A",
+  border: "rgba(255,255,255,0.10)",
   shadow: "#000000",
   overlay: "rgba(0,0,0,0.6)",
   dark: "#000000",
@@ -162,8 +170,8 @@ const DarkColors: ColorScheme = {
   errorBorder: "rgba(255,69,58,0.25)",
 
   // Completed states
-  completedCard: "rgba(48,209,88,0.12)",
-  completedBorder: "rgba(48,209,88,0.3)",
+  completedCard: "rgba(52,211,153,0.10)",
+  completedBorder: "rgba(52,211,153,0.30)",
 
   // Muscle group colors (brighter for dark mode)
   muscleChest: "#F87171",
@@ -175,15 +183,23 @@ const DarkColors: ColorScheme = {
   muscleCardio: "#22D3EE",
 
   // Achievement tier colors
-  tierBronze: "#D4956A",
-  tierSilver: "#D1D5DB",
-  tierGold: "#FDE047",
-  tierDiamond: "#67E8F9",
+  tierBronze: "#D99A6C",
+  tierSilver: "#C7CBD1",
+  tierGold: "#F2C94C",
+  tierDiamond: "#7DD3FC",
 
   // XP bar
   xpBarBackground: "#374151",
   xpBarFill: "#818CF8",
   xpText: "#818CF8",
+
+  // v4 additions
+  card2: "#1B1E24",
+  primaryText: "#60A5FA",
+  primaryTint: "rgba(96,165,250,0.15)",
+  gold: "#F2C94C",
+  goldTint: "rgba(242,201,76,0.14)",
+  thumb: "#0B0D11",
 };
 
 // Default export for backward compatibility (light mode)
