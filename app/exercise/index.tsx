@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, useWindowDimensions } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft, Search, X } from "lucide-react-native";
+import { ChevronLeft, Search, X, SearchX } from "lucide-react-native";
+import { Text, TextInput } from "@/components/ui/Text";
+import PressableScale from "@/components/ui/PressableScale";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { type LibraryExercise } from "@/mocks/exerciseLibrary";
@@ -13,7 +15,7 @@ import DemoTile from "@/components/DemoTile";
 
 const GROUP_ORDER: MuscleGroup[] = ["chest", "shoulders", "arms", "back", "legs", "core", "cardio"];
 const GUTTER = 20;
-const GAP = 10;
+const GAP = 12;
 
 export default function ExerciseLibraryScreen() {
   const router = useRouter();
@@ -25,8 +27,8 @@ export default function ExerciseLibraryScreen() {
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<MuscleGroup | "all">("all");
 
-  const tileWidth = Math.floor((width - GUTTER * 2 - GAP * 2) / 3);
-  const tileHeight = Math.round((tileWidth * 16) / 9);
+  const tileWidth = Math.floor((width - GUTTER * 2 - GAP) / 2);
+  const tileHeight = Math.round(tileWidth * 1.4);
 
   const available = useMemo(() => GROUP_ORDER.filter((g) => exercises.some((e) => e.muscleGroup === g)), [exercises]);
 
@@ -42,23 +44,12 @@ export default function ExerciseLibraryScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 28 }]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
-          <ChevronLeft size={24} color={colors.primaryText} />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-
-        <View>
-          <Text style={styles.title}>Exercise Library</Text>
-          <Text style={styles.subtitle}>{exercises.length} form demos · 8-second loops</Text>
-        </View>
-
+      <View style={styles.top}>
+        <PressableScale onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
+          <ChevronLeft size={22} color={colors.text} strokeWidth={2.6} />
+        </PressableScale>
         <View style={styles.search}>
-          <Search size={18} color={colors.textTertiary} />
+          <Search size={18} color={colors.textTertiary} strokeWidth={2.4} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -70,28 +61,39 @@ export default function ExerciseLibraryScreen() {
             accessibilityLabel="Search exercises"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => setQuery("")} hitSlop={10} accessibilityLabel="Clear search">
-              <X size={16} color={colors.textTertiary} />
-            </TouchableOpacity>
+            <Pressable onPress={() => setQuery("")} hitSlop={10} accessibilityLabel="Clear search">
+              <X size={17} color={colors.textTertiary} strokeWidth={2.4} />
+            </Pressable>
           )}
         </View>
+      </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.chips}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View>
+          <Text style={styles.title}>Exercise library</Text>
+          <Text style={styles.subtitle}>{exercises.length} form demos · 8-second loops</Text>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bleed} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled">
           {(["all", ...available] as const).map((g) => {
             const on = group === g;
             return (
-              <TouchableOpacity
+              <PressableScale
                 key={g}
                 onPress={() => setGroup(g)}
-                style={[styles.chip, on && { backgroundColor: colors.text, borderColor: colors.text }]}
+                haptic="select"
+                style={[styles.chip, on && { backgroundColor: colors.text }]}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
               >
                 {g !== "all" && <View style={[styles.chipDot, { backgroundColor: muscleColor(g, colors) }]} />}
-                <Text style={[styles.chipText, on && { color: colors.background }]}>
-                  {g === "all" ? "All" : MUSCLE_GROUP_LABELS[g]}
-                </Text>
-              </TouchableOpacity>
+                <Text style={[styles.chipText, on && { color: colors.background }]}>{g === "all" ? "All" : MUSCLE_GROUP_LABELS[g]}</Text>
+              </PressableScale>
             );
           })}
         </ScrollView>
@@ -99,26 +101,26 @@ export default function ExerciseLibraryScreen() {
         {sections.map(({ group: g, items }) => (
           <View key={g} style={styles.section}>
             <View style={styles.sectionHead}>
-              <View style={[styles.sectionBar, { backgroundColor: muscleColor(g, colors) }]} />
+              <View style={[styles.sectionDot, { backgroundColor: muscleColor(g, colors) }]} />
               <Text style={styles.sectionTitle}>{MUSCLE_GROUP_LABELS[g]}</Text>
-              <View style={styles.countPill}>
-                <Text style={styles.countText}>{items.length}</Text>
-              </View>
+              <Text style={styles.count}>{items.length}</Text>
             </View>
             <View style={styles.grid}>
               {items.map((ex) => (
-                <View key={ex.slug} style={{ width: tileWidth, gap: 6 }}>
-                  <DemoTile slug={ex.slug} width={tileWidth} height={tileHeight} showLabel={false} />
-                  <Text style={styles.itemName} numberOfLines={2}>{ex.name}</Text>
-                  <Text style={styles.itemTargets} numberOfLines={2}>{ex.targetArea}</Text>
-                </View>
+                <DemoTile key={ex.slug} slug={ex.slug} width={tileWidth} height={tileHeight} size="lg" />
               ))}
             </View>
           </View>
         ))}
 
         {sections.length === 0 && (
-          <Text style={styles.empty}>No exercises match “{query}”.</Text>
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <SearchX size={24} color={colors.textTertiary} />
+            </View>
+            <Text style={styles.emptyTitle}>No matches</Text>
+            <Text style={styles.emptyBody}>Nothing matches “{query.trim()}”. Try a muscle group or a shorter name.</Text>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -128,44 +130,26 @@ export default function ExerciseLibraryScreen() {
 const createStyles = (colors: ColorScheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    scroll: { paddingHorizontal: GUTTER, gap: 18 },
-    back: { flexDirection: "row", alignItems: "center", height: 44, alignSelf: "flex-start", marginLeft: -6 },
-    backText: { fontSize: 17, fontWeight: "600", color: colors.primaryText },
-    title: { fontSize: 32, fontWeight: "800", letterSpacing: -1.1, lineHeight: 38, color: colors.text },
-    subtitle: { fontSize: 14, fontWeight: "600", color: colors.textTertiary, marginTop: 2 },
-    search: {
-      height: 48,
-      borderRadius: 14,
-      backgroundColor: colors.fill,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      paddingHorizontal: 14,
-    },
-    searchInput: { flex: 1, height: "100%", fontSize: 16, fontWeight: "600", color: colors.text },
-    bleed: { marginHorizontal: -GUTTER },
+    top: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: GUTTER, paddingTop: 10, paddingBottom: 10 },
+    back: { width: 46, height: 46, borderRadius: 23, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
+    search: { flex: 1, height: 46, borderRadius: 23, backgroundColor: colors.fill, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 16 },
+    searchInput: { flex: 1, height: "100%", fontSize: 15, fontWeight: "600", color: colors.text },
+    scroll: { paddingHorizontal: GUTTER, paddingTop: 8, gap: 18 },
+    title: { fontSize: 34, fontWeight: "800", letterSpacing: -1.3, lineHeight: 40, color: colors.text },
+    subtitle: { fontSize: 14, fontWeight: "600", color: colors.textTertiary, marginTop: 3 },
+    bleed: { marginHorizontal: -GUTTER, flexGrow: 0 },
     chips: { gap: 8, paddingHorizontal: GUTTER },
-    chip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 7,
-      height: 40,
-      paddingHorizontal: 14,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: colors.separator,
-      backgroundColor: colors.cardBackground,
-    },
+    chip: { flexDirection: "row", alignItems: "center", gap: 7, height: 40, paddingHorizontal: 15, borderRadius: 999, backgroundColor: colors.fill },
     chipDot: { width: 8, height: 8, borderRadius: 4 },
     chipText: { fontSize: 14, fontWeight: "700", color: colors.text },
     section: { gap: 12 },
-    sectionHead: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 4 },
-    sectionBar: { width: 4, height: 22, borderRadius: 2 },
-    sectionTitle: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5, color: colors.text },
-    countPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: colors.fill },
-    countText: { fontSize: 13, fontWeight: "700", color: colors.textTertiary },
-    grid: { flexDirection: "row", flexWrap: "wrap", columnGap: GAP, rowGap: 14 },
-    itemName: { fontSize: 13, fontWeight: "700", lineHeight: 16, color: colors.text },
-    itemTargets: { fontSize: 11, fontWeight: "500", lineHeight: 14, color: colors.textTertiary, marginTop: -3 },
-    empty: { paddingVertical: 40, textAlign: "center", fontSize: 15, fontWeight: "600", color: colors.textTertiary },
+    sectionHead: { flexDirection: "row", alignItems: "center", gap: 9, paddingTop: 4 },
+    sectionDot: { width: 10, height: 10, borderRadius: 5 },
+    sectionTitle: { fontSize: 21, fontWeight: "800", letterSpacing: -0.6, color: colors.text },
+    count: { fontSize: 15, fontWeight: "700", color: colors.textTertiary, fontVariant: ["tabular-nums"] },
+    grid: { flexDirection: "row", flexWrap: "wrap", gap: GAP },
+    empty: { alignItems: "center", gap: 6, paddingVertical: 48 },
+    emptyIcon: { width: 56, height: 56, borderRadius: 20, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+    emptyTitle: { fontSize: 18, fontWeight: "800", color: colors.text },
+    emptyBody: { fontSize: 14, fontWeight: "500", lineHeight: 20, color: colors.textTertiary, textAlign: "center", maxWidth: 260 },
   });

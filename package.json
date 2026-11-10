@@ -7,10 +7,11 @@
     "start-web": "bunx rork start -p 9g2myz6gzt5epfyladwym --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p 9g2myz6gzt5epfyladwym --web --tunnel",
     "lint": "expo lint",
-    "test": "bun utils/workoutStats.test.ts && bun utils/progressStats.test.ts && bun constants/theme.test.ts",
+    "test": "bun utils/workoutStats.test.ts && bun utils/progressStats.test.ts && bun utils/routinePlanning.test.ts && bun constants/theme.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo-google-fonts/plus-jakarta-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.3",
     "@nkzw/create-context-hook": "^1.1.0",
     "@react-native-async-storage/async-storage": "2.2.0",

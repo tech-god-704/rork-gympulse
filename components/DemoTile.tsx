@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet } from "react-native";
+import { Text } from "@/components/ui/Text";
+import PressableScale from "@/components/ui/PressableScale";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,10 +18,12 @@ interface Props {
   height: number;
   /** Show the name and muscle label over the bottom of the tile. */
   showLabel?: boolean;
+  /** "lg" uses bigger label type for the two-column library grid. */
+  size?: "md" | "lg";
 }
 
 /** Tall 9:16 video tile used by the Today strip and the Exercise Library grid. */
-export default function DemoTile({ slug, width, height, showLabel = true }: Props) {
+export default function DemoTile({ slug, width, height, showLabel = true, size = "md" }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -31,9 +35,9 @@ export default function DemoTile({ slug, width, height, showLabel = true }: Prop
   const accent = muscleColor(demo.muscleGroup, colors);
 
   return (
-    <TouchableOpacity
+    <PressableScale
       onPress={() => router.push({ pathname: "/exercise/[slug]", params: { slug } })}
-      activeOpacity={0.85}
+      scaleTo={0.96}
       accessibilityRole="button"
       accessibilityLabel={`Watch ${demo.name} form demo`}
       style={[styles.tile, { width, height }]}
@@ -42,59 +46,50 @@ export default function DemoTile({ slug, width, height, showLabel = true }: Prop
         <Image source={{ uri: media.thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
       ) : null}
       <LinearGradient
-        colors={["transparent", tint(accent, 0.35), "rgba(0,0,0,0.78)"]}
-        locations={[0.35, 0.72, 1]}
+        colors={["rgba(0,0,0,0.28)", "transparent", tint(accent, 0.3), "rgba(0,0,0,0.86)"]}
+        locations={[0, 0.3, 0.7, 1]}
         style={StyleSheet.absoluteFill}
       />
       <View style={styles.timecode}>
         <Text style={styles.timecodeText}>0:08</Text>
       </View>
       <View style={styles.play}>
-        <Play size={16} color="#fff" fill="#fff" />
+        <Play size={11} color="#fff" fill="#fff" />
       </View>
       {showLabel && (
         <View style={styles.label}>
-          <Text style={styles.name} numberOfLines={2}>{demo.name}</Text>
+          <Text style={[styles.name, size === "lg" && styles.nameLg]} numberOfLines={2}>{demo.name}</Text>
           <View style={styles.muscleRow}>
             <View style={[styles.dot, { backgroundColor: accent }]} />
-            <Text style={styles.muscle}>{MUSCLE_GROUP_LABELS[demo.muscleGroup]}</Text>
+            <Text style={styles.muscle} numberOfLines={1}>{size === "lg" ? demo.targetArea || MUSCLE_GROUP_LABELS[demo.muscleGroup] : MUSCLE_GROUP_LABELS[demo.muscleGroup]}</Text>
           </View>
         </View>
       )}
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
 const createStyles = (colors: ColorScheme) =>
   StyleSheet.create({
-    tile: {
-      borderRadius: 18,
-      overflow: "hidden",
-      backgroundColor: colors.thumb,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    timecode: {
-      position: "absolute",
-      top: 10,
-      left: 10,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 6,
-      backgroundColor: "rgba(0,0,0,0.45)",
-    },
-    timecodeText: { fontSize: 10, fontWeight: "700", color: "#fff", fontVariant: ["tabular-nums"] },
+    tile: { borderRadius: 22, overflow: "hidden", backgroundColor: colors.thumb },
+    timecode: { position: "absolute", top: 10, left: 10, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(0,0,0,0.5)" },
+    timecodeText: { fontSize: 10, fontWeight: "800", color: "#fff", fontVariant: ["tabular-nums"] },
     play: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: "rgba(255,255,255,0.22)",
+      position: "absolute",
+      top: 8,
+      right: 8,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: "rgba(255,255,255,0.24)",
       alignItems: "center",
       justifyContent: "center",
+      paddingLeft: 1,
     },
-    label: { position: "absolute", left: 10, right: 10, bottom: 10, gap: 3 },
-    name: { fontSize: 13, fontWeight: "800", color: "#fff", lineHeight: 16, letterSpacing: -0.2 },
+    label: { position: "absolute", left: 12, right: 12, bottom: 12, gap: 4 },
+    name: { fontSize: 14, fontWeight: "800", color: "#fff", lineHeight: 17, letterSpacing: -0.3 },
+    nameLg: { fontSize: 17, lineHeight: 21, letterSpacing: -0.4 },
     muscleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
     dot: { width: 6, height: 6, borderRadius: 3 },
-    muscle: { fontSize: 11, fontWeight: "600", color: "rgba(255,255,255,0.8)" },
+    muscle: { flex: 1, fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.82)" },
   });

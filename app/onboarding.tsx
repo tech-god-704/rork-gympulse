@@ -1,16 +1,15 @@
 import React, { useState, useRef, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Animated,
   Platform,
   KeyboardAvoidingView,
   ScrollView,
   Keyboard,
 } from "react-native";
+import { Text, TextInput } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Path } from "react-native-svg";

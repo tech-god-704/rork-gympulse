@@ -27,6 +27,7 @@ import {
   WeightUnit,
 } from "@/types";
 import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
+import { planSchedule, routineColorFor } from "@/utils/routinePlanning";
 import { generateId, getToday, getStartOfWeek, formatDate } from "@/utils/helpers";
 import { fromDisplayWeight } from "@/utils/units";
 import {
@@ -694,12 +695,24 @@ function useGymState() {
     [routines, saveRoutinesMutation]
   );
 
+  /**
+   * Add every routine in a split. Each one gets a color from the muscles it
+   * trains and, when `daysPerWeek` is given, its days of the week — so the
+   * split shows up on Today without any further setup.
+   */
   const addRoutinesFromTemplates = useCallback(
-    (templates: { name: string; emoji?: string; exercises: { name: string; muscleGroup: MuscleGroup; sets: number; reps: number; weight: number }[] }[]) => {
-      const newRoutines: Routine[] = templates.map((template) => ({
+    (
+      templates: { name: string; emoji?: string; exercises: { name: string; muscleGroup: MuscleGroup; sets: number; reps: number; weight: number }[] }[],
+      options: { daysPerWeek?: number } = {}
+    ) => {
+      const taken = routines.flatMap((r) => r.scheduledDays ?? []);
+      const schedule = options.daysPerWeek ? planSchedule(templates.length, options.daysPerWeek, taken) : [];
+      const newRoutines: Routine[] = templates.map((template, index) => ({
         id: generateId(),
         name: template.name,
         emoji: template.emoji,
+        color: routineColorFor(template.exercises.map((e) => e.muscleGroup)),
+        scheduledDays: schedule[index]?.length ? schedule[index] : undefined,
         exercises: template.exercises.map((e) => ({
           id: generateId(),
           exerciseId: BUILT_IN_EXERCISES.find((be) => be.name === e.name)?.id ?? generateId(),
@@ -974,6 +987,35 @@ function useGymState() {
         setDetails: ensureSetDetails(e).map((s) =>
           s.setNumber === setNumber ? { ...s, reps: Math.round(reps) } : s
         ),
+      }));
+    },
+    [mutateSessionExercise]
+  );
+
+  /**
+   * Change a set's weight and/or reps in one write. With `applyToFollowing`,
+   * the same values carry to the later sets that haven't been done yet — the
+   * usual case when you bump the working weight on set one.
+   */
+  const updateSet = useCallback(
+    (
+      routineExerciseId: string,
+      setNumber: number,
+      patch: { weight?: number; reps?: number },
+      applyToFollowing = false
+    ) => {
+      const weight = patch.weight != null && Number.isFinite(patch.weight) && patch.weight >= 0 ? patch.weight : undefined;
+      const reps =
+        patch.reps != null && Number.isFinite(patch.reps) && patch.reps >= 0 && patch.reps <= 999
+          ? Math.round(patch.reps)
+          : undefined;
+      if (weight == null && reps == null) return;
+      mutateSessionExercise(routineExerciseId, (e) => ({
+        ...e,
+        setDetails: ensureSetDetails(e).map((s) => {
+          const target = s.setNumber === setNumber || (applyToFollowing && s.setNumber > setNumber && !s.completed);
+          return target ? { ...s, weight: weight ?? s.weight, reps: reps ?? s.reps } : s;
+        }),
       }));
     },
     [mutateSessionExercise]
@@ -1395,6 +1437,7 @@ function useGymState() {
     toggleSetComplete,
     updateSetWeight,
     updateSetReps,
+    updateSet,
     addSetToExercise,
     removeSetFromExercise,
     completeWorkout,

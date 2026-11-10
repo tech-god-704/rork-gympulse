@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ViewStyle, StyleProp } from "react-native";
+import { View, StyleSheet, TouchableOpacity, Platform, ViewStyle, StyleProp } from "react-native";
+import { Text } from "@/components/ui/Text";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";

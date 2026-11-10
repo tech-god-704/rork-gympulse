@@ -102,6 +102,15 @@ const LightColors = {
   gold: "#A97C0A",
   goldTint: "rgba(234,179,8,0.16)",
   thumb: "#0F1218",
+  /** Bottom sheets and dialogs. */
+  sheet: "#FFFFFF",
+  /** Background for filled buttons with white labels. */
+  primaryFill: "#2563EB",
+  errorFill: "#DC2626",
+  /** Flame and streak accents. */
+  flame: "#F97316",
+  flameTint: "rgba(249,115,22,0.12)",
+  successTint: "rgba(22,163,74,0.12)",
 };
 
 const DarkColors: ColorScheme = {
@@ -200,6 +209,12 @@ const DarkColors: ColorScheme = {
   gold: "#F2C94C",
   goldTint: "rgba(242,201,76,0.14)",
   thumb: "#0B0D11",
+  sheet: "#16181E",
+  primaryFill: "#2F6BEA",
+  errorFill: "#E5484D",
+  flame: "#FB923C",
+  flameTint: "rgba(251,146,60,0.16)",
+  successTint: "rgba(52,211,153,0.14)",
 };
 
 // Default export for backward compatibility (light mode)

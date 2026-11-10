@@ -1,10 +1,12 @@
-import React, { useMemo } from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import React from "react";
+import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { Play, Film } from "lucide-react-native";
+import { Play, Dumbbell } from "lucide-react-native";
+import PressableScale from "@/components/ui/PressableScale";
 import { useTheme } from "@/providers/ThemeProvider";
-import { type ColorScheme } from "@/constants/colors";
+import { muscleColor, tint } from "@/constants/theme";
+import { MuscleGroup } from "@/types";
 import { useExerciseLibrary, useExerciseVideo } from "@/hooks/useExerciseVideos";
 
 interface Props {
@@ -13,56 +15,75 @@ interface Props {
   exerciseName?: string;
   width?: number;
   height?: number;
+  radius?: number;
+  /** Tint for the fallback tile when the exercise has no demo. */
+  muscleGroup?: MuscleGroup;
+  /** Set false to show the image without making it a button. */
+  interactive?: boolean;
 }
 
-/** Tappable 9:16 thumbnail that opens the form guide. Renders nothing when the exercise has no demo. */
-export default function ExerciseDemoThumb({ slug, exerciseName, width = 40, height = 56 }: Props) {
+/**
+ * 9:16 exercise thumbnail. Opens the form guide when the exercise has a demo;
+ * otherwise it's a quiet muscle-tinted tile so rows still line up.
+ */
+export default function ExerciseDemoThumb({ slug, exerciseName, width = 44, height = 60, radius = 12, muscleGroup, interactive = true }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors), [colors]);
   const { getBySlug, findByName } = useExerciseLibrary();
   const demo = slug ? getBySlug(slug) : exerciseName ? findByName(exerciseName) : undefined;
   const media = useExerciseVideo(demo?.slug);
+  const frame = { width, height, borderRadius: radius };
 
-  if (!demo) return null;
+  if (!demo) {
+    const accent = muscleColor(muscleGroup ?? "core", colors);
+    return (
+      <View style={[styles.frame, frame, { backgroundColor: tint(accent, colors.scheme === "dark" ? 0.16 : 0.12) }]}>
+        <Dumbbell size={Math.min(width * 0.42, 20)} color={accent} />
+      </View>
+    );
+  }
 
-  return (
-    <TouchableOpacity
-      onPress={() => router.push({ pathname: "/exercise/[slug]", params: { slug: demo.slug } })}
-      activeOpacity={0.75}
-      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-      accessibilityRole="button"
-      accessibilityLabel={`Watch ${demo.name} form demo`}
-      style={[styles.frame, { width, height }]}
-    >
+  const content = (
+    <>
       {media?.thumbnailUrl ? (
         <Image source={{ uri: media.thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-      ) : (
-        <Film size={16} color="rgba(255,255,255,0.4)" />
-      )}
+      ) : null}
       <View style={styles.play}>
-        <Play size={10} color="#fff" fill="#fff" />
+        <Play size={8} color="#fff" fill="#fff" />
       </View>
-    </TouchableOpacity>
+    </>
+  );
+
+  if (!interactive) {
+    return <View style={[styles.frame, frame, { backgroundColor: colors.thumb }]}>{content}</View>;
+  }
+
+  return (
+    <PressableScale
+      onPress={() => router.push({ pathname: "/exercise/[slug]", params: { slug: demo.slug } })}
+      scaleTo={0.92}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={`Watch ${demo.name} form demo`}
+      style={[styles.frame, frame, { backgroundColor: colors.thumb }]}
+    >
+      {content}
+    </PressableScale>
   );
 }
 
-const createStyles = (colors: ColorScheme) =>
-  StyleSheet.create({
-    frame: {
-      borderRadius: 8,
-      overflow: "hidden",
-      backgroundColor: colors.thumb,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    play: {
-      position: "absolute",
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      backgroundColor: "rgba(0,0,0,0.55)",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-  });
+const styles = StyleSheet.create({
+  frame: { overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  play: {
+    position: "absolute",
+    right: 4,
+    bottom: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingLeft: 1,
+  },
+});

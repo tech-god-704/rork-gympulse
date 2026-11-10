@@ -1,17 +1,16 @@
 import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Platform,
   RefreshControl,
   Alert,
   Share,
   Modal,
 } from "react-native";
+import { Text, TextInput } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Flame, Crown, ChevronRight, Download, Check } from "lucide-react-native";
