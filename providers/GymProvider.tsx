@@ -27,6 +27,7 @@ import {
   WeightUnit,
 } from "@/types";
 import { BUILT_IN_EXERCISES } from "@/mocks/exercises";
+import { planSchedule, routineColorFor } from "@/utils/routinePlanning";
 import { generateId, getToday, getStartOfWeek, formatDate } from "@/utils/helpers";
 import { fromDisplayWeight } from "@/utils/units";
 import {
@@ -694,12 +695,24 @@ function useGymState() {
     [routines, saveRoutinesMutation]
   );
 
+  /**
+   * Add every routine in a split. Each one gets a color from the muscles it
+   * trains and, when `daysPerWeek` is given, its days of the week — so the
+   * split shows up on Today without any further setup.
+   */
   const addRoutinesFromTemplates = useCallback(
-    (templates: { name: string; emoji?: string; exercises: { name: string; muscleGroup: MuscleGroup; sets: number; reps: number; weight: number }[] }[]) => {
-      const newRoutines: Routine[] = templates.map((template) => ({
+    (
+      templates: { name: string; emoji?: string; exercises: { name: string; muscleGroup: MuscleGroup; sets: number; reps: number; weight: number }[] }[],
+      options: { daysPerWeek?: number } = {}
+    ) => {
+      const taken = routines.flatMap((r) => r.scheduledDays ?? []);
+      const schedule = options.daysPerWeek ? planSchedule(templates.length, options.daysPerWeek, taken) : [];
+      const newRoutines: Routine[] = templates.map((template, index) => ({
         id: generateId(),
         name: template.name,
         emoji: template.emoji,
+        color: routineColorFor(template.exercises.map((e) => e.muscleGroup)),
+        scheduledDays: schedule[index]?.length ? schedule[index] : undefined,
         exercises: template.exercises.map((e) => ({
           id: generateId(),
           exerciseId: BUILT_IN_EXERCISES.find((be) => be.name === e.name)?.id ?? generateId(),

@@ -18,10 +18,12 @@ interface Props {
   height: number;
   /** Show the name and muscle label over the bottom of the tile. */
   showLabel?: boolean;
+  /** "lg" uses bigger label type for the two-column library grid. */
+  size?: "md" | "lg";
 }
 
 /** Tall 9:16 video tile used by the Today strip and the Exercise Library grid. */
-export default function DemoTile({ slug, width, height, showLabel = true }: Props) {
+export default function DemoTile({ slug, width, height, showLabel = true, size = "md" }: Props) {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -56,10 +58,10 @@ export default function DemoTile({ slug, width, height, showLabel = true }: Prop
       </View>
       {showLabel && (
         <View style={styles.label}>
-          <Text style={styles.name} numberOfLines={2}>{demo.name}</Text>
+          <Text style={[styles.name, size === "lg" && styles.nameLg]} numberOfLines={2}>{demo.name}</Text>
           <View style={styles.muscleRow}>
             <View style={[styles.dot, { backgroundColor: accent }]} />
-            <Text style={styles.muscle}>{MUSCLE_GROUP_LABELS[demo.muscleGroup]}</Text>
+            <Text style={styles.muscle} numberOfLines={1}>{size === "lg" ? demo.targetArea || MUSCLE_GROUP_LABELS[demo.muscleGroup] : MUSCLE_GROUP_LABELS[demo.muscleGroup]}</Text>
           </View>
         </View>
       )}
@@ -86,7 +88,8 @@ const createStyles = (colors: ColorScheme) =>
     },
     label: { position: "absolute", left: 12, right: 12, bottom: 12, gap: 4 },
     name: { fontSize: 14, fontWeight: "800", color: "#fff", lineHeight: 17, letterSpacing: -0.3 },
+    nameLg: { fontSize: 17, lineHeight: 21, letterSpacing: -0.4 },
     muscleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
     dot: { width: 6, height: 6, borderRadius: 3 },
-    muscle: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.82)" },
+    muscle: { flex: 1, fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.82)" },
   });

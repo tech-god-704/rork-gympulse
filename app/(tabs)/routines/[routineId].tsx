@@ -1,22 +1,13 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  Alert,
-  Platform,
-  Animated,
-  PanResponder,
-  Switch,
-  KeyboardAvoidingView,
-} from "react-native";
-import { Text, TextInput } from "@/components/ui/Text";
+import { View, StyleSheet, ScrollView, Animated, PanResponder, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, Trash2, Search, Check, X, Play } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import { Text, TextInput } from "@/components/ui/Text";
+import Sheet from "@/components/ui/Sheet";
+import PressableScale from "@/components/ui/PressableScale";
+import { useDialog } from "@/components/ui/Dialog";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
 import { useGym } from "@/providers/GymProvider";
@@ -34,8 +25,10 @@ import {
 } from "@/types";
 import { generateId } from "@/utils/helpers";
 import { formatWeight, toDisplayWeight, fromDisplayWeight, weightStep, trimNumber } from "@/utils/units";
-import { elevation, muscleColor } from "@/constants/theme";
+import { card, glow, gradient, muscleColor } from "@/constants/theme";
+import { haptic } from "@/utils/haptics";
 import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
+import { useStartWorkout } from "@/hooks/useStartWorkout";
 import ExerciseDemoThumb from "@/components/ExerciseDemoThumb";
 
 const MUSCLE_GROUPS: MuscleGroup[] = ["chest", "back", "shoulders", "arms", "legs", "core", "cardio"];
@@ -73,18 +66,6 @@ function summarize(exercise: RoutineExercise, unit: WeightUnit): string {
       ? formatWeight(weights[0], unit)
       : `${formatWeight(Math.min(...weights), unit, { withUnit: false, bodyweightLabel: false })}-${formatWeight(Math.max(...weights), unit)}`;
   return `${configs.length} × ${r} · ${w}`;
-}
-
-// ─── Demo thumb with a "no demo" fallback ───────────────────
-function Thumb({ name, width, height }: { name: string; width: number; height: number }) {
-  const { colors } = useTheme();
-  const { findByName } = useExerciseLibrary();
-  if (findByName(name)) return <ExerciseDemoThumb exerciseName={name} width={width} height={height} />;
-  return (
-    <View style={{ width, height, borderRadius: 9, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" }}>
-      <Text style={{ fontSize: 9, fontWeight: "800", lineHeight: 11, color: colors.textTertiary, textAlign: "center" }}>{"NO\nDEMO"}</Text>
-    </View>
-  );
 }
 
 // ─── Swipeable exercise row ─────────────────────────────────
@@ -125,7 +106,7 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
       onPanResponderRelease: (_, g) => {
         const base = isOpen.current ? -DELETE_WIDTH : 0;
         const open = base + g.dx < -DELETE_WIDTH / 2;
-        if (open && !isOpen.current && Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (open && !isOpen.current) haptic.light();
         Animated.spring(translateX, { toValue: open ? -DELETE_WIDTH : 0, useNativeDriver: true, friction: 8 }).start();
         isOpen.current = open;
       },
@@ -141,7 +122,7 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
   return (
     <View style={[styles.wrap, !last && styles.border]}>
       <Animated.View style={[styles.deleteAction, { opacity: deleteOpacity }]}>
-        <TouchableOpacity
+        <Pressable
           style={styles.deleteBtn}
           onPress={() => {
             snap(false);
@@ -152,13 +133,12 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
         >
           <Trash2 size={20} color="#fff" />
           <Text style={styles.deleteText}>Delete</Text>
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
 
       <Animated.View style={[styles.fg, { transform: [{ translateX }] }]} {...(reordering ? {} : pan.panHandlers)}>
-        <TouchableOpacity
+        <Pressable
           style={styles.row}
-          activeOpacity={reordering ? 1 : 0.7}
           onPress={() => {
             if (reordering) return;
             if (isOpen.current) snap(false);
@@ -167,7 +147,7 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
           accessibilityRole="button"
           accessibilityLabel={`Edit ${exercise.exerciseName}, exercise ${index + 1}`}
         >
-          <Thumb name={exercise.exerciseName} width={36} height={64} />
+          <ExerciseDemoThumb exerciseName={exercise.exerciseName} width={36} height={64} />
           <View style={styles.info}>
             <Text style={styles.name} numberOfLines={1}>{exercise.exerciseName}</Text>
             <View style={styles.metaRow}>
@@ -177,7 +157,7 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
           </View>
           {reordering ? (
             <View style={styles.reorder}>
-              <TouchableOpacity
+              <Pressable
                 onPress={() => onMove("up")}
                 disabled={!canMoveUp}
                 style={[styles.reorderBtn, !canMoveUp && styles.dim]}
@@ -185,8 +165,8 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
                 accessibilityLabel={`Move ${exercise.exerciseName} earlier`}
               >
                 <ChevronUp size={18} color={colors.text} strokeWidth={2.4} />
-              </TouchableOpacity>
-              <TouchableOpacity
+              </Pressable>
+              <Pressable
                 onPress={() => onMove("down")}
                 disabled={!canMoveDown}
                 style={[styles.reorderBtn, !canMoveDown && styles.dim]}
@@ -194,12 +174,12 @@ function ExerciseRow({ exercise, index, last, reordering, weightUnit, onDelete, 
                 accessibilityLabel={`Move ${exercise.exerciseName} later`}
               >
                 <ChevronDown size={18} color={colors.text} strokeWidth={2.4} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           ) : (
             <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2.4} />
           )}
-        </TouchableOpacity>
+        </Pressable>
       </Animated.View>
     </View>
   );
@@ -222,65 +202,6 @@ const createRowStyles = (colors: ColorScheme) =>
     reorder: { flexDirection: "row", gap: 4 },
     reorderBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
     dim: { opacity: 0.3 },
-  });
-
-// ─── Bottom sheet shell ─────────────────────────────────────
-function Sheet({
-  visible,
-  title,
-  doneLabel = "Done",
-  onDone,
-  onDismiss,
-  children,
-}: {
-  visible: boolean;
-  title: string;
-  doneLabel?: string;
-  onDone: () => void;
-  onDismiss: () => void;
-  children: React.ReactNode;
-}) {
-  const { colors } = useTheme();
-  const styles = useMemo(() => createSheetStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.root}>
-        <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onDismiss} accessibilityLabel="Close" />
-        <View style={styles.sheet}>
-          <View style={styles.handleRow}>
-            <View style={styles.handle} />
-          </View>
-          <View style={styles.head}>
-            <Text style={styles.title}>{title}</Text>
-            <TouchableOpacity onPress={onDone} style={styles.done} accessibilityRole="button">
-              <Text style={styles.doneText}>{doneLabel}</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + 32 }]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {children}
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-const createSheetStyles = (colors: ColorScheme) =>
-  StyleSheet.create({
-    root: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" },
-    sheet: { maxHeight: "88%", backgroundColor: colors.cardBackground, borderTopLeftRadius: 26, borderTopRightRadius: 26, ...elevation(3, colors) },
-    handleRow: { alignItems: "center", paddingTop: 8 },
-    handle: { width: 38, height: 5, borderRadius: 3, backgroundColor: colors.fillStrong },
-    head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingTop: 4, paddingBottom: 8, paddingLeft: 20, paddingRight: 12 },
-    title: { fontSize: 18, fontWeight: "800", letterSpacing: -0.4, color: colors.text },
-    done: { height: 44, paddingHorizontal: 8, justifyContent: "center" },
-    doneText: { fontSize: 16, fontWeight: "800", color: colors.primaryText },
-    body: { paddingHorizontal: 20, gap: 14 },
   });
 
 // ─── Edit exercise sheet ────────────────────────────────────
@@ -325,7 +246,7 @@ function EditExerciseSheet({
       weight: fromDisplayWeight(Math.max(0, parseFloat(r.weight) || 0), weightUnit),
     }));
     onSave(exercise.id, configs.length ? configs : [{ reps: DEFAULT_REPS, weight: 0 }]);
-    if (Platform.OS !== "web") void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    haptic.success();
   }, [exercise, rows, weightUnit, onSave]);
 
   const update = (i: number, field: keyof SetRow, value: string) =>
@@ -343,11 +264,11 @@ function EditExerciseSheet({
   const demo = exercise ? findByName(exercise.exerciseName) : undefined;
 
   return (
-    <Sheet visible={exercise !== null} title="Edit exercise" doneLabel="Save" onDone={save} onDismiss={onClose}>
+    <Sheet visible={exercise !== null} title="Edit sets" actionLabel="Save" onAction={save} onClose={onClose}>
       {exercise && (
         <>
           <View style={styles.head}>
-            <Thumb name={exercise.exerciseName} width={40} height={71} />
+            <ExerciseDemoThumb exerciseName={exercise.exerciseName} width={40} height={71} />
             <View style={styles.headInfo}>
               <Text style={styles.name}>{exercise.exerciseName}</Text>
               <View style={styles.metaRow}>
@@ -356,7 +277,7 @@ function EditExerciseSheet({
               </View>
             </View>
             {demo && (
-              <TouchableOpacity
+              <Pressable
                 style={styles.watch}
                 onPress={() => {
                   onClose();
@@ -366,7 +287,7 @@ function EditExerciseSheet({
               >
                 <Play size={13} color={colors.primaryText} fill={colors.primaryText} />
                 <Text style={styles.watchText}>Watch form</Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
 
@@ -382,13 +303,13 @@ function EditExerciseSheet({
               <Text style={styles.setNum}>{i + 1}</Text>
               {(["weight", "reps"] as const).map((field) => (
                 <View key={field} style={styles.stepper}>
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.stepBtn}
                     onPress={() => bump(i, field, field === "weight" ? -step : -1)}
                     accessibilityLabel={`Decrease ${field} for set ${i + 1}`}
                   >
                     <Text style={styles.stepText}>−</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                   <TextInput
                     style={styles.stepValue}
                     value={row[field]}
@@ -397,16 +318,16 @@ function EditExerciseSheet({
                     selectTextOnFocus
                     accessibilityLabel={`${field === "weight" ? "Weight" : "Reps"} for set ${i + 1}`}
                   />
-                  <TouchableOpacity
+                  <Pressable
                     style={styles.stepBtn}
                     onPress={() => bump(i, field, field === "weight" ? step : 1)}
                     accessibilityLabel={`Increase ${field} for set ${i + 1}`}
                   >
                     <Text style={styles.stepText}>+</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               ))}
-              <TouchableOpacity
+              <Pressable
                 style={[styles.remove, rows.length <= 1 && styles.dim]}
                 disabled={rows.length <= 1}
                 onPress={() => setRows((rs) => rs.filter((_, idx) => idx !== i))}
@@ -414,17 +335,17 @@ function EditExerciseSheet({
                 accessibilityLabel={`Remove set ${i + 1}`}
               >
                 <X size={18} color={colors.error} strokeWidth={2.4} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
           ))}
 
-          <TouchableOpacity
+          <Pressable
             style={styles.addSet}
             onPress={() => setRows((rs) => [...rs, rs[rs.length - 1] ?? { reps: String(DEFAULT_REPS), weight: "0" }])}
             accessibilityRole="button"
           >
             <Text style={styles.addSetText}>+ Add set</Text>
-          </TouchableOpacity>
+          </Pressable>
         </>
       )}
     </Sheet>
@@ -524,7 +445,7 @@ function AddExerciseSheet({
   };
 
   return (
-    <Sheet visible={visible} title="Add exercises" onDone={onClose} onDismiss={onClose}>
+    <Sheet visible={visible} title="Add exercises" onClose={onClose}>
       <View style={styles.search}>
         <Search size={18} color={colors.textTertiary} />
         <TextInput
@@ -538,9 +459,9 @@ function AddExerciseSheet({
           accessibilityLabel="Search exercises"
         />
         {query.length > 0 && (
-          <TouchableOpacity onPress={() => setQuery("")} hitSlop={10} accessibilityLabel="Clear search">
+          <Pressable onPress={() => setQuery("")} hitSlop={10} accessibilityLabel="Clear search">
             <X size={16} color={colors.textTertiary} />
-          </TouchableOpacity>
+          </Pressable>
         )}
       </View>
 
@@ -548,7 +469,7 @@ function AddExerciseSheet({
         {(["all", ...MUSCLE_GROUPS] as const).map((g) => {
           const on = group === g;
           return (
-            <TouchableOpacity
+            <Pressable
               key={g}
               onPress={() => setGroup(g)}
               style={[styles.chip, on && { backgroundColor: colors.text }]}
@@ -557,7 +478,7 @@ function AddExerciseSheet({
             >
               {g !== "all" && <View style={[styles.dot8, { backgroundColor: muscleColor(g, colors) }]} />}
               <Text style={[styles.chipText, on && { color: colors.background }]}>{g === "all" ? "All" : MUSCLE_GROUP_LABELS[g]}</Text>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </ScrollView>
@@ -578,7 +499,7 @@ function AddExerciseSheet({
             {MUSCLE_GROUPS.map((g) => {
               const on = customGroup === g;
               return (
-                <TouchableOpacity
+                <Pressable
                   key={g}
                   onPress={() => setCustomGroup(g)}
                   style={[styles.customChip, on && { backgroundColor: colors.text }]}
@@ -587,24 +508,24 @@ function AddExerciseSheet({
                 >
                   <View style={[styles.dot7, { backgroundColor: muscleColor(g, colors) }]} />
                   <Text style={[styles.customChipText, on && { color: colors.background }]}>{MUSCLE_GROUP_LABELS[g]}</Text>
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </View>
-          <TouchableOpacity
+          <Pressable
             style={[styles.customBtn, !customName.trim() && styles.dim]}
             disabled={!customName.trim()}
             onPress={createCustom}
             accessibilityRole="button"
           >
             <Text style={styles.customBtnText}>Create &amp; add</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       ) : (
-        <TouchableOpacity style={styles.customOpen} onPress={openCustom} accessibilityRole="button">
+        <Pressable style={styles.customOpen} onPress={openCustom} accessibilityRole="button">
           <Plus size={16} color={colors.text} strokeWidth={2.6} />
           <Text style={styles.customOpenText}>Create custom exercise</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       <View>
@@ -614,17 +535,17 @@ function AddExerciseSheet({
           return (
             <View key={ex.id} style={[styles.item, i < list.length - 1 && styles.itemBorder]}>
               {demo ? (
-                <TouchableOpacity
+                <Pressable
                   onPress={() => {
                     onClose();
                     router.push({ pathname: "/exercise/[slug]", params: { slug: demo.slug } });
                   }}
                   accessibilityLabel={`Watch ${ex.name} form demo`}
                 >
-                  <Thumb name={ex.name} width={34} height={60} />
-                </TouchableOpacity>
+                  <ExerciseDemoThumb exerciseName={ex.name} width={34} height={60} />
+                </Pressable>
               ) : (
-                <Thumb name={ex.name} width={34} height={60} />
+                <ExerciseDemoThumb exerciseName={ex.name} width={34} height={60} />
               )}
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName} numberOfLines={1}>{ex.name}</Text>
@@ -641,14 +562,14 @@ function AddExerciseSheet({
                   <Check size={18} color={colors.success} strokeWidth={3} />
                 </View>
               ) : (
-                <TouchableOpacity
+                <Pressable
                   style={styles.addBtn}
                   onPress={() => onAdd(ex)}
                   accessibilityRole="button"
                   accessibilityLabel={`Add ${ex.name}`}
                 >
                   <Plus size={20} color={colors.primaryText} strokeWidth={2.6} />
-                </TouchableOpacity>
+                </Pressable>
               )}
             </View>
           );
@@ -716,6 +637,8 @@ export default function RoutineDetailScreen() {
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const dialog = useDialog();
+  const startRoutine = useStartWorkout();
   const { routineId } = useLocalSearchParams<{ routineId: string }>();
   const {
     routines,
@@ -760,7 +683,7 @@ export default function RoutineDetailScreen() {
     (exercise: Exercise) => {
       if (!routineId || addedNames.has(exercise.name.toLowerCase())) return;
       addExerciseToRoutine(routineId, buildEntry(exercise));
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      haptic.light();
     },
     [routineId, addedNames, addExerciseToRoutine, buildEntry],
   );
@@ -768,14 +691,12 @@ export default function RoutineDetailScreen() {
   const handleCreateCustom = useCallback(
     (exerciseName: string, group: MuscleGroup) => {
       if (!routineId) return;
-      if (addedNames.has(exerciseName.toLowerCase())) {
-        Alert.alert("Already added", `${exerciseName} is already in this routine.`);
-        return;
-      }
+      // The sheet is a modal, so a dialog can't be shown over it; a duplicate is simply ignored.
+      if (addedNames.has(exerciseName.toLowerCase())) return;
       const exercise = addCustomExercise(exerciseName, group);
       if (!exercise) return;
       addExerciseToRoutine(routineId, buildEntry(exercise));
-      if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      haptic.light();
     },
     [routineId, addedNames, addCustomExercise, addExerciseToRoutine, buildEntry],
   );
@@ -796,18 +717,17 @@ export default function RoutineDetailScreen() {
 
   const handleDeleteRoutine = useCallback(() => {
     if (!routine) return;
-    Alert.alert(`Delete “${routine.name}”?`, "This removes the routine and its schedule. Past workouts stay in your history.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete routine",
-        style: "destructive",
-        onPress: () => {
-          deleteRoutine(routine.id);
-          router.back();
-        },
+    dialog.confirm({
+      title: `Delete “${routine.name}”?`,
+      message: "This removes the routine and its schedule. Past workouts stay in your history.",
+      confirmLabel: "Delete routine",
+      destructive: true,
+      onConfirm: () => {
+        deleteRoutine(routine.id);
+        router.back();
       },
-    ]);
-  }, [routine, deleteRoutine, router]);
+    });
+  }, [routine, deleteRoutine, router, dialog]);
 
   const saveName = useCallback(() => {
     if (!routineId || !routine) return;
@@ -822,7 +742,7 @@ export default function RoutineDetailScreen() {
       const current = routine.scheduledDays ?? [];
       const updated = current.includes(day) ? current.filter((d) => d !== day) : ALL_WEEKDAYS.filter((d) => d === day || current.includes(d));
       updateRoutine(routineId, { scheduledDays: updated });
-      if (Platform.OS !== "web") void Haptics.selectionAsync();
+      haptic.select();
     },
     [routine, routineId, updateRoutine],
   );
@@ -831,9 +751,9 @@ export default function RoutineDetailScreen() {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
         <Text style={styles.notFound}>Routine not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.textBtn}>
+        <Pressable onPress={() => router.back()} style={styles.textBtn}>
           <Text style={styles.textBtnLabel}>Back to routines</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }
@@ -845,18 +765,18 @@ export default function RoutineDetailScreen() {
   const rest = routine.restTimerDuration ?? settings.defaultRestTimer;
   const setRest = (next: number) => {
     updateRoutine(routine.id, { restTimerDuration: Math.min(REST_MAX, Math.max(REST_MIN, next)) });
-    if (Platform.OS !== "web") void Haptics.selectionAsync();
+    haptic.select();
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Back to routines">
+          <Pressable onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Back to routines">
             <ChevronLeft size={22} color={colors.primaryText} strokeWidth={2.4} />
             <Text style={styles.backText}>Routines</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             onPress={() => {
               saveName();
               router.back();
@@ -865,7 +785,7 @@ export default function RoutineDetailScreen() {
             accessibilityRole="button"
           >
             <Text style={[styles.textBtnLabel, { fontWeight: "800" }]}>Done</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <TextInput
@@ -887,11 +807,11 @@ export default function RoutineDetailScreen() {
               {ROUTINE_COLORS.map((c) => {
                 const on = routine.color === c;
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={c}
                     onPress={() => {
                       updateRoutine(routine.id, { color: c });
-                      if (Platform.OS !== "web") void Haptics.selectionAsync();
+                      haptic.select();
                     }}
                     style={[styles.swatchRing, on && { borderColor: c }]}
                     accessibilityRole="radio"
@@ -899,7 +819,7 @@ export default function RoutineDetailScreen() {
                     accessibilityLabel={`Routine color ${c}`}
                   >
                     <View style={[styles.swatch, { backgroundColor: c }]} />
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </View>
@@ -911,7 +831,7 @@ export default function RoutineDetailScreen() {
               {ALL_WEEKDAYS.map((day) => {
                 const on = scheduled.includes(day);
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={day}
                     onPress={() => toggleDay(day)}
                     style={[styles.dayBtn, { backgroundColor: on ? accent : colors.fill }]}
@@ -920,7 +840,7 @@ export default function RoutineDetailScreen() {
                     accessibilityLabel={`Schedule on ${WEEKDAY_LABELS[day]}`}
                   >
                     <Text style={[styles.dayText, { color: on ? "#fff" : colors.textSecondary }]}>{DAY_LETTER[day]}</Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </View>
@@ -931,26 +851,33 @@ export default function RoutineDetailScreen() {
               <Text style={styles.settingTitle}>Rest timer</Text>
               <Text style={styles.settingSub}>Between sets in this routine</Text>
             </View>
-            <Switch
-              value={restOn}
-              onValueChange={(v) => updateRoutine(routine.id, { restTimerEnabled: v })}
-              trackColor={{ true: colors.primary, false: colors.fillStrong }}
-              thumbColor="#fff"
+            <Pressable
+              onPress={() => {
+                haptic.select();
+                updateRoutine(routine.id, { restTimerEnabled: !restOn });
+              }}
+              hitSlop={8}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: restOn }}
               accessibilityLabel="Rest timer for this routine"
-            />
+            >
+              <View style={[styles.switchTrack, { backgroundColor: restOn ? colors.success : colors.fillStrong, alignItems: restOn ? "flex-end" : "flex-start" }]}>
+                <View style={styles.switchThumb} />
+              </View>
+            </Pressable>
           </View>
 
           {restOn && (
             <View style={styles.alertRow}>
               <Text style={styles.settingSub}>Duration</Text>
               <View style={styles.restStepper}>
-                <TouchableOpacity style={styles.restBtn} onPress={() => setRest(rest - 15)} accessibilityLabel="Shorter rest">
+                <Pressable style={styles.restBtn} onPress={() => setRest(rest - 15)} accessibilityLabel="Shorter rest">
                   <Text style={styles.restBtnText}>−</Text>
-                </TouchableOpacity>
+                </Pressable>
                 <Text style={styles.restValue}>{formatRest(rest)}</Text>
-                <TouchableOpacity style={styles.restBtn} onPress={() => setRest(rest + 15)} accessibilityLabel="Longer rest">
+                <Pressable style={styles.restBtn} onPress={() => setRest(rest + 15)} accessibilityLabel="Longer rest">
                   <Text style={styles.restBtnText}>+</Text>
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </View>
           )}
@@ -962,7 +889,7 @@ export default function RoutineDetailScreen() {
                 {REST_ALERT_OPTIONS.map((opt) => {
                   const on = (routine.restTimerAlert ?? "vibrate") === opt.value;
                   return (
-                    <TouchableOpacity
+                    <Pressable
                       key={opt.value}
                       onPress={() => updateRoutine(routine.id, { restTimerAlert: opt.value })}
                       style={[styles.alertChip, on && { backgroundColor: colors.primaryTint }]}
@@ -970,7 +897,7 @@ export default function RoutineDetailScreen() {
                       accessibilityState={{ selected: on }}
                     >
                       <Text style={[styles.alertChipText, on && { color: colors.primaryText }]}>{opt.label}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -981,9 +908,9 @@ export default function RoutineDetailScreen() {
         <View style={styles.exHead}>
           <Text style={styles.sectionLabel}>Exercises · {routine.exercises.length}</Text>
           {routine.exercises.length > 1 && (
-            <TouchableOpacity onPress={() => setReordering((r) => !r)} accessibilityRole="button">
+            <Pressable onPress={() => setReordering((r) => !r)} accessibilityRole="button">
               <Text style={styles.textBtnLabel}>{reordering ? "Done" : "Reorder"}</Text>
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
 
@@ -1000,12 +927,12 @@ export default function RoutineDetailScreen() {
                   weightUnit={wu}
                   onDelete={() => {
                     removeExerciseFromRoutine(routine.id, exercise.id);
-                    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    haptic.light();
                   }}
                   onTap={() => setEditing(exercise)}
                   onMove={(dir) => {
                     reorderExerciseInRoutine(routine.id, exercise.id, dir);
-                    if (Platform.OS !== "web") void Haptics.selectionAsync();
+                    haptic.select();
                   }}
                   canMoveUp={index > 0}
                   canMoveDown={index < routine.exercises.length - 1}
@@ -1020,14 +947,23 @@ export default function RoutineDetailScreen() {
           </View>
         )}
 
-        <TouchableOpacity style={styles.addExercise} onPress={() => setShowAdd(true)} accessibilityRole="button" accessibilityLabel="Add an exercise to this routine">
+        <Pressable style={styles.addExercise} onPress={() => setShowAdd(true)} accessibilityRole="button" accessibilityLabel="Add an exercise to this routine">
           <Plus size={18} color={colors.primaryText} strokeWidth={2.6} />
           <Text style={styles.addExerciseText}>Add exercise</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity style={styles.deleteRoutine} onPress={handleDeleteRoutine} accessibilityRole="button">
+        {routine.exercises.length > 0 && (
+          <PressableScale onPress={() => startRoutine(routine)} style={[styles.startWrap, glow("#2563EB", colors, 0.3)]} accessibilityRole="button" testID="start-routine">
+            <LinearGradient colors={gradient("hero", colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.start}>
+              <Play size={15} color="#fff" fill="#fff" />
+              <Text style={styles.startText}>Start this workout</Text>
+            </LinearGradient>
+          </PressableScale>
+        )}
+
+        <Pressable style={styles.deleteRoutine} onPress={handleDeleteRoutine} accessibilityRole="button">
           <Text style={styles.deleteRoutineText}>Delete routine</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
 
       <EditExerciseSheet exercise={editing} weightUnit={wu} onSave={handleEditSave} onClose={() => setEditing(null)} />
@@ -1065,15 +1001,12 @@ const createStyles = (colors: ColorScheme) =>
       color: colors.text,
       padding: 0,
     },
-    card: {
-      backgroundColor: colors.cardBackground,
-      borderRadius: 22,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.separator,
-      padding: 16,
-      gap: 16,
-      ...elevation(1, colors),
-    },
+    card: { ...card(colors, 24), padding: 18, gap: 16 },
+    switchTrack: { width: 48, height: 29, borderRadius: 999, padding: 2, justifyContent: "center" },
+    switchThumb: { width: 25, height: 25, borderRadius: 13, backgroundColor: "#fff" },
+    startWrap: { borderRadius: 20, marginTop: 4 },
+    start: { height: 56, borderRadius: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
+    startText: { fontSize: 16, fontWeight: "800", color: "#fff" },
     listCard: { padding: 0, gap: 0, overflow: "hidden" },
     block: { gap: 10 },
     blockDivider: { paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
