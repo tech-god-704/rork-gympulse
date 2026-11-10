@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ActivityIndicator } from "react-native";
+import { Text } from "@/components/ui/Text";
 import { Video, ResizeMode } from "expo-av";
 import { Image } from "expo-image";
 import { Film } from "lucide-react-native";

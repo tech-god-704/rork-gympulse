@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/providers/ThemeProvider";
 import ActiveWorkoutBar from "@/components/ActiveWorkoutBar";
+import { fontFamilyFor } from "@/constants/typography";
 
 /** v4 tab icon: the active tab sits on a soft primary pill. */
 function TabIcon({ Icon, color, focused, tint }: { Icon: LucideIcon; color: string; focused: boolean; tint: string }) {
@@ -17,7 +18,7 @@ function TabIcon({ Icon, color, focused, tint }: { Icon: LucideIcon; color: stri
 }
 
 const tabStyles = StyleSheet.create({
-  pill: { width: 56, height: 30, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  pill: { width: 58, height: 32, borderRadius: 999, alignItems: "center", justifyContent: "center" },
 });
 
 export default function TabLayout() {
@@ -35,16 +36,17 @@ export default function TabLayout() {
             backgroundColor: colors.cardBackground,
             borderTopColor: colors.separator,
             borderTopWidth: StyleSheet.hairlineWidth,
-            paddingTop: 8,
+            paddingTop: 10,
             // Was a hardcoded 80px, which floated above the home indicator on
             // newer iPhones and left a dead band on gesture-nav Android.
             paddingBottom: insets.bottom,
-            height: 64 + insets.bottom,
+            height: 68 + insets.bottom,
           },
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: "700" as const,
-            marginTop: 2,
+            fontFamily: fontFamilyFor("700"),
+            fontWeight: fontFamilyFor("700") ? ("normal" as const) : ("700" as const),
+            marginTop: 3,
           },
           tabBarItemStyle: {
             paddingVertical: 2,

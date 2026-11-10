@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, useWindowDimensions } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from "react-native";
+import { Text, TextInput } from "@/components/ui/Text";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft, Search, X } from "lucide-react-native";

@@ -1,11 +1,9 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Modal,
   Alert,
   Platform,
@@ -14,6 +12,7 @@ import {
   Switch,
   KeyboardAvoidingView,
 } from "react-native";
+import { Text, TextInput } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Plus, Trash2, Search, Check, X, Play } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";

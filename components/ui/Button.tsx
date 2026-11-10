@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import {
-  Text,
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
@@ -9,6 +8,7 @@ import {
   ViewStyle,
   StyleProp,
 } from "react-native";
+import { Text } from "@/components/ui/Text";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";

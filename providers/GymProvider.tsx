@@ -979,6 +979,35 @@ function useGymState() {
     [mutateSessionExercise]
   );
 
+  /**
+   * Change a set's weight and/or reps in one write. With `applyToFollowing`,
+   * the same values carry to the later sets that haven't been done yet — the
+   * usual case when you bump the working weight on set one.
+   */
+  const updateSet = useCallback(
+    (
+      routineExerciseId: string,
+      setNumber: number,
+      patch: { weight?: number; reps?: number },
+      applyToFollowing = false
+    ) => {
+      const weight = patch.weight != null && Number.isFinite(patch.weight) && patch.weight >= 0 ? patch.weight : undefined;
+      const reps =
+        patch.reps != null && Number.isFinite(patch.reps) && patch.reps >= 0 && patch.reps <= 999
+          ? Math.round(patch.reps)
+          : undefined;
+      if (weight == null && reps == null) return;
+      mutateSessionExercise(routineExerciseId, (e) => ({
+        ...e,
+        setDetails: ensureSetDetails(e).map((s) => {
+          const target = s.setNumber === setNumber || (applyToFollowing && s.setNumber > setNumber && !s.completed);
+          return target ? { ...s, weight: weight ?? s.weight, reps: reps ?? s.reps } : s;
+        }),
+      }));
+    },
+    [mutateSessionExercise]
+  );
+
   /** Add a set mid-workout — you don't always stop where the plan said to. */
   const addSetToExercise = useCallback(
     (routineExerciseId: string) => {
@@ -1395,6 +1424,7 @@ function useGymState() {
     toggleSetComplete,
     updateSetWeight,
     updateSetReps,
+    updateSet,
     addSetToExercise,
     removeSetFromExercise,
     completeWorkout,

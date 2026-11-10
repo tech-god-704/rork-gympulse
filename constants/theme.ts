@@ -1,4 +1,4 @@
-import { Platform, TextStyle, ViewStyle } from "react-native";
+import { Platform, StyleSheet, TextStyle, ViewStyle } from "react-native";
 import { type ColorScheme } from "@/constants/colors";
 import { MuscleGroup } from "@/types";
 
@@ -256,21 +256,47 @@ export function dominantMuscleColor(
 // The signature gradient is reserved for hero moments: the Today hero, the rest
 // bar, workout completion, level-ups and the paywall CTA. Everything else stays flat.
 
-type GradientName = "hero" | "bar" | "pr";
+type GradientName = "hero" | "bar" | "pr" | "ink";
 
 const GRADIENTS: Record<"light" | "dark", Record<GradientName, readonly [string, string, ...string[]]>> = {
   light: {
-    hero: ["#1E3A8A", "#2563EB", "#3B82F6", "#6366F1"],
+    hero: ["#0F1F66", "#1D46D8", "#3478F6"],
     bar: ["#2563EB", "#6366F1"],
     pr: ["#92400E", "#D97706", "#F2C94C"],
+    ink: ["#070B18", "#0F1A45", "#1B2F8F"],
   },
   dark: {
-    hero: ["#172554", "#1D4ED8", "#3B82F6", "#6366F1"],
+    hero: ["#0C1850", "#1A3EC4", "#2F6BEA"],
     bar: ["#3B82F6", "#818CF8"],
     pr: ["#92400E", "#D97706", "#F2C94C"],
+    ink: ["#0A0E1C", "#101B48", "#1A2C86"],
   },
 };
 
 export function gradient(name: GradientName, colors: ColorScheme): readonly [string, string, ...string[]] {
   return GRADIENTS[colors.scheme][name];
+}
+
+/**
+ * The standard v5 card: white with a soft, wide shadow in light mode; a raised
+ * surface with a hairline edge in dark mode, where shadows don't read.
+ */
+export function card(colors: ColorScheme, radius = 24): ViewStyle {
+  if (colors.scheme === "dark") {
+    return {
+      backgroundColor: colors.cardBackground,
+      borderRadius: radius,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.separator,
+    };
+  }
+  return {
+    backgroundColor: colors.cardBackground,
+    borderRadius: radius,
+    shadowColor: "#101828",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 2,
+  };
 }

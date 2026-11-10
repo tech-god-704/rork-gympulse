@@ -1,12 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { GymProvider, useGym } from "@/providers/GymProvider";
 import { ThemeProvider, useTheme } from "@/providers/ThemeProvider";
 import { useOtaUpdates } from "@/hooks/useOtaUpdates";
+import { DialogProvider } from "@/components/ui/Dialog";
+import { APP_FONTS, setFontsReady } from "@/constants/typography";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -64,13 +67,20 @@ function ThemedStatusBar() {
 }
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts(APP_FONTS);
+  // If the font files fail to load, carry on in the system font rather than block the app.
+  if (fontsLoaded) setFontsReady(true);
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <GymProvider>
           <ThemeProvider>
-            <ThemedStatusBar />
-            <RootLayoutNav />
+            <DialogProvider>
+              <ThemedStatusBar />
+              <RootLayoutNav />
+            </DialogProvider>
           </ThemeProvider>
         </GymProvider>
       </GestureHandlerRootView>

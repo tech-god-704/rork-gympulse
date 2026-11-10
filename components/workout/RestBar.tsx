@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Vibration, AppState } from "react-native";
+import { Animated, View, StyleSheet, Platform, Vibration, AppState } from "react-native";
+import { Text } from "@/components/ui/Text";
+import PressableScale from "@/components/ui/PressableScale";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle } from "react-native-svg";
 import * as Haptics from "expo-haptics";
@@ -101,6 +103,15 @@ export default function RestBar({ startKey, duration, alertType, onDone, bottomO
     onDone();
   }, [onDone]);
 
+  // Slide up from below each time a rest starts.
+  const enter = useRef(new Animated.Value(0)).current;
+  const showing = startKey != null;
+  useEffect(() => {
+    if (!showing) return;
+    enter.setValue(0);
+    Animated.spring(enter, { toValue: 1, useNativeDriver: true, damping: 18, stiffness: 240 }).start();
+  }, [showing, enter]);
+
   if (startKey == null) return null;
 
   const r = (RING - STROKE) / 2;
@@ -108,7 +119,14 @@ export default function RestBar({ startKey, duration, alertType, onDone, bottomO
   const frac = total > 0 ? Math.min(Math.max(left / total, 0), 1) : 0;
 
   return (
-    <View style={[styles.wrap, { bottom: bottomOffset }, glow("#2563EB", colors, 0.35)]} pointerEvents="box-none">
+    <Animated.View
+      style={[
+        styles.wrap,
+        { bottom: bottomOffset, opacity: enter, transform: [{ translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [90, 0] }) }] },
+        glow("#2563EB", colors, 0.35),
+      ]}
+      pointerEvents="box-none"
+    >
       <LinearGradient colors={gradient("hero", colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bar}>
         <View style={styles.ring}>
           <Svg width={RING} height={RING} style={{ transform: [{ rotate: "-90deg" }] }}>
@@ -130,20 +148,20 @@ export default function RestBar({ startKey, duration, alertType, onDone, bottomO
           <Text style={styles.label}>{left === 0 ? "Rest complete" : "Rest"}</Text>
           <Text style={styles.time}>{formatClock(left)}</Text>
         </View>
-        <TouchableOpacity onPress={addTime} style={styles.ghost} accessibilityRole="button" accessibilityLabel="Add 15 seconds">
+        <PressableScale onPress={addTime} style={styles.ghost} accessibilityRole="button" accessibilityLabel="Add 15 seconds">
           <Text style={styles.ghostText}>+15</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={skip} style={styles.solid} accessibilityRole="button" accessibilityLabel="Skip rest">
+        </PressableScale>
+        <PressableScale onPress={skip} style={styles.solid} accessibilityRole="button" accessibilityLabel="Skip rest">
           <Text style={styles.solidText}>{left === 0 ? "Done" : "Skip"}</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </LinearGradient>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 14, right: 14, borderRadius: 22 },
-  bar: { borderRadius: 22, padding: 12, paddingLeft: 14, flexDirection: "row", alignItems: "center", gap: 12 },
+  wrap: { position: "absolute", left: 14, right: 14, borderRadius: 24 },
+  bar: { borderRadius: 24, padding: 12, paddingLeft: 14, flexDirection: "row", alignItems: "center", gap: 12 },
   ring: { width: RING, height: RING },
   text: { flex: 1 },
   label: { fontSize: 12, fontWeight: "800", letterSpacing: 1, textTransform: "uppercase", color: "rgba(255,255,255,0.8)" },

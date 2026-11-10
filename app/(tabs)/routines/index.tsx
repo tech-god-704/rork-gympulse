@@ -1,15 +1,14 @@
 import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Modal,
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+import { Text, TextInput } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Plus, ChevronRight, ChevronLeft, ChevronUp, ChevronDown, LayoutGrid, List, PlayCircle } from "lucide-react-native";
