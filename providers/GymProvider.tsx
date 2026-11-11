@@ -333,7 +333,10 @@ function useGymState() {
   useEffect(() => {
     if (gamificationQuery.data !== undefined && !gamificationMigrated.current) {
       if (gamificationQuery.data !== null) {
-        setGamification(gamificationQuery.data);
+        // The level is always derived from XP, so a stale stored value can't
+        // leave someone on "Level 1" with thousands of XP.
+        const stored = gamificationQuery.data;
+        setGamification({ ...stored, level: getLevelForXP(stored.totalXP ?? 0) });
       }
       // Migration happens after all data is loaded (see isLoading effect below)
     }

@@ -43,19 +43,12 @@ export default function ExerciseDemoThumb({ slug, exerciseName, width = 44, heig
     );
   }
 
-  const content = (
-    <>
-      {media?.thumbnailUrl ? (
-        <Image source={{ uri: media.thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
-      ) : null}
-      <View style={styles.play}>
-        <Play size={8} color="#fff" fill="#fff" />
-      </View>
-    </>
-  );
+  const image = media?.thumbnailUrl ? (
+    <Image source={{ uri: media.thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" transition={150} />
+  ) : null;
 
   if (!interactive) {
-    return <View style={[styles.frame, frame, { backgroundColor: colors.thumb }]}>{content}</View>;
+    return <View style={[styles.frame, frame, { backgroundColor: colors.thumb }]}>{image}</View>;
   }
 
   return (
@@ -67,7 +60,10 @@ export default function ExerciseDemoThumb({ slug, exerciseName, width = 44, heig
       accessibilityLabel={`Watch ${demo.name} form demo`}
       style={[styles.frame, frame, { backgroundColor: colors.thumb }]}
     >
-      {content}
+      {image}
+      <View style={styles.play}>
+        <Play size={8} color="#fff" fill="#fff" />
+      </View>
     </PressableScale>
   );
 }

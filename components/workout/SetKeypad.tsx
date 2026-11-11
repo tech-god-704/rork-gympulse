@@ -55,7 +55,9 @@ export default function SetKeypad({ target, weightUnit, onClose, onCommit }: Pro
     setWeight(trimNumber(toDisplayWeight(target.weight, weightUnit)));
     setReps(String(target.reps));
     setFresh(true);
-    setCarry(true);
+    // A new working weight usually applies to the rest of the sets; a rep count
+    // usually describes just the set you did.
+    setCarry(target.field === "weight");
   }, [target, weightUnit]);
 
   const value = field === "weight" ? weight : reps;

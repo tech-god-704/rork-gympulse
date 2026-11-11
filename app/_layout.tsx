@@ -1,8 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import React, { useEffect } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Text } from "@/components/ui/Text";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { GymProvider, useGym } from "@/providers/GymProvider";
@@ -14,6 +16,35 @@ import { APP_FONTS, setFontsReady } from "@/constants/typography";
 void SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
+
+/**
+ * Shown instead of a blank screen if a render error escapes. It sits outside
+ * the theme provider, so it uses fixed colors.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    void SplashScreen.hideAsync();
+  }, []);
+  return (
+    <View style={errorStyles.container}>
+      <Text style={errorStyles.title}>Something went wrong</Text>
+      <Text style={errorStyles.body}>Your workouts are saved on this device. Try again, and if it keeps happening, restart the app.</Text>
+      <Pressable onPress={() => void retry()} style={errorStyles.button} accessibilityRole="button">
+        <Text style={errorStyles.buttonText}>Try again</Text>
+      </Pressable>
+      {__DEV__ && <Text style={errorStyles.detail}>{error.message}</Text>}
+    </View>
+  );
+}
+
+const errorStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#07080B", alignItems: "center", justifyContent: "center", padding: 32, gap: 10 },
+  title: { fontSize: 24, fontWeight: "800", letterSpacing: -0.6, color: "#F4F5F7", textAlign: "center" },
+  body: { fontSize: 15, fontWeight: "500", lineHeight: 22, color: "#8C919B", textAlign: "center", maxWidth: 300 },
+  button: { height: 52, paddingHorizontal: 28, borderRadius: 18, backgroundColor: "#2F6BEA", alignItems: "center", justifyContent: "center", marginTop: 14 },
+  buttonText: { fontSize: 16, fontWeight: "800", color: "#fff" },
+  detail: { fontSize: 12, color: "#8C919B", marginTop: 16, textAlign: "center" },
+});
 
 function RootLayoutNav() {
   const { profile, isLoading, premium } = useGym();

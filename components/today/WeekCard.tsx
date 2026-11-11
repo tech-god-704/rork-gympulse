@@ -93,7 +93,7 @@ export default function WeekCard({ completedDates, streak, goal, weekStartsOn }:
             <View
               style={[
                 styles.dot,
-                d.done && { backgroundColor: colors.primary },
+                d.done && { backgroundColor: colors.primaryFill },
                 d.today && !d.done && styles.dotToday,
               ]}
             >
