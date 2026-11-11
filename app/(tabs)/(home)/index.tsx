@@ -9,7 +9,7 @@ import { Motion, card, dominantMuscleColor, gradient, numeric, tint } from "@/co
 import { useTheme } from "@/providers/ThemeProvider";
 import { useGym } from "@/providers/GymProvider";
 import { getTodayWeekDay, getToday, getGreeting, estimateRoutineDuration, formatClock } from "@/utils/helpers";
-import { WeekDay, Routine, WorkoutHistory, MuscleGroup, DEFAULT_TRAINING_DAYS } from "@/types";
+import { WeekDay, Routine, WorkoutHistory, MuscleGroup, DEFAULT_TRAINING_DAYS, ALL_WEEKDAYS, WEEKDAY_LABELS } from "@/types";
 import ExerciseCard, { type SetField } from "@/components/ExerciseCard";
 import WorkoutComplete from "@/components/workout/WorkoutComplete";
 import DemoTile from "@/components/DemoTile";
@@ -349,9 +349,24 @@ export default function TodayScreen() {
   );
 
   // The hero shows today's scheduled routine, or the next one with exercises.
-  const heroRoutine = todaysRoutine && todaysRoutine.exercises.length > 0 ? todaysRoutine : otherRoutines[0];
+  const upcoming = useMemo(() => {
+    const order = ALL_WEEKDAYS;
+    const start = order.indexOf(todayWeekDay);
+    for (let offset = 1; offset < 7; offset++) {
+      const day = order[(start + offset) % 7];
+      const routine = routines.find((r) => r.exercises.length > 0 && r.scheduledDays?.includes(day));
+      if (routine) return { routine, day };
+    }
+    return null;
+  }, [routines, todayWeekDay]);
+  const scheduledToday = todaysRoutine && todaysRoutine.exercises.length > 0 ? todaysRoutine : undefined;
+  const heroRoutine = scheduledToday ?? upcoming?.routine ?? otherRoutines[0];
+  const heroEyebrow = scheduledToday
+    ? `Today · ${today.toLocaleDateString("en-US", { weekday: "long" })}`
+    : upcoming && upcoming.routine.id === heroRoutine?.id
+      ? `Up next · ${WEEKDAY_LABELS[upcoming.day]}`
+      : "Up next";
   const listRoutines = routines.filter((r) => r.id !== heroRoutine?.id && r.exercises.length > 0);
-  const weekdayName = today.toLocaleDateString("en-US", { weekday: "long" });
 
   const demoSlugs = useMemo(() => {
     const fromRoutine = (heroRoutine?.exercises ?? [])
@@ -633,7 +648,7 @@ export default function TodayScreen() {
             ) : (
               <TodayHero
                 routine={heroRoutine}
-                eyebrow={todaysRoutine?.id === heroRoutine.id ? `Today · ${weekdayName}` : "Up next"}
+                eyebrow={heroEyebrow}
                 onStart={() => handleStartWorkout(heroRoutine.id)}
                 lastSession={lastHeroSession}
                 weightUnit={settings.weightUnit}
