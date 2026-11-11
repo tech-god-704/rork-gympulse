@@ -1,32 +1,35 @@
 import React, { useState, useMemo } from "react";
-import { View, StyleSheet, TouchableOpacity, ScrollView, Platform } from "react-native";
-import { Text } from "@/components/ui/Text";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Path } from "react-native-svg";
-import { X, LayoutGrid, PlayCircle, TrendingUp, Dumbbell, type LucideIcon } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import { X, LayoutGrid, PlayCircle, TrendingUp, Dumbbell, Check, type LucideIcon } from "lucide-react-native";
 import { useRouter } from "expo-router";
+import { Text } from "@/components/ui/Text";
+import PressableScale from "@/components/ui/PressableScale";
+import FadeIn from "@/components/ui/FadeIn";
+import HeroBackdrop from "@/components/ui/HeroBackdrop";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { glow, gradient } from "@/constants/theme";
+import { card, glow, gradient } from "@/constants/theme";
 import { useGym } from "@/providers/GymProvider";
 import { SubscriptionPlan } from "@/types";
 import { WORKOUT_SPLITS } from "@/mocks/exercises";
 import { useExerciseLibrary } from "@/hooks/useExerciseVideos";
+import { haptic } from "@/utils/haptics";
 
 interface PlanOption {
   key: SubscriptionPlan;
   label: string;
   price: string;
+  per: string;
   sub: string;
   badge?: string;
 }
 
 const PLANS: PlanOption[] = [
-  { key: "yearly", label: "Annual", price: "$49.99", sub: "$0.96 / week · 7-day free trial", badge: "Best value · Save 58%" },
-  { key: "monthly", label: "Monthly", price: "$9.99", sub: "Billed monthly · 7-day free trial" },
-  { key: "lifetime", label: "Lifetime", price: "$99.99", sub: "Pay once, yours forever" },
+  { key: "yearly", label: "Annual", price: "$49.99", per: "/ year", sub: "$0.96 a week · 7 days free", badge: "Best value · Save 58%" },
+  { key: "monthly", label: "Monthly", price: "$9.99", per: "/ month", sub: "7 days free, then billed monthly" },
+  { key: "lifetime", label: "Lifetime", price: "$99.99", per: "once", sub: "Pay once, yours forever" },
 ];
 
 export default function PaywallScreen() {
@@ -51,7 +54,7 @@ export default function PaywallScreen() {
   const plan = PLANS.find((p) => p.key === selectedPlan)!;
 
   const handleSubscribe = () => {
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    haptic.medium();
     setIsProcessing(true);
     // Simulated purchase flow — replace with actual IAP logic
     setTimeout(() => {
@@ -62,7 +65,7 @@ export default function PaywallScreen() {
   };
 
   const handleDismiss = () => {
-    if (Platform.OS !== "web") void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    haptic.light();
     dismissPaywall();
     router.back();
   };
@@ -70,101 +73,100 @@ export default function PaywallScreen() {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }} showsVerticalScrollIndicator={false} bounces={false}>
-        <LinearGradient colors={["#0B1220", "#1E3A8A", "#4F46E5"]} locations={[0, 0.55, 1]} start={{ x: 0, y: 0 }} end={{ x: 0.8, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 22 }]}>
-          <Svg width={260} height={90} viewBox="0 0 260 90" style={styles.heroPulse} pointerEvents="none">
-            <Path d="M0 45h80l10-20 14 42 14-50 12 44 9-16h121" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" />
-          </Svg>
-          <TouchableOpacity
-            style={[styles.close, { top: insets.top + 12 }]}
-            onPress={handleDismiss}
-            accessibilityRole="button"
-            accessibilityLabel="Close and continue without Pro"
-          >
-            <X size={20} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.heroText}>
-            <View style={styles.titleRow}>
-              <Text style={styles.heroTitle}>
-                Gym<Text style={{ color: "#60A5FA" }}>Pulse</Text>
-              </Text>
-              <View style={styles.proBadge}>
-                <Text style={styles.proBadgeText}>PRO</Text>
-              </View>
+        <View style={[styles.hero, { paddingTop: insets.top + 26 }]}>
+          <HeroBackdrop tone="ink" />
+          <View style={styles.titleRow}>
+            <Text style={styles.heroTitle}>
+              Gym<Text style={{ color: "#7FB2FF" }}>Pulse</Text>
+            </Text>
+            <View style={styles.proBadge}>
+              <Text style={styles.proBadgeText}>PRO</Text>
             </View>
-            <Text style={styles.heroSub}>Train smarter with every tool unlocked.</Text>
           </View>
-        </LinearGradient>
+          <Text style={styles.heroSub}>Train smarter with every tool unlocked.</Text>
 
-        <View style={styles.body}>
           <View style={styles.features}>
-            {features.map(({ title, desc, Icon }) => (
-              <View key={title} style={styles.feature}>
+            {features.map(({ title, desc, Icon }, i) => (
+              <FadeIn key={title} delay={80 + i * 60} style={styles.feature}>
                 <View style={styles.featureIcon}>
-                  <Icon size={20} color={colors.primaryText} />
+                  <Icon size={19} color="#fff" strokeWidth={2.3} />
                 </View>
                 <View style={styles.flex}>
                   <Text style={styles.featureTitle}>{title}</Text>
                   <Text style={styles.featureDesc}>{desc}</Text>
                 </View>
-              </View>
+              </FadeIn>
             ))}
           </View>
+        </View>
 
+        <View style={styles.body}>
           <View style={styles.plans} accessibilityRole="radiogroup">
             {PLANS.map((p) => {
               const on = selectedPlan === p.key;
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={p.key}
-                  style={[styles.plan, on && { borderColor: colors.primary, backgroundColor: colors.primaryTint }]}
-                  onPress={() => {
-                    setSelectedPlan(p.key);
-                    if (Platform.OS !== "web") void Haptics.selectionAsync();
-                  }}
-                  activeOpacity={0.85}
+                  style={[styles.plan, on && styles.planOn]}
+                  scaleTo={0.98}
+                  haptic="select"
+                  onPress={() => setSelectedPlan(p.key)}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
-                  accessibilityLabel={`${p.label}, ${p.price}. ${p.sub}`}
+                  accessibilityLabel={`${p.label}, ${p.price} ${p.per}. ${p.sub}`}
                 >
-                  <View style={[styles.radio, { borderColor: on ? colors.primary : colors.fillStrong }]}>
-                    {on && <View style={styles.radioDot} />}
+                  <View style={[styles.radio, on ? { borderColor: colors.primaryFill, backgroundColor: colors.primaryFill } : { borderColor: colors.fillStrong }]}>
+                    {on && <Check size={13} color="#fff" strokeWidth={3.4} />}
                   </View>
                   <View style={styles.flex}>
                     <Text style={styles.planName}>{p.label}</Text>
                     <Text style={styles.planSub}>{p.sub}</Text>
                   </View>
-                  <Text style={styles.planPrice}>{p.price}</Text>
+                  <View style={styles.priceCol}>
+                    <Text style={styles.planPrice}>{p.price}</Text>
+                    <Text style={styles.planPer}>{p.per}</Text>
+                  </View>
                   {p.badge && (
-                    <LinearGradient colors={gradient("hero", colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.badge}>
+                    <LinearGradient colors={gradient("bar", colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.badge}>
                       <Text style={styles.badgeText}>{p.badge}</Text>
                     </LinearGradient>
                   )}
-                </TouchableOpacity>
+                </PressableScale>
               );
             })}
           </View>
 
-          <Text style={styles.note}>{lifetime ? "One payment. Yours forever." : "7-day free trial, cancel anytime."}</Text>
-
-          <TouchableOpacity
+          <PressableScale
             onPress={handleSubscribe}
             disabled={isProcessing}
-            activeOpacity={0.85}
-            style={[styles.ctaWrap, glow("#2563EB", colors, 0.3), isProcessing && styles.processing]}
+            style={[styles.ctaWrap, glow("#2563EB", colors, 0.32)]}
             accessibilityRole="button"
             accessibilityState={{ busy: isProcessing }}
-            accessibilityLabel={lifetime ? `Buy Lifetime for ${plan.price}` : `Start free trial, then ${plan.price}`}
+            accessibilityLabel={lifetime ? `Buy Lifetime for ${plan.price}` : `Start free trial, then ${plan.price} ${plan.per}`}
+            testID="paywall-cta"
           >
             <LinearGradient colors={gradient("hero", colors)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
-              <Text style={styles.ctaText}>{isProcessing ? "Processing…" : lifetime ? `Buy Lifetime · ${plan.price}` : "Start Free Trial"}</Text>
+              <Text style={styles.ctaText}>{isProcessing ? "Processing…" : lifetime ? `Buy Lifetime · ${plan.price}` : "Start 7-day free trial"}</Text>
             </LinearGradient>
-          </TouchableOpacity>
+          </PressableScale>
+          <Text style={styles.note}>
+            {lifetime ? "One payment. No subscription." : `Then ${plan.price} ${plan.per}. Cancel anytime before the trial ends.`}
+          </Text>
 
-          <TouchableOpacity onPress={handleDismiss} style={styles.later} accessibilityRole="button">
-            <Text style={styles.laterText}>Maybe later</Text>
-          </TouchableOpacity>
+          <Pressable onPress={handleDismiss} style={styles.later} accessibilityRole="button" hitSlop={6}>
+            <Text style={styles.laterText}>Not now</Text>
+          </Pressable>
         </View>
       </ScrollView>
+
+      <PressableScale
+        style={[styles.close, { top: insets.top + 12 }]}
+        onPress={handleDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Close and continue without Pro"
+      >
+        <X size={20} color="#fff" strokeWidth={2.6} />
+      </PressableScale>
     </View>
   );
 }
@@ -173,56 +175,53 @@ const createStyles = (colors: ColorScheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     flex: { flex: 1, minWidth: 0 },
-    hero: { paddingHorizontal: 22, paddingBottom: 26, overflow: "hidden" },
-    heroPulse: { position: "absolute", right: -40, bottom: 4 },
+    hero: { paddingHorizontal: 24, paddingBottom: 30, gap: 6, borderBottomLeftRadius: 36, borderBottomRightRadius: 36, overflow: "hidden" },
     close: {
       position: "absolute",
-      right: 12,
+      right: 16,
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: "rgba(255,255,255,0.12)",
+      backgroundColor: "rgba(255,255,255,0.14)",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 2,
     },
-    heroText: { gap: 6, paddingTop: 8 },
     titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-    heroTitle: { fontSize: 34, fontWeight: "800", letterSpacing: -1.3, lineHeight: 38, color: "#fff" },
-    proBadge: { backgroundColor: "#fff", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
-    proBadgeText: { fontSize: 14, fontWeight: "800", letterSpacing: 1, color: "#1D4ED8" },
-    heroSub: { fontSize: 16, fontWeight: "600", color: "rgba(255,255,255,0.84)" },
-    body: { paddingTop: 18, paddingHorizontal: 20, gap: 14 },
-    features: { gap: 12 },
-    feature: { flexDirection: "row", alignItems: "center", gap: 12 },
-    featureIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: colors.primaryTint, alignItems: "center", justifyContent: "center" },
-    featureTitle: { fontSize: 15, fontWeight: "800", color: colors.text },
-    featureDesc: { fontSize: 13, fontWeight: "500", color: colors.textTertiary, marginTop: 1 },
-    plans: { gap: 10, paddingTop: 12 },
+    heroTitle: { fontSize: 38, fontWeight: "800", letterSpacing: -1.6, lineHeight: 44, color: "#fff" },
+    proBadge: { backgroundColor: "#fff", paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8 },
+    proBadgeText: { fontSize: 14, fontWeight: "800", letterSpacing: 1.2, color: "#1D4ED8" },
+    heroSub: { fontSize: 16, fontWeight: "600", color: "rgba(255,255,255,0.82)" },
+    features: { gap: 14, marginTop: 20 },
+    feature: { flexDirection: "row", alignItems: "center", gap: 13 },
+    featureIcon: { width: 42, height: 42, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.13)", alignItems: "center", justifyContent: "center" },
+    featureTitle: { fontSize: 15, fontWeight: "800", letterSpacing: -0.2, color: "#fff" },
+    featureDesc: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.72)", marginTop: 1 },
+    body: { paddingTop: 26, paddingHorizontal: 20, gap: 12 },
+    plans: { gap: 10, marginBottom: 6 },
     plan: {
-      minHeight: 70,
-      paddingVertical: 12,
+      ...card(colors, 22),
+      minHeight: 74,
+      paddingVertical: 13,
       paddingHorizontal: 16,
-      borderRadius: 18,
       borderWidth: 2,
-      borderColor: colors.separator,
-      backgroundColor: colors.cardBackground,
+      borderColor: "transparent",
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      gap: 13,
     },
-    radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: "center", justifyContent: "center" },
-    radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-    planName: { fontSize: 16, fontWeight: "800", color: colors.text },
+    planOn: { borderColor: colors.primaryFill, backgroundColor: colors.scheme === "dark" ? "#152038" : "#EEF4FF" },
+    radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+    planName: { fontSize: 17, fontWeight: "800", letterSpacing: -0.3, color: colors.text },
     planSub: { fontSize: 12, fontWeight: "600", color: colors.textTertiary, marginTop: 2 },
-    planPrice: { fontSize: 17, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] },
-    badge: { position: "absolute", top: -11, right: 14, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
-    badgeText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.6, textTransform: "uppercase", color: "#fff" },
-    note: { textAlign: "center", fontSize: 13, fontWeight: "600", color: colors.textSecondary },
-    ctaWrap: { borderRadius: 18 },
-    processing: { opacity: 0.7 },
-    cta: { height: 58, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+    priceCol: { alignItems: "flex-end" },
+    planPrice: { fontSize: 18, fontWeight: "800", letterSpacing: -0.4, color: colors.text, fontVariant: ["tabular-nums"] },
+    planPer: { fontSize: 11, fontWeight: "700", color: colors.textTertiary },
+    badge: { position: "absolute", top: -11, right: 16, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+    badgeText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.7, textTransform: "uppercase", color: "#fff" },
+    ctaWrap: { borderRadius: 20 },
+    cta: { height: 60, borderRadius: 20, alignItems: "center", justifyContent: "center" },
     ctaText: { fontSize: 17, fontWeight: "800", color: "#fff" },
+    note: { textAlign: "center", fontSize: 13, fontWeight: "500", color: colors.textTertiary },
     later: { height: 44, alignItems: "center", justifyContent: "center" },
-    laterText: { fontSize: 14, fontWeight: "700", color: colors.textTertiary },
+    laterText: { fontSize: 15, fontWeight: "700", color: colors.textSecondary },
   });

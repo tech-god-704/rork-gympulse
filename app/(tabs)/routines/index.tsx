@@ -189,7 +189,6 @@ export default function RoutinesScreen() {
                   <PressableScale
                     style={styles.routineCard}
                     scaleTo={0.985}
-                    disabled={false}
                     onPress={() => !reordering && router.push(`/(tabs)/routines/${routine.id}`)}
                     accessibilityRole="button"
                     accessibilityLabel={`${routine.name}. ${describe(routine)}. Edit routine.`}

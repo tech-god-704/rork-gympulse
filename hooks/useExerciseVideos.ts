@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { AppState } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Image } from "expo-image";
 import { focusManager, useQuery } from "@tanstack/react-query";
 import { PB_URL } from "@/constants/backend";
 import { EXERCISE_LIBRARY, type LibraryExercise } from "@/mocks/exerciseLibrary";
@@ -51,12 +53,12 @@ function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.trim().length > 0) : [];
 }
 
-async function fetchLibrary(): Promise<RemoteLibrary> {
-  const res = await fetch(`${PB_URL}/api/collections/exercises/records?perPage=200&sort=sort_order`);
-  if (!res.ok) throw new Error(`Exercise library request failed: ${res.status}`);
-  const json = (await res.json()) as { items: PBExerciseRecord[] };
+const CACHE_KEY = "gympulse_exercise_library_cache";
+const REQUEST_TIMEOUT_MS = 12000;
+
+function toLibrary(items: PBExerciseRecord[]): RemoteLibrary {
   const videos: Record<string, ExerciseVideo> = {};
-  for (const r of json.items) {
+  for (const r of items) {
     // An uploaded file wins; the *_url fields cover clips still hosted on the generator's CDN.
     videos[r.slug] = {
       slug: r.slug,
@@ -64,16 +66,56 @@ async function fetchLibrary(): Promise<RemoteLibrary> {
       thumbnailUrl: fileUrl(r, r.thumbnail) ?? (r.thumbnail_url || null),
     };
   }
-  return { records: json.items, videos };
+  return { records: items, videos };
+}
+
+async function fetchLibrary(): Promise<RemoteLibrary> {
+  // A hung request would otherwise leave the library stuck on the bundled copy.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${PB_URL}/api/collections/exercises/records?perPage=200&sort=sort_order`, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Exercise library request failed: ${res.status}`);
+    const json = (await res.json()) as { items: PBExerciseRecord[] };
+    const library = toLibrary(json.items);
+    void AsyncStorage.setItem(CACHE_KEY, JSON.stringify(json.items)).catch(() => {});
+    // Warm the image cache so tiles appear filled in, not one by one.
+    const thumbs = Object.values(library.videos)
+      .map((v) => v.thumbnailUrl)
+      .filter((u): u is string => Boolean(u));
+    if (thumbs.length > 0) void Image.prefetch(thumbs).catch(() => {});
+    return library;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** The last library the server returned, so demos still show offline and at launch. */
+async function readCachedLibrary(): Promise<RemoteLibrary | null> {
+  try {
+    const stored = await AsyncStorage.getItem(CACHE_KEY);
+    if (!stored) return null;
+    const items = JSON.parse(stored) as PBExerciseRecord[];
+    return Array.isArray(items) ? toLibrary(items) : null;
+  } catch {
+    return null;
+  }
 }
 
 function useRemoteLibrary() {
-  return useQuery({
+  const cached = useQuery({
+    queryKey: ["exerciseLibraryCache"],
+    queryFn: readCachedLibrary,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+  const remote = useQuery({
     queryKey: ["exerciseLibrary"],
     queryFn: fetchLibrary,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
+  return { ...remote, data: remote.data ?? cached.data ?? undefined };
 }
 
 /**
