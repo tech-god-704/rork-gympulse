@@ -39,7 +39,8 @@ function weekBuckets(count: number, weekStartsOn: WeekStart, now: Date, monthLab
     start.setDate(start.getDate() - i * 7);
     const end = new Date(start);
     end.setDate(end.getDate() + 7);
-    let label = `W${count - i}`;
+    // Short ranges name each week by the day it starts: "Oct 19".
+    let label = `${MONTH_SHORT[start.getMonth()]} ${start.getDate()}`;
     if (monthLabels) {
       // Name the month once, on the first week that starts in it.
       label = start.getMonth() !== lastMonth ? MONTH_SHORT[start.getMonth()] : "";

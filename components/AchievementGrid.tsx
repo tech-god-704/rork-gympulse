@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 import { Text } from "@/components/ui/Text";
 import {
   Anchor,
@@ -28,7 +28,7 @@ import {
 } from "lucide-react-native";
 import { useTheme } from "@/providers/ThemeProvider";
 import { type ColorScheme } from "@/constants/colors";
-import { elevation } from "@/constants/theme";
+import { card } from "@/constants/theme";
 import { AchievementTier, UnlockedAchievement } from "@/types";
 import { ACHIEVEMENT_DEFINITIONS } from "@/utils/gamification";
 
@@ -127,9 +127,9 @@ export default function AchievementGrid({ unlockedAchievements }: Props) {
         })}
       </View>
       {ordered.length > PREVIEW && (
-        <TouchableOpacity style={styles.more} onPress={() => setExpanded((v) => !v)} accessibilityRole="button">
+        <Pressable style={styles.more} onPress={() => setExpanded((v) => !v)} accessibilityRole="button">
           <Text style={styles.moreText}>{expanded ? "Show less" : `See all ${ordered.length}`}</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );
@@ -139,24 +139,10 @@ const createStyles = (colors: ColorScheme) =>
   StyleSheet.create({
     wrap: { gap: 10 },
     head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingTop: 4 },
-    title: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5, color: colors.text },
+    title: { fontSize: 21, fontWeight: "800", letterSpacing: -0.6, color: colors.text },
     count: { fontSize: 13, fontWeight: "700", color: colors.textTertiary },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-    tile: {
-      flexBasis: "30%",
-      flexGrow: 1,
-      maxWidth: "32%",
-      backgroundColor: colors.cardBackground,
-      borderRadius: 18,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.separator,
-      paddingTop: 14,
-      paddingBottom: 12,
-      paddingHorizontal: 6,
-      alignItems: "center",
-      gap: 5,
-      ...elevation(1, colors),
-    },
+    tile: { ...card(colors, 20), flexBasis: "30%", flexGrow: 1, maxWidth: "32%", paddingTop: 14, paddingBottom: 12, paddingHorizontal: 6, alignItems: "center", gap: 5 },
     locked: { opacity: 0.55 },
     badge: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, alignItems: "center", justifyContent: "center", marginBottom: 2 },
     name: { fontSize: 12, fontWeight: "800", lineHeight: 15, color: colors.text, textAlign: "center" },
